@@ -10,15 +10,17 @@ export const dynamic = "force-dynamic";
 type SP = Promise<Record<string, string | string[] | undefined>>;
 
 export default async function NotionsPage({ searchParams }: { searchParams: SP }) {
-  const tab = (await searchParams).onglet === "gerer" ? "gerer" : "consulter";
-  const { notions, version, learned } = await notionsWithProgress(todayISO());
+  const onglet = (await searchParams).onglet;
+  const tab = onglet === "gerer" ? "gerer" : onglet === "travailler" ? "travailler" : "consulter";
+  const today = todayISO();
+  const { notions, version, learned } = await notionsWithProgress(today);
   return (
     <>
       <PageHeader
         title="Notions"
         subtitle={`${notions.filter((n) => n.complete).length} notion(s) dans NOTIONS.md · ${learned} apprise(s). Ajout rapide : « + » en haut ou touche N.`}
       />
-      <NotionsBoard initial={notions} initialVersion={version} initialTab={tab} />
+      <NotionsBoard initial={notions} initialVersion={version} initialTab={tab} today={today} />
     </>
   );
 }
