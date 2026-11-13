@@ -1,6 +1,7 @@
 import type { ComponentType } from "react";
 import { CalendarWidget } from "@/components/calendar/calendar-widget";
 import { NotionsToday } from "@/components/notions/notions-today";
+import { ReviewLink } from "@/components/review/review-link";
 import {
   ActiveProjectsWidget, MemoWidget, NewsWidget, NewslettersWidget,
 } from "@/components/home/widgets";
@@ -24,6 +25,8 @@ const HOME_WIDGETS: { id: string; span: string; Widget: ComponentType }[] = [
 
 export default function HomePage() {
   return (
+    <>
+    <ReviewLink />
     <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-12">
       {HOME_WIDGETS.map(({ id, span, Widget }) => (
         <div key={id} className={span}>
@@ -31,5 +34,6 @@ export default function HomePage() {
         </div>
       ))}
     </div>
+    </>
   );
 }

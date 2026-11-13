@@ -87,6 +87,7 @@ Le thème clair/sombre suit le réglage du système ; le bouton en haut à droit
 | `/projets/<nom>` et `/domaines/<nom>` | Modifier le projet / domaine (champs, sections, actions, journal) | ✅ |
 | `/news` | Actus : widgets par source ou catégorie, glisser-déposer, masquer, sources gérées depuis l'app | ✅ |
 | `/notions` | Notions : glossaire (« Tout consulter »), gestion, import en masse, impression | ✅ |
+| `/revue` | Revue de la semaine guidée (4 étapes) | ✅ |
 | `/favoris` | Favoris : filtre par type, recherche, note personnelle | ✅ |
 | `/memo` | Choses à retenir (`MEMO.md`) : ajouter, modifier, épingler, filtrer par tag, supprimer | ✅ |
 | `/newsletters` | Dossier « Newsletters » d'Outlook, en lecture seule | ✅ (après configuration) |
@@ -121,6 +122,17 @@ Les liens d'abonnement sont **secrets** (quiconque les possède peut lire ton ag
 - **Réviser** : sur l'accueil, « À retenir aujourd'hui » montre jusqu'à 3 notions (réglage `notionsPerDay`). Touche la carte pour voir la définition, puis « Je savais » ou « À revoir ». Rien n'est obligatoire : une notion ignorée reste à revoir.
 - **Intervalles** : 1, 2, 5, 14, 30 puis 90 jours ; « À revoir » la remet au lendemain. Ta progression reste sur ton ordinateur (`app/data/notions-progress.local.json`).
 - **Page Notions** : « Tout consulter » (glossaire, recherche, tri A→Z / par tag / par date, index A–Z, bouton Imprimer) et « Gérer » (modifier, supprimer, remettre à zéro, importer plusieurs notions au format `terme : définition`).
+
+## Revue de la semaine
+
+- **Quand ?** Le jour choisi (`reviewDay` dans `dashboard.config.ts` : 0 = dimanche, 1 = lundi… 6 = samedi), une ligne discrète « Revue de la semaine — 5 min » apparaît en haut de l'accueil, jusqu'à ce que la revue soit faite. Tu peux aussi la lancer à tout moment : page Projets → « Faire la revue », ou la palette (⌘K).
+- **4 étapes**, toutes facultatives :
+  1. **Fait cette semaine** : pré-rempli avec les actions cochées et les entrées de journal de la semaine ; modifie, retire, ajoute ;
+  2. **Bloqué** : texte libre ;
+  3. **Inbox** : chaque élément, un par un → action d'un projet, notion, mémo, supprimer ou garder ;
+  4. **Focus** : jusqu'à 3 éléments (prochaines actions des projets actifs ou texte libre).
+- **Terminer** crée `reviews/2026-W46.md` (par exemple) et met à jour le « Focus de la semaine ». Si la revue de la semaine existe déjà, l'app propose de la **modifier** au lieu de l'écraser.
+- Si tu recharges la page en cours de route, tu reprends où tu en étais.
 
 ## Favoris
 

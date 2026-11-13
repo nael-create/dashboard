@@ -10,6 +10,7 @@ interface DashboardConfig {
   newslettersFolder: string;
   notionsPerDay: number;
   saveReminderDays: number;
+  reviewDay: number;
 }
 
 const dashboardConfig: DashboardConfig = {
@@ -36,6 +37,13 @@ const dashboardConfig: DashboardConfig = {
 
   /** Rappel discret sur le bouton « Sauvegarder » quand des modifications attendent depuis ce nombre de jours. */
   saveReminderDays: 3,
+
+  /**
+   * Jour de la revue hebdomadaire : 0 = dimanche, 1 = lundi, … 6 = samedi.
+   * Ce jour-là (et jusqu'à la fin de la semaine), tant que la revue n'est pas faite,
+   * un lien discret « Revue de la semaine — 5 min » apparaît sur l'accueil.
+   */
+  reviewDay: 0,
 };
 
 export default dashboardConfig;

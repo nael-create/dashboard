@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Target } from "lucide-react";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Value } from "@/components/ui/badges";
@@ -11,7 +12,12 @@ export async function FocusCard() {
       <CardHeader
         title="Focus de la semaine"
         icon={<Target className="size-4" aria-hidden />}
-        aside={focus.review && <span className="text-xs text-muted">d&apos;après {focus.review}</span>}
+        aside={
+          <span className="flex items-center gap-3 text-xs text-muted">
+            {focus.review && <span>d&apos;après {focus.review}</span>}
+            <Link href="/revue" className="text-sm hover:text-accent-text">Faire la revue →</Link>
+          </span>
+        }
       />
       {focus.items.length === 0 ? (
         <p className="italic text-muted">TODO: fill in</p>

@@ -114,6 +114,8 @@ Séparation stricte :
   | `MEMO.md` | 4 | entrées du mémo (ajout, modification, épinglage, suppression avec confirmation) |
   | `NEWS.md` | 6 | sources d'actus publiques, regroupement des widgets, ordre et visibilité des widgets |
   | `NOTIONS.md` | 7 | notions (ajout rapide, import en masse, modification, suppression avec confirmation) |
+  | `INBOX.md` | 11 | ajout daté (palette), élément routé coché `- [x]`, « Supprimer » retire la ligne |
+  | `reviews/YYYY-Www.md` | 11 | revue générée depuis `reviews/_template.md` (ou sections mises à jour si elle existe déjà) |
   | `FAVORIS.md` | 10 | favoris (ajout / retrait par l'étoile, note personnelle, retrait d'un élément supprimé) |
   | `projects/*/README.md`, `areas/*/README.md` | 9 | frontmatter, sections, actions, journal ; création depuis `_template` |
   | `archive/` | 9 | déplacement d'un projet passé à `done` / `dropped` (après confirmation) |
@@ -267,3 +269,13 @@ note: Note personnelle courte  # facultatif
 - **Articles : titre, URL, source, date uniquement. Newsletters : objet, expéditeur, date et lien Outlook web uniquement. Jamais le texte d'un article ni le corps d'un e-mail.**
 - Références internes vérifiées à l'affichage : cible disparue → « Élément supprimé » avec bouton de retrait ; projet archivé → « Archivé ».
 - L'étoile ajoute / retire un bloc sur le contenu du moment (rien d'autre n'est réécrit) ; la note suit la règle « fichier inchangé depuis la lecture ».
+
+## 16. Revue hebdomadaire guidée (`/revue`)
+
+- 4 étapes (Fait cette semaine, Bloqué, Inbox, Focus semaine prochaine), « Suivant » / « Retour », indicateur de progression ; toutes facultatives ; brouillon gardé dans le navigateur (localStorage, sans erreur s'il est indisponible).
+- Semaine ISO calculée dans le **fuseau d'affichage** (`app/src/lib/review.ts`).
+- « Fait » est pré-rempli avec les entrées de journal (dont « Fait : … ») datées de la semaine, projets actifs et archivés.
+- Inbox, élément par élément : « Action d'un projet » (devient une prochaine action), « Notion » (à compléter), « Mémo », « Supprimer » (retire la ligne, avec confirmation), « Garder ». Les éléments routés sont cochés `- [x]`.
+- Focus : 3 éléments max parmi les prochaines actions des projets actifs, ou texte libre.
+- Terminer crée `reviews/YYYY-Www.md` depuis le template et régénère DASHBOARD.md. **Une revue existante n'est jamais écrasée** : l'app propose de la modifier (mise à jour de ses sections).
+- Accueil : ligne discrète « Revue de la semaine — 5 min » au-dessus de la grille, à partir du jour `reviewDay` (dashboard.config.ts, 0 = dimanche) et tant que la revue de la semaine n'existe pas.
