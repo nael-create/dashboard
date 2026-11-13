@@ -8,6 +8,7 @@ import "@fontsource-variable/inter-tight";
 import { Shortcuts } from "@/components/shortcuts";
 import { QuickAddNotion } from "@/components/notions/quick-add";
 import { SaveButton } from "@/components/save-button";
+import { UpdateButton } from "@/components/update-button";
 import { FavoritesProvider } from "@/components/favorites/favorites-context";
 import { CommandPalette } from "@/components/command-palette";
 import { ShortcutsHelp } from "@/components/shortcuts-help";
@@ -36,6 +37,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             title={config.title}
             actions={
               <>
+                <UpdateButton />
                 <SaveButton />
                 <SearchButton />
                 <QuickAddNotion />

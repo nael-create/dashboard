@@ -54,7 +54,11 @@ que ci-dessus), et macOS le relance s'il s'arrête. Plus aucune fenêtre Termina
 Ensuite, il suffit d'ouvrir **http://localhost:3000**. Pour en faire une icône : dans Safari,
 menu **Fichier → Ajouter au Dock**.
 
-- Les mises à jour s'appliquent à chaque démarrage du service (redémarrage du Mac ou nouvelle session).
+- **Mettre à jour sans rien taper** : quand une nouvelle version existe sur GitHub, un bouton
+  **Mettre à jour** apparaît en haut à droite (vérification toutes les 30 minutes). Un clic : le dashboard
+  se relance (≈ 30 secondes), récupère la nouvelle version et la page se recharge toute seule. Aussi
+  disponible dans la palette (`⌘K` → « Mettre à jour le dashboard »). Ton contenu n'est jamais touché.
+- Les mises à jour s'appliquent aussi à chaque démarrage du service (redémarrage du Mac ou nouvelle session).
 - Journal (en cas de souci) : `~/Library/Logs/dashboard.log`.
 - Désinstaller : `bash ~/dashboard/app/scripts/install-service.sh --off`.
 - Ne déplace pas le dossier `dashboard` ensuite (sinon, relance l'installation).

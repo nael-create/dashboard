@@ -3,6 +3,7 @@
 import {
   ArrowRight, CalendarCheck, CalendarDays, CornerDownLeft, FolderKanban, GraduationCap, Inbox, Layers, Mail, Newspaper,
   Palette, Plus, Save, Search, Star, StickyNote, type LucideIcon,
+  Download,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
@@ -12,6 +13,7 @@ import { fuzzyFilter, fuzzyScore } from "@/lib/fuzzy";
 import { NAV_ITEMS } from "@/lib/navigation";
 import { EVENTS } from "@/lib/shortcuts";
 import { SAVE_EVENT } from "./save-button";
+import { UPDATE_EVENT } from "./update-button";
 
 export const OPEN_PALETTE = "dashboard:open-palette";
 
@@ -105,6 +107,7 @@ export function CommandPalette() {
     ];
     const others: Action[] = [
       { key: "a:save", group: "Actions", icon: Save, label: "Sauvegarder", title: "Sauvegarder", keywords: "git github commit envoyer", run: () => { close(); window.dispatchEvent(new Event(SAVE_EVENT)); } },
+      { key: "a:update", group: "Actions", icon: Download, label: "Mettre à jour le dashboard", title: "Mettre à jour le dashboard", keywords: "update mise a jour version relancer redemarrer", run: () => { close(); window.dispatchEvent(new Event(UPDATE_EVENT)); } },
       { key: "a:theme", group: "Actions", icon: Palette, label: "Changer de thème", title: "Changer de thème", subtitle: `Actuel : ${theme === "dark" ? "sombre" : theme === "light" ? "clair" : "système"}`, keywords: "theme sombre clair mode",
         run: () => { setTheme(theme === "system" ? "light" : theme === "light" ? "dark" : "system"); } },
       { key: "a:revue", group: "Actions", icon: CalendarCheck, label: "Faire la revue", title: "Faire la revue", keywords: "revue hebdomadaire semaine", run: () => go("/revue") },
