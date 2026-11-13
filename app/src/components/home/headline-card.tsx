@@ -45,7 +45,7 @@ export function HeadlineCard({
       {article.date && (
         <>
           <span aria-hidden>·</span>
-          <time dateTime={article.date} className="shrink-0">{relativeTime(article.date)}</time>
+          <time dateTime={article.date} className="shrink-0" suppressHydrationWarning>{relativeTime(article.date)}</time>
         </>
       )}
       <span className="ml-auto -my-2 -mr-2 normal-case">
