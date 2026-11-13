@@ -71,7 +71,7 @@ export function ArticleRow({
         className="flex min-w-0 flex-1 items-start gap-3 rounded-xl px-2 py-2 transition-colors hover:bg-surface-2"
       >
         <span className="min-w-0 flex-1">
-          <span className="line-clamp-2 font-medium leading-snug">{a.title}</span>
+          <span className="line-clamp-2 leading-snug">{a.title}</span>
           <span className="mt-1 flex items-center gap-1.5 text-xs text-muted">
             {isNew && <span className="rounded-full bg-accent px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide text-white">Nouveau</span>}
             {a.date && <time dateTime={a.date}>{relativeTime(a.date)}</time>}
@@ -102,23 +102,27 @@ export function NewsCard({
   renderActions?: (a: Article) => ReactNode;
 }) {
   return (
-    <section className="flex h-full flex-col rounded-[28px] border border-border bg-surface p-5 shadow-[0_1px_3px_rgba(16,24,40,0.06)] transition-shadow hover:shadow-md">
+    <section className="rise flex h-full flex-col border-t border-text/80 pt-4">
       <header className="mb-3 flex items-center justify-between gap-3">
         {href ? (
-          <Link href={href} className="truncate text-lg font-bold tracking-tight transition-colors hover:text-accent-text" style={{ color }}>
-            {title}
+          <Link href={href} className="flex min-w-0 items-center gap-2 title-md lowercase">
+            <span className="size-2 shrink-0 rounded-full" style={{ background: color }} aria-hidden />
+            <span className="link-underline truncate">{title}</span>
           </Link>
         ) : (
-          <h2 className="truncate text-lg font-bold tracking-tight" style={{ color }}>{title}</h2>
+          <h2 className="flex min-w-0 items-center gap-2 title-md lowercase">
+            <span className="size-2 shrink-0 rounded-full" style={{ background: color }} aria-hidden />
+            <span className="truncate">{title}</span>
+          </h2>
         )}
         <div className="flex shrink-0 items-center gap-1">
           {children}
           <Favicon domain={domain} color={color} label={title} />
         </div>
       </header>
-      {error && <p className="mb-2 rounded-lg bg-amber-500/10 px-2 py-1 text-xs text-amber-800 dark:text-amber-300">{error}</p>}
+      {error && <p className="mb-2 bg-amber-500/10 px-2 py-1 text-xs text-amber-800 dark:text-amber-300">{error}</p>}
       {items.length ? (
-        <ul className="flex-1 space-y-0.5">
+        <ul className="flex-1 divide-y divide-border">
           {items.map((a) => <ArticleRow key={a.id} a={a} isNew={isNew(a)} actions={renderActions?.(a)} />)}
         </ul>
       ) : (

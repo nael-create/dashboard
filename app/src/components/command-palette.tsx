@@ -140,7 +140,9 @@ export function CommandPalette() {
     const inboxRow: Row = { key: "a:inbox", group: "Capture", icon: Inbox, title: `Ajouter à l'inbox : ${text}`, run: () => addToInbox(text) };
     // Rien ne correspond : « Ajouter à l'inbox » est l'action par défaut (Entrée).
     if (results.length === 0 && named.length === 0) return [inboxRow, ...prefilled];
-    return [...named.map(strip), ...results, ...prefilled, inboxRow];
+    // Actions reconnues regroupées (« Actions » puis « Aller à ») pour n'afficher chaque groupe qu'une fois.
+    const groupedNamed = [...named.filter((a) => a.group === "Actions"), ...named.filter((a) => a.group !== "Actions")];
+    return [...groupedNamed.map(strip), ...results, ...prefilled, inboxRow];
   }, [q, items, theme, setTheme, go, close, addToInbox]);
 
   useEffect(() => setActive(0), [q]);

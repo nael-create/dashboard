@@ -133,13 +133,15 @@ Règles :
 - Personnalisation (titre, couleur d'accent, fuseau, langue) : un seul fichier, `app/dashboard.config.ts`.
 - **Fuseau d'affichage** : celui de l'ordinateur par défaut (`timeZone: null`). `dashboard.config.ts` PEUT forcer un fuseau précis (ex. `"Asia/Kuala_Lumpur"`). Ne jamais coder un fuseau en dur ailleurs : utiliser `displayTimeZone()` (`app/src/lib/display-tz.ts`).
 - Interface en français, responsive (utilisable sur téléphone), thème clair/sombre (système + bouton manuel), une seule couleur d'accent.
-- Navigation : `app/src/lib/navigation.ts`. Ajouter une page = ajouter une ligne ; `mobile: true` la met dans la barre du bas sur téléphone, sinon elle est dans « Plus ».
+- **Design** : système éditorial décrit dans `app/previews/redesign/BRIEF.md` (fond grège / noir chaud, police libre Inter Tight auto-hébergée, titres en minuscules très grands, petites capitales pour les étiquettes, fils fins, aucun arrondi sur cartes et images, une seule couleur d'accent). Jetons de couleur et utilitaires (`display`, `section-title`, `title-md`, `label`, `link-underline`, `rise`) dans `app/src/app/globals.css`. Mouvement discret, désactivé si `prefers-reduced-motion`. Contraste au moins AA dans les deux modes, focus visible partout.
+- **En-tête** (`app/src/components/nav.tsx`, liste `HEADER_ITEMS`) : nom, navigation complète (Accueil, Projets, Notions, Mémo, Newsletters, News, Favoris, Revue), heure locale, puis Sauvegarder, loupe (palette), « + » (notion) et thème. Sur téléphone : bouton « Menu » ouvrant un menu plein écran numéroté. La palette utilise `app/src/lib/navigation.ts` pour ses « Aller à … ».
 - Raccourcis clavier : `app/src/components/shortcuts.tsx`. Les raccourcis à modificateur (`⌘K` / `Ctrl+K`) DOIVENT fonctionner partout, y compris pendant la saisie ; les raccourcis à une touche (`N`, `?`) ne s'activent JAMAIS pendant la saisie dans un champ.
-- Accueil (`HOME_WIDGETS` dans `app/src/app/page.tsx`), dans cet ordre :
-  1. **Calendrier** (pleine largeur, élément le plus grand) ;
-  2. **À la une** (5 derniers titres d'actus) à côté de **Projets actifs** ;
-  3. **À retenir aujourd'hui** (révision des notions, sous « À la une »), **Dernières newsletters** et **Mémo** (entrées épinglées).
-- Le calendrier reste le premier et le plus grand élément, suivi de « À la une » (`NewsWidget`, rempli par les actus). Aucune fonctionnalité ne doit prendre leur place.
+- **Accueil** (`app/src/app/page.tsx`), de haut en bas — cet ordre est imposé :
+  1. **En-tête** ;
+  2. **01. agenda** : le calendrier, premier bloc de contenu et le plus grand (toutes ses fonctions) ;
+  3. **02. à la une** : grille d'images des grands sujets (`app/src/components/home/headlines-grid.tsx`), dans l'ordre éditorial du flux FT International entrecoupé de Reuters (2 pour 1) ; un article sans image devient une carte typographique (titre sur aplat), jamais une image cassée ; étoiles actives ; pas d'autre extraction que la règle `og:image` existante ;
+  4. **tout le reste** : ligne « revue de la semaine » (jour de revue), 03. projets actifs, 04. à retenir aujourd'hui (notions), 05. mémo, 06. newsletters.
+- Aucune fonctionnalité ne doit prendre la place du calendrier ni de « à la une ».
 - Le **Focus de la semaine** n'est plus sur l'accueil : il est en haut de la page `/projets`. DASHBOARD.md garde sa section « Focus de la semaine » inchangée.
 - Lanceur macOS : `Lancer le dashboard.command`. À chaque lancement : (1) repasse sur `main` sauf s'il reste du contenu non sauvegardé (message demandant « Sauvegarder ») ; (2) `git pull --ff-only` (jamais forcé, n'efface rien ; en cas d'échec, démarre sur la version locale et explique) ; (3) `npm ci` seulement si l'empreinte de `package-lock.json` a changé ; (4) `git push --dry-run` non interactif, résultat écrit dans `app/data/push-check.local.json` et affiché dans le panneau « Sauvegarder » (clé orange) ; puis vérifie Node.js ≥ 22 et démarre l'app. Il DOIT rester exécutable (`git update-index --chmod=+x`).
 - Les instructions de test données au propriétaire NE DOIVENT contenir que des étapes réalisables sur son ordinateur (l'app n'écoute que sur 127.0.0.1 : pas de test sur téléphone ; pour l'affichage mobile, utiliser le mode « responsive » des outils de développement du navigateur).
@@ -213,7 +215,7 @@ enabled: yes
 - **Lien privé** (URL contenant une clé personnelle, ex. flux myFT) : JAMAIS dans NEWS.md. Il est stocké dans `app/data/news.local.json` (ignoré par git). L'app refuse d'enregistrer dans NEWS.md un lien qui ressemble à une clé et demande de cocher « Lien privé ».
 - Flux téléchargés côté serveur uniquement, au plus une fois toutes les 5 minutes par flux (un flux en échec peut être retenté par « Rafraîchir » au bout d'une minute) ; dédoublonnage (même URL ou titre quasi identique). Aucun article n'est écrit dans le dépôt, aucun texte d'article n'est récupéré, aucun paywall n'est contourné, aucun identifiant FT n'est utilisé. Pas d'intégration X / Twitter.
 - Vignettes : celles du flux (media:content, media:thumbnail, enclosure), sinon uniquement la balise `og:image` de l'article, au plus une fois par article, en cache dans le dossier temporaire du système (hors dépôt). Jamais pour les liens Google News.
-- Accueil : le widget existant « À la une » affiche les 5 derniers titres ; ne pas ajouter d'autre widget d'actus.
+- Accueil : la section « à la une » (grille d'images, 10 sujets) est la seule présence des actus sur l'accueil ; ne pas en ajouter d'autre.
 
 ## 12. NOTIONS.md — notions (répétition espacée)
 
@@ -281,7 +283,7 @@ note: Note personnelle courte  # facultatif
 - Inbox, élément par élément : « Action d'un projet » (devient une prochaine action), « Notion » (à compléter), « Mémo », « Supprimer » (retire la ligne, avec confirmation), « Garder ». Les éléments routés sont cochés `- [x]`.
 - Focus : 3 éléments max parmi les prochaines actions des projets actifs, ou texte libre.
 - Terminer crée `reviews/YYYY-Www.md` depuis le template et régénère DASHBOARD.md. **Une revue existante n'est jamais écrasée** : l'app propose de la modifier (mise à jour de ses sections).
-- Accueil : ligne discrète « Revue de la semaine — 5 min » au-dessus de la grille, à partir du jour `reviewDay` (dashboard.config.ts, 0 = dimanche) et tant que la revue de la semaine n'existe pas.
+- Accueil : ligne discrète « revue de la semaine — 5 min » en tête de la partie « tout le reste », à partir du jour `reviewDay` (dashboard.config.ts, 0 = dimanche) et tant que la revue de la semaine n'existe pas.
 
 ## 17. Palette de commandes et raccourcis
 

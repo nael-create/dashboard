@@ -46,7 +46,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: SP 
         <FocusCard />
       </div>
 
-      <div className="mb-8 space-y-3 rounded-2xl border border-border bg-surface p-4 sm:p-5">
+      <div className="mb-16 space-y-3 border-y border-border py-4">
         <FilterChips
           label="Statut" param="statut" current={status} otherParams={keep("priorite", priority)}
           chips={[
@@ -63,9 +63,9 @@ export default async function ProjectsPage({ searchParams }: { searchParams: SP 
         />
       </div>
 
-      <section className="mb-10">
-        <h2 className="mb-3 text-lg font-semibold tracking-tight">
-          Projets <span className="text-sm font-normal text-muted">({shownProjects.length})</span>
+      <section className="mb-16">
+        <h2 className="mb-5 flex items-baseline gap-3 border-t border-text/80 pt-4"><span className="title-md lowercase">Projets</span>
+          <span className="label text-muted">{String(shownProjects.length).padStart(2, "0")}</span>
         </h2>
         {shownProjects.length ? (
           <EntryList entries={shownProjects} hrefBase="/projets" />
@@ -75,8 +75,8 @@ export default async function ProjectsPage({ searchParams }: { searchParams: SP 
       </section>
 
       <section>
-        <h2 className="mb-3 text-lg font-semibold tracking-tight">
-          Domaines <span className="text-sm font-normal text-muted">({shownAreas.length})</span>
+        <h2 className="mb-5 flex items-baseline gap-3 border-t border-text/80 pt-4"><span className="title-md lowercase">Domaines</span>
+          <span className="label text-muted">{String(shownAreas.length).padStart(2, "0")}</span>
         </h2>
         {shownAreas.length ? (
           <EntryList entries={shownAreas} hrefBase="/domaines" />

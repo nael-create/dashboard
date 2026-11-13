@@ -17,17 +17,17 @@ export function NewsFullList({ widgetKey }: { widgetKey: string }) {
       </Link>
       {error && <Notice>{error}</Notice>}
       {!data ? (
-        <div className="h-96 animate-pulse rounded-[28px] bg-surface-2" />
+        <div className="h-96 animate-pulse bg-surface-2" />
       ) : !w ? (
         <Notice>Ce widget n&apos;existe plus (source retirée ou désactivée).</Notice>
       ) : (
-        <section className="rounded-[28px] border border-border bg-surface p-5 sm:p-7">
-          <header className="mb-4 flex items-center justify-between gap-3">
-            <h1 className="text-2xl font-bold tracking-tight" style={{ color: w.color }}>{w.title}</h1>
+        <section>
+          <header className="mb-8 flex items-end justify-between gap-3">
+            <h1 className="display">{w.title}</h1>
             <Favicon domain={w.domain} color={w.color} label={w.title} />
           </header>
           {w.items.length ? (
-            <ul className="space-y-1">{w.items.map((a) => <ArticleRow key={a.id} a={a} isNew={isNew(a)} />)}</ul>
+            <ul className="divide-y divide-border border-t border-text/80">{w.items.map((a) => <ArticleRow key={a.id} a={a} isNew={isNew(a)} />)}</ul>
           ) : (
             <p className="text-sm text-muted">Aucun article pour l&apos;instant.</p>
           )}

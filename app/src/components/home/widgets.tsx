@@ -1,63 +1,57 @@
-import { FolderKanban, Mail, StickyNote } from "lucide-react";
 import Link from "next/link";
 import { Card, CardHeader, Empty } from "@/components/ui/card";
-import { DeadlineText, PriorityBadge, Value } from "@/components/ui/badges";
+import { DeadlineText, Value } from "@/components/ui/badges";
 import { countInbox, listProjects } from "@/lib/content";
 import { readMemo } from "@/lib/memo";
 import { listNewsletters, OutlookError, type NewsletterSummary } from "@/lib/outlook";
 import { relativeTime } from "@/lib/relative-time";
 import { OutlookState } from "@/components/newsletters/outlook-state";
-import { HeadlinesWidget } from "@/components/news/headlines-widget";
-import { Pin } from "lucide-react";
+import { HeadlinesGrid } from "./headlines-grid";
 
-/* Chaque widget est un composant serveur autonome : il lit lui-même ses données. */
+/* Chaque bloc est un composant serveur autonome : il lit lui-même ses données. */
 
-/** « À la une » (phase 6) : rempli par HeadlinesWidget, à cet emplacement juste sous le calendrier. */
+/** « À la une » : grille d'images éditoriale, juste sous le calendrier. */
 export function NewsWidget() {
-  return <HeadlinesWidget />;
+  return <HeadlinesGrid />;
 }
 
-export async function ActiveProjectsWidget() {
+const num = (i: number) => `${String(i + 1).padStart(2, "0")}.`;
+
+export async function ActiveProjectsWidget({ n }: { n?: string }) {
   const [projects, inbox] = await Promise.all([listProjects(), countInbox()]);
   const active = projects.filter((p) => p.status === "active");
   return (
     <Card className="h-full">
       <CardHeader
+        n={n}
         title="Projets actifs"
-        icon={<FolderKanban className="size-4" aria-hidden />}
         href="/projets"
-        aside={
-          <span className="rounded-full bg-surface-2 px-2 py-0.5 text-xs text-muted" title="Éléments non traités dans INBOX.md">
-            Inbox : {inbox}
-          </span>
-        }
+        aside={<span className="label text-muted" title="Éléments non traités dans INBOX.md">Inbox — {inbox}</span>}
       />
       {active.length === 0 ? (
         <Empty>Aucun projet actif pour l&apos;instant.</Empty>
       ) : (
-        <ul className="-mx-2 divide-y divide-border">
-          {active.map((p) => (
+        <ol className="divide-y divide-border border-y border-border">
+          {active.map((p, i) => (
             <li key={p.slug}>
-              <Link
-                href={`/projets/${p.slug}`}
-                className="flex flex-col gap-1 rounded-xl px-2 py-3 transition-colors hover:bg-surface-2 sm:flex-row sm:items-center sm:gap-4"
-              >
-                <span className="flex min-w-0 flex-1 items-center gap-2">
-                  <PriorityBadge priority={p.priority} />
-                  <span className="truncate font-medium">{p.title}</span>
+              <Link href={`/projets/${p.slug}`} className="group grid grid-cols-[2.5rem_1fr] gap-x-2 gap-y-1 py-4 sm:grid-cols-[2.5rem_1.2fr_1fr_7rem] sm:items-baseline">
+                <span className="label pt-1 text-muted">{num(i)}</span>
+                <span className="text-[clamp(1.15rem,1.8vw,1.5rem)] font-light leading-tight tracking-[-0.02em]">
+                  <span className="link-underline">{p.title}</span>
+                  {p.priority && <span className={`label ml-2 align-middle ${p.priority === "P1" ? "text-accent-text" : "text-muted"}`}>{p.priority}</span>}
                 </span>
-                <span className="min-w-0 flex-1 truncate text-sm text-muted"><Value text={p.nextAction} /></span>
-                <span className="text-sm sm:w-28 sm:text-right"><DeadlineText deadline={p.deadline} /></span>
+                <span className="col-start-2 text-sm text-muted sm:col-start-auto"><Value text={p.nextAction} /></span>
+                <span className="label col-start-2 text-muted sm:col-start-auto sm:text-right"><DeadlineText deadline={p.deadline} /></span>
               </Link>
             </li>
           ))}
-        </ul>
+        </ol>
       )}
     </Card>
   );
 }
 
-export async function NewslettersWidget() {
+export async function NewslettersWidget({ n }: { n?: string }) {
   let items: NewsletterSummary[] = [];
   let error: OutlookError | null = null;
   try {
@@ -67,50 +61,53 @@ export async function NewslettersWidget() {
   }
   return (
     <Card className="h-full">
-      <CardHeader title="Dernières newsletters" icon={<Mail className="size-4" aria-hidden />} href="/newsletters" />
+      <CardHeader n={n} title="Newsletters" href="/newsletters" />
       {error ? (
         <OutlookState error={error} compact />
       ) : items.length === 0 ? (
         <Empty>Aucune newsletter pour l&apos;instant.</Empty>
       ) : (
-        <ul className="-mx-2 space-y-0.5">
-          {items.map((m) => (
+        <ol className="divide-y divide-border border-y border-border">
+          {items.map((m, i) => (
             <li key={m.id}>
-              <Link href={`/newsletters/${encodeURIComponent(m.id)}`} className="block rounded-xl px-2 py-2 transition-colors hover:bg-surface-2">
-                <span className="flex items-baseline justify-between gap-2 text-xs text-muted">
-                  <span className="truncate">{m.from}</span>
-                  <span className="shrink-0">{relativeTime(m.received)}</span>
+              <Link href={`/newsletters/${encodeURIComponent(m.id)}`} className="group grid grid-cols-[2.5rem_1fr] gap-x-2 py-3">
+                <span className="label pt-1 text-muted">{num(i)}</span>
+                <span className="min-w-0">
+                  <span className={`block truncate ${m.isRead ? "" : "font-medium"}`}><span className="link-underline">{m.subject}</span></span>
+                  <span className="label mt-1 flex justify-between gap-2 text-muted">
+                    <span className="truncate">{m.from}</span>
+                    <span className="shrink-0">{relativeTime(m.received)}</span>
+                  </span>
                 </span>
-                <span className={`block truncate ${m.isRead ? "" : "font-semibold"}`}>{m.subject}</span>
               </Link>
             </li>
           ))}
-        </ul>
+        </ol>
       )}
     </Card>
   );
 }
 
-export async function MemoWidget() {
+export async function MemoWidget({ n }: { n?: string }) {
   const { entries } = await readMemo();
   const pinned = entries.filter((e) => e.pinned).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5);
   return (
     <Card className="h-full">
-      <CardHeader title="Mémo" icon={<StickyNote className="size-4" aria-hidden />} href="/memo" />
+      <CardHeader n={n} title="Mémo" href="/memo" />
       {pinned.length === 0 ? (
         <Empty>Aucun mémo épinglé. Épingle un mémo pour le retrouver ici.</Empty>
       ) : (
-        <ul className="space-y-2.5">
-          {pinned.map((e) => (
-            <li key={e.key} className="flex gap-2.5">
-              <Pin className="mt-1 size-3.5 shrink-0 text-accent-text" aria-hidden />
-              <div className="min-w-0">
-                <p className="truncate font-medium">{e.title}</p>
-                {e.text && <p className="line-clamp-2 text-sm text-muted">{e.text.replace(/[#*_>`[\]]/g, "")}</p>}
-              </div>
+        <ol className="divide-y divide-border border-y border-border">
+          {pinned.map((e, i) => (
+            <li key={e.key} className="grid grid-cols-[2.5rem_1fr] gap-x-2 py-3">
+              <span className="label pt-1 text-muted">{num(i)}</span>
+              <Link href={`/memo#memo-${e.id ?? e.key}`} className="min-w-0">
+                <span className="block truncate"><span className="link-underline">{e.title}</span></span>
+                {e.text && <span className="mt-0.5 line-clamp-2 block text-sm text-muted">{e.text.replace(/[#*_>`[\]]/g, "")}</span>}
+              </Link>
             </li>
           ))}
-        </ul>
+        </ol>
       )}
     </Card>
   );

@@ -75,7 +75,7 @@ export function ReviewWizard() {
   if (finished) {
     return (
       <section className="rounded-2xl border border-border bg-surface p-6 sm:p-8">
-        <p className="mb-1 flex items-center gap-2 text-lg font-semibold"><Check className="size-5 text-emerald-600" aria-hidden /> Revue {week} enregistrée</p>
+        <p className="mb-2 flex items-center gap-2 title-md"><Check className="size-5 text-emerald-600" aria-hidden /> Revue {week} enregistrée</p>
         <p className="mb-4 text-sm text-muted">Fichier : <code>{finished.path}</code> · DASHBOARD.md mis à jour.</p>
         <dl className="grid gap-3 text-sm sm:grid-cols-3">
           <div className="rounded-xl bg-surface-2 p-3"><dt className="text-muted">Fait</dt><dd className="text-2xl font-semibold">{draft?.done.filter(Boolean).length ?? 0}</dd></div>
@@ -149,7 +149,7 @@ export function ReviewWizard() {
       {error && <Notice>{error}</Notice>}
 
       <section className="rounded-2xl border border-border bg-surface p-5 sm:p-7">
-        <h2 className="mb-1 text-xl font-semibold tracking-tight">{STEPS[draft.step]}</h2>
+        <h2 className="mb-2 title-md lowercase">{STEPS[draft.step]}</h2>
         {draft.step === 0 && <DoneStep lines={draft.done} onChange={(done) => set({ done })} week={data.week} />}
         {draft.step === 1 && <BlockedStep text={draft.blocked} onChange={(blocked) => set({ blocked })} />}
         {draft.step === 2 && (

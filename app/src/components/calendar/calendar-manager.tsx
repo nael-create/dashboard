@@ -61,7 +61,7 @@ export function CalendarManager({
     >
       <div className="max-h-[85dvh] overflow-y-auto p-5 sm:p-6">
         <header className="mb-5 flex items-center justify-between">
-          <h2 className="text-lg font-semibold tracking-tight">Calendriers</h2>
+          <h2 className="title-md lowercase">Calendriers</h2>
           <button type="button" onClick={onClose} aria-label="Fermer" className="grid size-8 place-items-center rounded-full text-muted hover:bg-surface-2 hover:text-text">
             <X className="size-4" />
           </button>
@@ -326,7 +326,7 @@ function AddForm({ used, onAdded }: { used: string[]; onAdded: () => void }) {
       <button
         type="submit"
         disabled={busy}
-        className="w-full rounded-full bg-accent px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-60 sm:w-auto"
+        className="w-full rounded-full bg-text px-4 py-2 text-[12px] font-medium uppercase tracking-[0.04em] text-bg transition-opacity hover:opacity-85 disabled:opacity-60 sm:w-auto"
       >
         {busy ? "Vérification du lien…" : "Ajouter"}
       </button>

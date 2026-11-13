@@ -111,16 +111,17 @@ export function NotionsBoard({
 /* Onglet « Tout consulter » : glossaire en lecture seule              */
 /* ------------------------------------------------------------------ */
 
-function GlossaryCard({ n, renderStar }: { n: NotionItem; renderStar?: (n: NotionItem) => React.ReactNode }) {
+function GlossaryCard({ n, renderStar, letter }: { n: NotionItem; renderStar?: (n: NotionItem) => React.ReactNode; letter?: string }) {
   return (
-    <article id={`notion-${n.id}`} className="h-full scroll-mt-28 break-inside-avoid rounded-xl border border-border bg-surface p-4 print:border-gray-300">
-      <h3 className="flex items-start justify-between gap-2 font-semibold leading-snug">
+    <article id={`notion-${n.id}`} className="h-full scroll-mt-28 break-inside-avoid border-t border-text/80 pb-4 pt-3 print:border-gray-400">
+      <p className="label mb-2 h-3 text-muted">{letter ?? ""}</p>
+      <h3 className="flex items-start justify-between gap-2 text-[clamp(1.35rem,2vw,1.7rem)] font-light leading-[1.05] tracking-[-0.03em]">
         <span>{n.term}</span>
         {renderStar && <span className="print:hidden">{renderStar(n)}</span>}
       </h3>
       <div className="md mt-1.5 text-sm"><ReactMarkdown remarkPlugins={[remarkGfm]} skipHtml>{n.definition}</ReactMarkdown></div>
-      {n.example && <p className="mt-2 border-l-2 border-border pl-2 text-sm italic text-muted">{n.example}</p>}
-      {n.tags.length > 0 && <p className="mt-2 text-xs text-muted">{n.tags.map((t) => `#${t}`).join(" ")}</p>}
+      {n.example && <p className="mt-2 border-l border-text/60 pl-2 text-sm italic text-muted">{n.example}</p>}
+      {n.tags.length > 0 && <p className="label mt-3 text-muted">{n.tags.map((t) => `#${t}`).join(" ")}</p>}
     </article>
   );
 }
@@ -183,15 +184,20 @@ function Glossary({
         </p>
       ) : (
         // Une seule grille dense : les titres de groupe (lettre ou tag) occupent toute la largeur.
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 print:block print:columns-2 print:gap-4">
+        <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 print:block print:columns-2 print:gap-4">
           {groups.map(([g, list]) => (
             <Fragment key={g || "all"}>
-              {g && (
-                <h2 id={sort === "alpha" ? `lettre-${g}` : undefined} className="col-span-full mt-2 scroll-mt-28 text-sm font-semibold uppercase tracking-wide text-muted print:mb-2 print:mt-4">
+              {/* A → Z : grille dense, la lettre s'affiche sur la première notion (ancre de l'index). */}
+              {g && sort !== "alpha" && (
+                <h2 className="col-span-full mt-6 scroll-mt-28 title-md lowercase print:mb-2 print:mt-4">
                   {sort === "tag" && g !== "Sans tag" ? `#${g}` : g}
                 </h2>
               )}
-              {list.map((n) => <div key={`${g}-${n.id}`} className="print:mb-3"><GlossaryCard n={n} renderStar={renderStar} /></div>)}
+              {list.map((n, i) => (
+                <div key={`${g}-${n.id}`} id={sort === "alpha" && i === 0 ? `lettre-${g}` : undefined} className="scroll-mt-28 print:mb-3">
+                  <GlossaryCard n={n} renderStar={renderStar} letter={sort === "alpha" && i === 0 ? g : undefined} />
+                </div>
+              ))}
             </Fragment>
           ))}
         </div>

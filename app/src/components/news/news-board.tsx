@@ -84,7 +84,7 @@ export function NewsBoard({ renderActions }: { renderActions?: (a: Article) => R
 
       {!data ? (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {[0, 1, 2].map((i) => <div key={i} className="h-72 animate-pulse rounded-[28px] bg-surface-2" />)}
+          {[0, 1, 2].map((i) => <div key={i} className="h-72 animate-pulse bg-surface-2" />)}
         </div>
       ) : shown.length === 0 ? (
         <p className="rounded-xl border border-dashed border-border px-4 py-10 text-center text-sm text-muted">

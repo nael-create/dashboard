@@ -83,7 +83,7 @@ Le thème clair/sombre suit le réglage du système ; le bouton en haut à droit
 
 | Adresse | Contenu | État |
 |---|---|---|
-| `/` | Accueil : calendrier, « À la une » (phase 6), projets actifs, aperçus newsletters et mémo | ✅ |
+| `/` | Accueil : 01. agenda, 02. à la une (grille d'images), puis projets actifs, à retenir aujourd'hui, mémo, newsletters | ✅ |
 | `/projets` | Focus de la semaine, projets et domaines, filtres, « Nouveau projet » / « Nouveau domaine » | ✅ |
 | `/projets/<nom>` et `/domaines/<nom>` | Modifier le projet / domaine (champs, sections, actions, journal) | ✅ |
 | `/news` | Actus : widgets par source ou catégorie, glisser-déposer, masquer, sources gérées depuis l'app | ✅ |

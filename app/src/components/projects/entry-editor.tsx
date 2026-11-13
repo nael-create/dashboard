@@ -81,7 +81,7 @@ export function EntryEditor({ initial, star }: { initial: Editable; star?: React
         </div>
       )}
       <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
-        <div className="min-w-0 space-y-6 rounded-2xl border border-border bg-surface p-5 sm:p-8">
+        <div className="rise min-w-0 space-y-10 border-t border-text/80 pt-5">
           <div>
             <p className="mb-1 flex items-center justify-between text-xs font-medium uppercase tracking-wide text-muted">
               {isProject ? "Projet" : "Domaine"}
@@ -90,7 +90,7 @@ export function EntryEditor({ initial, star }: { initial: Editable; star?: React
             <InlineText
               value={e.fields.title ?? ""}
               label="Titre"
-              className="text-2xl font-semibold tracking-tight sm:text-3xl"
+              className="text-[clamp(2.25rem,5.5vw,4.5rem)] font-light leading-[1] tracking-[-0.04em]"
               onSave={(v) => setFields({ title: v })}
             />
           </div>
@@ -109,14 +109,14 @@ export function EntryEditor({ initial, star }: { initial: Editable; star?: React
 
           {extra.map(([name, text]) => (
             <section key={name}>
-              <h2 className="mb-2 border-b border-border pb-1 text-lg font-semibold">{name}</h2>
+              <h2 className="mb-3 border-b border-border pb-2 title-md lowercase">{name}</h2>
               <div className="md text-sm"><ReactMarkdown remarkPlugins={[remarkGfm]} skipHtml>{text}</ReactMarkdown></div>
               <p className="mt-1 text-xs text-muted">Section ajoutée à la main : modifiable dans le fichier.</p>
             </section>
           ))}
         </div>
 
-        <aside className="h-fit space-y-4 rounded-2xl border border-border bg-surface p-5 lg:sticky lg:top-20">
+        <aside className="h-fit space-y-4 border-t border-text/80 pt-5 lg:sticky lg:top-28">
           <label className="block text-sm">
             <span className="mb-1 block text-muted">Statut</span>
             <select
@@ -211,7 +211,7 @@ function SectionEditor({ name, text, onSave }: { name: string; text: string; onS
   const [editing, setEditing] = useState(false);
   return (
     <section>
-      <h2 className="mb-2 flex items-center justify-between border-b border-border pb-1 text-lg font-semibold">
+      <h2 className="mb-3 flex items-center justify-between border-b border-border pb-2 title-md lowercase">
         {name}
         {!editing && (
           <button type="button" className={iconBtn} aria-label={`Modifier « ${name} »`} title="Modifier" onClick={() => setEditing(true)}>
@@ -238,7 +238,7 @@ function Actions({ items, change }: { items: { text: string; done: boolean }[]; 
   const visible = items.map((a, i) => ({ ...a, i })).filter((a) => !isTodo(a.text));
   return (
     <section>
-      <h2 className="mb-2 border-b border-border pb-1 text-lg font-semibold">Prochaines actions</h2>
+      <h2 className="mb-3 border-b border-border pb-2 title-md lowercase">Prochaines actions</h2>
       {visible.length === 0 && <p className="mb-2 text-sm italic text-muted">TODO: fill in</p>}
       <ul className="space-y-1">
         {visible.map((a, k) => (
@@ -288,7 +288,7 @@ function Journal({ entries, change }: { entries: { date: string; text: string }[
   const [date, setDate] = useState(() => new Date().toLocaleDateString("en-CA"));
   return (
     <section>
-      <h2 className="mb-2 border-b border-border pb-1 text-lg font-semibold">Journal</h2>
+      <h2 className="mb-3 border-b border-border pb-2 title-md lowercase">Journal</h2>
       <form className="mb-3 flex flex-wrap gap-2" onSubmit={async (ev) => { ev.preventDefault(); if (text.trim() && (await change({ op: "journal-add", text, date }))) setText(""); }}>
         <input type="date" value={date} onChange={(ev) => setDate(ev.target.value)} aria-label="Date de l'entrée" className={`${field} w-auto`} />
         <input value={text} onChange={(ev) => setText(ev.target.value)} placeholder="Nouvelle entrée du journal…" aria-label="Nouvelle entrée du journal" className={`${field} min-w-0 flex-1`} />
