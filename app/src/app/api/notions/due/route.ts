@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 export async function GET(req: Request) {
   const offset = Math.max(0, Number(new URL(req.url).searchParams.get("offset")) || 0);
   try {
-    return NextResponse.json(await dueNotions(todayISO(), config.notionsPerDay, offset));
+    return NextResponse.json({ ...(await dueNotions(todayISO(), config.notionsPerDay, offset)), front: config.notionsFront });
   } catch (e) {
     return errorResponse(e);
   }

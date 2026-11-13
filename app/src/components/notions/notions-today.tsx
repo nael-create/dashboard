@@ -8,11 +8,12 @@ import remarkGfm from "remark-gfm";
 import { apiJson } from "@/lib/client-api";
 
 interface DueNotion { id: string; term: string; definition: string; example: string; tags: string[]; box: number }
-interface DuePayload { items: DueNotion[]; totalDue: number; learned: number; total: number }
+interface DuePayload { items: DueNotion[]; totalDue: number; learned: number; total: number; front?: "definition" | "term" }
 
 /**
  * « À retenir aujourd'hui » : révision passive, jamais obligatoire.
- * Le terme d'abord ; un clic révèle la définition ; « Je savais » / « À revoir ».
+ * Face visible réglable (dashboard.config.ts, notionsFront) : la définition d'abord (retrouver le mot)
+ * ou le terme d'abord ; un clic révèle l'autre face ; « Je savais » / « À revoir ».
  * Une notion ignorée reste simplement à revoir.
  */
 export function NotionsToday({ n }: { n?: string } = {}) {
@@ -93,14 +94,33 @@ export function NotionsToday({ n }: { n?: string } = {}) {
             aria-expanded={revealed}
             className="flex min-h-48 flex-1 flex-col justify-between bg-surface-2 p-5 text-left transition-colors hover:bg-accent-soft disabled:hover:bg-surface-2 sm:p-6"
           >
-            <p className="text-[clamp(1.6rem,3vw,2.4rem)] font-light leading-[1.02] tracking-[-0.035em]">{current.term}</p>
-            {!revealed ? (
-              <p className="label mt-6 text-muted">Touche pour voir la définition</p>
+            {data.front === "term" ? (
+              <>
+                <p className="text-[clamp(1.6rem,3vw,2.4rem)] font-light leading-[1.02] tracking-[-0.035em]">{current.term}</p>
+                {!revealed ? (
+                  <p className="label mt-6 text-muted">Touche pour voir la définition</p>
+                ) : (
+                  <div className="mt-2 space-y-2 text-sm">
+                    <div className="md"><ReactMarkdown remarkPlugins={[remarkGfm]} skipHtml>{current.definition}</ReactMarkdown></div>
+                    {current.example && <p className="italic text-muted">{current.example}</p>}
+                  </div>
+                )}
+              </>
             ) : (
-              <div className="mt-2 space-y-2 text-sm">
-                <div className="md"><ReactMarkdown remarkPlugins={[remarkGfm]} skipHtml>{current.definition}</ReactMarkdown></div>
-                {current.example && <p className="italic text-muted">{current.example}</p>}
-              </div>
+              <>
+                {/* La définition d'abord : il faut retrouver le mot. */}
+                <div className="md text-[clamp(1.05rem,1.6vw,1.3rem)] font-light leading-snug">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]} skipHtml>{current.definition}</ReactMarkdown>
+                </div>
+                {!revealed ? (
+                  <p className="label mt-6 text-muted">Quel est le mot ? Touche pour voir la réponse</p>
+                ) : (
+                  <div className="mt-5 space-y-2">
+                    <p className="text-[clamp(1.6rem,3vw,2.4rem)] font-light leading-[1.02] tracking-[-0.035em] text-accent-text">{current.term}</p>
+                    {current.example && <p className="text-sm italic text-muted">{current.example}</p>}
+                  </div>
+                )}
+              </>
             )}
           </button>
           {revealed && (
