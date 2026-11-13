@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
 import { relativeTime } from "@/lib/relative-time";
 import type { Article } from "./use-news";
+import { StarButton } from "@/components/favorites/favorites-context";
 
 /** Favicon du site, avec repli sur l'initiale colorée si elle ne se charge pas. */
 export function Favicon({ domain, color, label }: { domain: string; color: string; label: string }) {
@@ -62,12 +63,12 @@ export function ArticleRow({
   a, isNew, showPublisher = true, actions,
 }: { a: Article; isNew: boolean; showPublisher?: boolean; actions?: ReactNode }) {
   return (
-    <li className="group relative">
+    <li className="group -mx-2 flex items-start gap-1">
       <a
         href={a.link}
         target="_blank"
         rel="noopener noreferrer"
-        className="-mx-2 flex items-start gap-3 rounded-xl px-2 py-2 transition-colors hover:bg-surface-2"
+        className="flex min-w-0 flex-1 items-start gap-3 rounded-xl px-2 py-2 transition-colors hover:bg-surface-2"
       >
         <span className="min-w-0 flex-1">
           <span className="line-clamp-2 font-medium leading-snug">{a.title}</span>
@@ -79,7 +80,8 @@ export function ArticleRow({
         </span>
         <Thumb article={a} />
       </a>
-      {actions && <span className="absolute right-0 top-1">{actions}</span>}
+      <StarButton type="article" refId={a.link} title={a.title} source={a.publisher} published={a.date?.slice(0, 10) ?? null} className="mt-1.5" />
+      {actions}
     </li>
   );
 }

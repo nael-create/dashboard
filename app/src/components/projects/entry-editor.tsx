@@ -11,6 +11,7 @@ import { btnDanger, btnGhost, btnPrimary, field, iconBtn } from "@/components/ui
 import { MarkdownEditor } from "@/components/ui/markdown-editor";
 import { Notice } from "@/components/ui/notice";
 import { formatISODate } from "@/lib/dates";
+import { StarButton } from "@/components/favorites/favorites-context";
 
 export interface Editable {
   kind: "project" | "area";
@@ -83,7 +84,8 @@ export function EntryEditor({ initial, star }: { initial: Editable; star?: React
         <div className="min-w-0 space-y-6 rounded-2xl border border-border bg-surface p-5 sm:p-8">
           <div>
             <p className="mb-1 flex items-center justify-between text-xs font-medium uppercase tracking-wide text-muted">
-              {isProject ? "Projet" : "Domaine"} {star}
+              {isProject ? "Projet" : "Domaine"}
+              {star ?? (isProject && <StarButton type="project" refId={`project:${e.slug}`} title={e.fields.title || e.slug} />)}
             </p>
             <InlineText
               value={e.fields.title ?? ""}

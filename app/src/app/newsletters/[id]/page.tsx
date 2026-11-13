@@ -5,6 +5,7 @@ import { btnGhost } from "@/components/ui/forms";
 import { OutlookState } from "@/components/newsletters/outlook-state";
 import { emailDocument, getNewsletter, OutlookError, type Newsletter } from "@/lib/outlook";
 import { formatDateTime } from "@/lib/relative-time";
+import { StarButton } from "@/components/favorites/favorites-context";
 
 export const metadata: Metadata = { title: "Newsletter" };
 export const dynamic = "force-dynamic";
@@ -39,7 +40,8 @@ export default async function NewsletterPage({ params, searchParams }: Props) {
                 {msg.from}{msg.fromAddress && msg.fromAddress !== msg.from ? ` <${msg.fromAddress}>` : ""} · {formatDateTime(msg.received)}
               </p>
             </div>
-            <div className="flex flex-wrap gap-1">
+            <div className="flex flex-wrap items-center gap-1">
+              {msg.webLink && <StarButton type="newsletter" refId={msg.webLink} title={msg.subject} source={msg.from} published={msg.received.slice(0, 10)} />}
               {images ? (
                 <Link href={self} className={btnGhost}><ImageOff className="size-4" aria-hidden /> Bloquer les images</Link>
               ) : (

@@ -3,13 +3,14 @@ import { AlertTriangle } from "lucide-react";
 import type { Entry } from "@/lib/content";
 import { DeadlineText, PriorityBadge, StatusBadge, Value } from "@/components/ui/badges";
 import { formatISODate } from "@/lib/dates";
+import { StarButton } from "@/components/favorites/favorites-context";
 
 export function EntryList({ entries, hrefBase }: { entries: Entry[]; hrefBase: string }) {
   const isProject = hrefBase === "/projets";
   return (
     <ul className="grid gap-3 sm:grid-cols-2">
       {entries.map((e) => (
-        <li key={e.slug}>
+        <li key={e.slug} className="relative">
           <Link
             href={`${hrefBase}/${e.slug}`}
             className="group flex h-full flex-col gap-3 rounded-2xl border border-border bg-surface p-4 transition-all hover:-translate-y-0.5 hover:border-accent/50 hover:shadow-md sm:p-5"
@@ -38,6 +39,7 @@ export function EntryList({ entries, hrefBase }: { entries: Entry[]; hrefBase: s
               <span>Mis à jour : {formatISODate(e.updated) || "—"}</span>
             </div>
           </Link>
+          {isProject && <StarButton type="project" refId={`project:${e.slug}`} title={e.title} className="absolute bottom-2.5 right-2.5" />}
         </li>
       ))}
     </ul>

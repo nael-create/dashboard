@@ -8,6 +8,7 @@ import { apiJson, isConflict } from "@/lib/client-api";
 import { btnDanger, btnGhost, btnPrimary, chip, field, iconBtn } from "@/components/ui/forms";
 import { Notice } from "@/components/ui/notice";
 import { formatISODate } from "@/lib/dates";
+import { StarButton } from "@/components/favorites/favorites-context";
 
 export interface MemoItem {
   key: string;
@@ -157,7 +158,7 @@ export function MemoBoard({ initial, initialVersion }: { initial: MemoItem[]; in
       ) : (
         <ul className="grid gap-3 md:grid-cols-2">
           {shown.map((e) => (
-            <li key={e.key} className={`rounded-2xl border bg-surface p-4 transition-colors sm:p-5 ${e.pinned ? "border-accent/50" : "border-border"}`}>
+            <li key={e.key} id={`memo-${e.id ?? e.key}`} className={`scroll-mt-24 rounded-2xl border bg-surface p-4 transition-colors sm:p-5 ${e.pinned ? "border-accent/50" : "border-border"}`}>
               {editing === e.key ? (
                 <MemoForm
                   initial={{ title: e.title, text: e.text, tags: e.tags.join(", "), pinned: e.pinned }}
@@ -179,6 +180,7 @@ export function MemoBoard({ initial, initialVersion }: { initial: MemoItem[]; in
                       <p className="text-xs text-muted">{formatISODate(e.date)}</p>
                     </div>
                     <div className="flex shrink-0 items-center">
+                      <StarButton type="memo" refId={`memo:${e.id ?? e.key}`} title={e.title} source={e.tags.join(", ")} />
                       <button
                         type="button" className={`${iconBtn} ${e.pinned ? "text-accent-text" : ""}`}
                         aria-label={e.pinned ? "Désépingler" : "Épingler"} title={e.pinned ? "Désépingler" : "Épingler"}

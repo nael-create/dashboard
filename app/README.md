@@ -87,6 +87,7 @@ Le thème clair/sombre suit le réglage du système ; le bouton en haut à droit
 | `/projets/<nom>` et `/domaines/<nom>` | Modifier le projet / domaine (champs, sections, actions, journal) | ✅ |
 | `/news` | Actus : widgets par source ou catégorie, glisser-déposer, masquer, sources gérées depuis l'app | ✅ |
 | `/notions` | Notions : glossaire (« Tout consulter »), gestion, import en masse, impression | ✅ |
+| `/favoris` | Favoris : filtre par type, recherche, note personnelle | ✅ |
 | `/memo` | Choses à retenir (`MEMO.md`) : ajouter, modifier, épingler, filtrer par tag, supprimer | ✅ |
 | `/newsletters` | Dossier « Newsletters » d'Outlook, en lecture seule | ✅ (après configuration) |
 
@@ -120,6 +121,13 @@ Les liens d'abonnement sont **secrets** (quiconque les possède peut lire ton ag
 - **Réviser** : sur l'accueil, « À retenir aujourd'hui » montre jusqu'à 3 notions (réglage `notionsPerDay`). Touche la carte pour voir la définition, puis « Je savais » ou « À revoir ». Rien n'est obligatoire : une notion ignorée reste à revoir.
 - **Intervalles** : 1, 2, 5, 14, 30 puis 90 jours ; « À revoir » la remet au lendemain. Ta progression reste sur ton ordinateur (`app/data/notions-progress.local.json`).
 - **Page Notions** : « Tout consulter » (glossaire, recherche, tri A→Z / par tag / par date, index A–Z, bouton Imprimer) et « Gérer » (modifier, supprimer, remettre à zéro, importer plusieurs notions au format `terme : définition`).
+
+## Favoris
+
+- Clique sur l'**étoile** d'un article (Actus, À la une), d'une newsletter, d'une notion, d'un mémo ou d'un projet : elle se remplit aussitôt. Un second clic la retire.
+- La page **Favoris** (menu, ou « Plus » sur téléphone) liste tout, du plus récent au plus ancien, avec un filtre par type, une recherche et une **note personnelle** courte pour chaque favori.
+- Tout est enregistré dans `FAVORIS.md` : seulement le titre, le lien, la source et les dates (jamais le contenu d'un article ou d'un e-mail).
+- Si l'élément d'origine n'existe plus (notion ou mémo supprimé), le favori affiche « Élément supprimé » avec un bouton pour le retirer.
 
 ## Modifier un projet ou un domaine
 

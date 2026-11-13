@@ -7,6 +7,7 @@ import { btnGhost } from "@/components/ui/forms";
 import { OutlookState } from "@/components/newsletters/outlook-state";
 import { connectedAccount, folderName, listNewsletters, OutlookError, type NewsletterSummary } from "@/lib/outlook";
 import { relativeTime } from "@/lib/relative-time";
+import { StarButton } from "@/components/favorites/favorites-context";
 
 export const metadata: Metadata = { title: "Newsletters" };
 export const dynamic = "force-dynamic";
@@ -56,8 +57,8 @@ export default async function NewslettersPage({ searchParams }: { searchParams: 
       ) : (
         <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-surface">
           {items.map((m) => (
-            <li key={m.id}>
-              <Link href={`/newsletters/${encodeURIComponent(m.id)}`} className="flex gap-4 px-4 py-4 transition-colors hover:bg-surface-2 sm:px-5">
+            <li key={m.id} className="flex items-start gap-1 pr-2">
+              <Link href={`/newsletters/${encodeURIComponent(m.id)}`} className="flex min-w-0 flex-1 gap-4 px-4 py-4 transition-colors hover:bg-surface-2 sm:px-5">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-baseline justify-between gap-3">
                     <p className={`truncate text-sm ${m.isRead ? "text-muted" : "font-semibold"}`}>{m.from}</p>
@@ -67,6 +68,7 @@ export default async function NewslettersPage({ searchParams }: { searchParams: 
                   <p className="line-clamp-2 text-sm text-muted">{m.preview}</p>
                 </div>
               </Link>
+              {m.webLink && <StarButton type="newsletter" refId={m.webLink} title={m.subject} source={m.from} published={m.received.slice(0, 10)} className="mt-4" />}
             </li>
           ))}
         </ul>

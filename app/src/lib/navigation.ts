@@ -1,4 +1,4 @@
-import { CalendarDays, FolderKanban, GraduationCap, Home, Mail, Newspaper, StickyNote, type LucideIcon } from "lucide-react";
+import { CalendarDays, FolderKanban, GraduationCap, Home, Mail, Newspaper, Star, StickyNote, type LucideIcon } from "lucide-react";
 
 export interface NavItem {
   href: string;
@@ -19,6 +19,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/notions", label: "Notions", icon: GraduationCap, mobile: true },
   { href: "/memo", label: "Mémo", icon: StickyNote },
   { href: "/newsletters", label: "Newsletters", icon: Mail },
+  { href: "/favoris", label: "Favoris", icon: Star },
 ];
 
 export const CALENDAR_ICON = CalendarDays;

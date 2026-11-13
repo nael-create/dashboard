@@ -24,6 +24,7 @@ INBOX.md                # Capture rapide, non triée
 MEMO.md                 # Choses à retenir (voir section 10)
 NEWS.md                 # Sources d'actus RSS et disposition des widgets (voir section 11)
 NOTIONS.md              # Glossaire à mémoriser (voir section 12)
+FAVORIS.md              # Favoris (voir section 15)
 .gitignore              # Secrets et fichiers générés
 Lancer le dashboard.command  # Lanceur macOS en double-clic (doit rester exécutable)
 app/                    # Application web (code uniquement, voir section 9)
@@ -113,6 +114,7 @@ Séparation stricte :
   | `MEMO.md` | 4 | entrées du mémo (ajout, modification, épinglage, suppression avec confirmation) |
   | `NEWS.md` | 6 | sources d'actus publiques, regroupement des widgets, ordre et visibilité des widgets |
   | `NOTIONS.md` | 7 | notions (ajout rapide, import en masse, modification, suppression avec confirmation) |
+  | `FAVORIS.md` | 10 | favoris (ajout / retrait par l'étoile, note personnelle, retrait d'un élément supprimé) |
   | `projects/*/README.md`, `areas/*/README.md` | 9 | frontmatter, sections, actions, journal ; création depuis `_template` |
   | `archive/` | 9 | déplacement d'un projet passé à `done` / `dropped` (après confirmation) |
   | `DASHBOARD.md` | 9 | régénéré entièrement après chaque modification de projet / domaine (et de revue ou d'inbox) |
@@ -248,3 +250,20 @@ Définition (une ou plusieurs lignes).
 - « Nouveau projet » / « Nouveau domaine » : seul le titre est demandé ; copie de `_template`, `idea`/`P3` (projet) ou `active`/`P3` (domaine), le reste à `TODO: fill in`.
 - Passer un projet à `done` ou `dropped` demande une confirmation, puis déplace son dossier tel quel dans `archive/` (suffixe de date si le nom existe déjà). **Aucune suppression de projet depuis l'interface.**
 - Pas de titres `#`/`##` ni de secrets dans les textes saisis.
+
+## 15. FAVORIS.md — favoris
+
+```markdown
+## 2026-11-13 — Titre
+id: fav-20261113-1
+type: article                # article | newsletter | notion | memo | project
+ref: https://…               # lien, ou référence interne : notion:<id>, memo:<id>, project:<dossier>
+source: FT World
+published: 2026-11-12        # facultatif
+note: Note personnelle courte  # facultatif
+```
+
+- Étoile sur les articles (widgets et listes), newsletters (liste et lecture), notions, mémos et projets ; page `/favoris` (filtre par type, recherche, note). Pas de widget de favoris sur l'accueil.
+- **Articles : titre, URL, source, date uniquement. Newsletters : objet, expéditeur, date et lien Outlook web uniquement. Jamais le texte d'un article ni le corps d'un e-mail.**
+- Références internes vérifiées à l'affichage : cible disparue → « Élément supprimé » avec bouton de retrait ; projet archivé → « Archivé ».
+- L'étoile ajoute / retire un bloc sur le contenu du moment (rien d'autre n'est réécrit) ; la note suit la règle « fichier inchangé depuis la lecture ».

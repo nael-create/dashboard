@@ -9,6 +9,11 @@ import { fold } from "@/lib/slug";
 import { btnDanger, btnGhost, btnPrimary, chip, field, iconBtn } from "@/components/ui/forms";
 import { Notice } from "@/components/ui/notice";
 import { formatISODate } from "@/lib/dates";
+import { StarButton } from "@/components/favorites/favorites-context";
+
+const renderStar = (n: { id: string; term: string; tags: string[] }) => (
+  <StarButton type="notion" refId={`notion:${n.id}`} title={n.term} source={n.tags.join(", ")} />
+);
 
 export interface NotionItem {
   id: string;
@@ -34,8 +39,8 @@ const matches = (n: NotionItem, q: string) => !q || fold(`${n.term} ${n.definiti
 const byTerm = (a: NotionItem, b: NotionItem) => a.term.localeCompare(b.term, "fr", { sensitivity: "base" });
 
 export function NotionsBoard({
-  initial, initialVersion, initialTab, renderStar,
-}: { initial: NotionItem[]; initialVersion: string; initialTab: Tab; renderStar?: (n: NotionItem) => React.ReactNode }) {
+  initial, initialVersion, initialTab,
+}: { initial: NotionItem[]; initialVersion: string; initialTab: Tab }) {
   const [notions, setNotions] = useState(initial);
   const [version, setVersion] = useState(initialVersion);
   const [tab, setTab] = useState<Tab>(initialTab);
@@ -108,7 +113,7 @@ export function NotionsBoard({
 
 function GlossaryCard({ n, renderStar }: { n: NotionItem; renderStar?: (n: NotionItem) => React.ReactNode }) {
   return (
-    <article className="h-full break-inside-avoid rounded-xl border border-border bg-surface p-4 print:border-gray-300">
+    <article id={`notion-${n.id}`} className="h-full scroll-mt-28 break-inside-avoid rounded-xl border border-border bg-surface p-4 print:border-gray-300">
       <h3 className="flex items-start justify-between gap-2 font-semibold leading-snug">
         <span>{n.term}</span>
         {renderStar && <span className="print:hidden">{renderStar(n)}</span>}
