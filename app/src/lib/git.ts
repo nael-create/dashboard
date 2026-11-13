@@ -69,6 +69,23 @@ function git(args: readonly string[], input?: string, timeoutMs = 60_000): Promi
   });
 }
 
+/**
+ * Nouvelle version de l'app sur GitHub ? Nombre de commits de « origin/main » absents d'ici
+ * (null si GitHub est injoignable). « git fetch » au plus toutes les 10 minutes, sans question.
+ */
+let updateCache: { at: number; behind: number | null } | null = null;
+export async function updatesAvailable(force = false): Promise<number | null> {
+  if (!force && updateCache && Date.now() - updateCache.at < 10 * 60_000) return updateCache.behind;
+  let behind: number | null = null;
+  const fetched = await git(["fetch", "--quiet", "origin", "main"], undefined, 20_000);
+  if (fetched.code === 0) {
+    const count = await git(["rev-list", "--count", "HEAD..origin/main"]);
+    if (count.code === 0) behind = Number.parseInt(count.stdout.trim(), 10) || 0;
+  }
+  updateCache = { at: Date.now(), behind };
+  return behind;
+}
+
 /** Chemins de contenu autorisés à être sauvegardés. */
 export function isContentPath(p: string): boolean {
   if (/(^|\/)\.env/.test(p) || /\.local\.json$/.test(p) || p.startsWith("app/")) return false;

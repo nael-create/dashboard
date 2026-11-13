@@ -199,6 +199,16 @@ if [ ! -d node_modules ] || [ ! -f "$STAMP" ] || [ "$(cat "$STAMP" 2>/dev/null)"
 fi
 echo "✓ Dépendances à jour"
 
+# Version changée depuis le dernier démarrage ? On vide le cache de compilation (dossier .next,
+# entièrement régénéré) pour ne jamais servir une page ou un style d'une version précédente.
+HEAD_NOW="$(git -C "$ROOT" rev-parse HEAD 2>/dev/null)"
+HEAD_STAMP="node_modules/.dashboard-head"
+if [ -n "$HEAD_NOW" ] && [ "$(cat "$HEAD_STAMP" 2>/dev/null)" != "$HEAD_NOW" ]; then
+  rm -rf .next
+  echo "$HEAD_NOW" > "$HEAD_STAMP"
+  echo "✓ Cache de compilation vidé (nouvelle version)"
+fi
+
 # ---------------------------------------------------------------
 # Démarrage de l'application.
 # ---------------------------------------------------------------
