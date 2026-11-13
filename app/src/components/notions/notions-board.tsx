@@ -10,6 +10,7 @@ import { btnDanger, btnGhost, btnPrimary, chip, field, iconBtn } from "@/compone
 import { Notice } from "@/components/ui/notice";
 import { formatISODate } from "@/lib/dates";
 import { StarButton } from "@/components/favorites/favorites-context";
+import { Practice } from "./practice";
 
 const renderStar = (n: { id: string; term: string; tags: string[] }) => (
   <StarButton type="notion" refId={`notion:${n.id}`} title={n.term} source={n.tags.join(", ")} />
@@ -28,7 +29,7 @@ export interface NotionItem {
   reviewed: boolean;
 }
 
-type Tab = "consulter" | "gerer";
+type Tab = "consulter" | "travailler" | "gerer";
 type Sort = "alpha" | "tag" | "date";
 const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 const letterOf = (term: string) => {
@@ -39,8 +40,8 @@ const matches = (n: NotionItem, q: string) => !q || fold(`${n.term} ${n.definiti
 const byTerm = (a: NotionItem, b: NotionItem) => a.term.localeCompare(b.term, "fr", { sensitivity: "base" });
 
 export function NotionsBoard({
-  initial, initialVersion, initialTab,
-}: { initial: NotionItem[]; initialVersion: string; initialTab: Tab }) {
+  initial, initialVersion, initialTab, today,
+}: { initial: NotionItem[]; initialVersion: string; initialTab: Tab; today: string }) {
   const [notions, setNotions] = useState(initial);
   const [version, setVersion] = useState(initialVersion);
   const [tab, setTab] = useState<Tab>(initialTab);
@@ -68,7 +69,7 @@ export function NotionsBoard({
   const switchTab = (t: Tab) => {
     setTab(t);
     const url = new URL(window.location.href);
-    if (t === "gerer") url.searchParams.set("onglet", "gerer");
+    if (t !== "consulter") url.searchParams.set("onglet", t);
     else url.searchParams.delete("onglet");
     window.history.replaceState(null, "", url);
   };
@@ -77,7 +78,7 @@ export function NotionsBoard({
   return (
     <div>
       <div role="tablist" aria-label="Notions" className="mb-6 flex w-fit rounded-full bg-surface-2 p-1 print:hidden">
-        {([["consulter", "Tout consulter"], ["gerer", "Gérer"]] as const).map(([id, label]) => (
+        {([["consulter", "Tout consulter"], ["travailler", "Travailler"], ["gerer", "Gérer"]] as const).map(([id, label]) => (
           <button key={id} role="tab" type="button" aria-selected={tab === id} onClick={() => switchTab(id)}
             className={`rounded-full px-4 py-1.5 text-sm transition-all ${tab === id ? "bg-surface font-medium shadow-sm" : "text-muted hover:text-text"}`}>
             {label}
@@ -93,7 +94,13 @@ export function NotionsBoard({
         </div>
       )}
 
-      {tab === "consulter" ? (
+      {tab === "travailler" ? (
+        <Practice
+          cards={notions.filter((n) => n.complete)}
+          today={today}
+          onRecorded={(id, box, due) => setNotions((all) => all.map((n) => (n.id === id ? { ...n, box, due, reviewed: true } : n)))}
+        />
+      ) : tab === "consulter" ? (
         <Glossary
           notions={notions.filter((n) => n.complete)}
           incomplete={incomplete}

@@ -27,9 +27,8 @@ export const NOTIONS_FILE = "NOTIONS.md";
 const progressFile = () =>
   path.join(/*turbopackIgnore: true*/ process.env.DASHBOARD_DATA_DIR ?? path.join(/*turbopackIgnore: true*/ process.cwd(), "data"), "notions-progress.local.json");
 
-/** Intervalles de Leitner (jours) pour les boîtes 1 à 6. */
-export const INTERVALS = [1, 2, 5, 14, 30, 90];
-export const LEARNED_BOX = 4;
+import { INTERVALS, LEARNED_BOX } from "./leitner";
+export { INTERVALS, LEARNED_BOX };
 
 export interface Notion {
   id: string;
