@@ -1,9 +1,11 @@
-import { CalendarDays, FolderKanban, Home, Mail, Newspaper, StickyNote, type LucideIcon } from "lucide-react";
+import { CalendarDays, FolderKanban, GraduationCap, Home, Mail, Newspaper, StickyNote, type LucideIcon } from "lucide-react";
 
 export interface NavItem {
   href: string;
   label: string;
   icon: LucideIcon;
+  /** Affiché directement dans la barre du bas sur téléphone (les autres sont dans « Plus »). */
+  mobile?: boolean;
 }
 
 /**
@@ -11,9 +13,10 @@ export interface NavItem {
  * Pour ajouter une page (ex. « /news » en phase 6), il suffit d'ajouter une ligne ici.
  */
 export const NAV_ITEMS: NavItem[] = [
-  { href: "/", label: "Accueil", icon: Home },
-  { href: "/news", label: "Actus", icon: Newspaper },
-  { href: "/projets", label: "Projets", icon: FolderKanban },
+  { href: "/", label: "Accueil", icon: Home, mobile: true },
+  { href: "/news", label: "Actus", icon: Newspaper, mobile: true },
+  { href: "/projets", label: "Projets", icon: FolderKanban, mobile: true },
+  { href: "/notions", label: "Notions", icon: GraduationCap, mobile: true },
   { href: "/memo", label: "Mémo", icon: StickyNote },
   { href: "/newsletters", label: "Newsletters", icon: Mail },
 ];

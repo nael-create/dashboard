@@ -1,5 +1,6 @@
 import type { ComponentType } from "react";
 import { CalendarWidget } from "@/components/calendar/calendar-widget";
+import { NotionsToday } from "@/components/notions/notions-today";
 import {
   ActiveProjectsWidget, MemoWidget, NewsWidget, NewslettersWidget,
 } from "@/components/home/widgets";
@@ -9,14 +10,16 @@ export const dynamic = "force-dynamic";
 /**
  * Disposition de l'accueil, dans l'ordre de priorité.
  * Grille de 12 colonnes sur grand écran, une seule colonne sur téléphone.
- * « À la une » (news) est un emplacement réservé : la phase 6 remplit NewsWidget, sans ajouter de ligne.
+ * 1. Calendrier (pleine largeur) ; 2. « À la une » + Projets actifs ;
+ * 3. « À retenir aujourd'hui » (notions, sous « À la une ») + Newsletters + Mémo.
  */
 const HOME_WIDGETS: { id: string; span: string; Widget: ComponentType }[] = [
   { id: "calendar", span: "lg:col-span-12", Widget: CalendarWidget },
   { id: "news", span: "lg:col-span-4", Widget: NewsWidget },
   { id: "projects", span: "lg:col-span-8", Widget: ActiveProjectsWidget },
-  { id: "newsletters", span: "lg:col-span-6", Widget: NewslettersWidget },
-  { id: "memo", span: "lg:col-span-6", Widget: MemoWidget },
+  { id: "notions", span: "lg:col-span-4", Widget: NotionsToday },
+  { id: "newsletters", span: "lg:col-span-4", Widget: NewslettersWidget },
+  { id: "memo", span: "lg:col-span-4", Widget: MemoWidget },
 ];
 
 export default function HomePage() {

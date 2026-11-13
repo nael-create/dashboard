@@ -137,7 +137,7 @@ export function MemoBoard({ initial, initialVersion }: { initial: MemoItem[]; in
       )}
 
       <div className="flex flex-wrap items-center gap-2">
-        <label className="relative min-w-0 flex-1 sm:max-w-xs">
+        <label className="relative w-full sm:w-auto sm:min-w-0 sm:flex-1 sm:max-w-xs">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" aria-hidden />
           <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Rechercher" aria-label="Rechercher dans le mémo" className={`${field} pl-9`} />
         </label>

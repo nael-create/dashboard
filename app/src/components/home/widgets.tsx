@@ -96,7 +96,7 @@ export async function MemoWidget() {
   const pinned = entries.filter((e) => e.pinned).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5);
   return (
     <Card className="h-full">
-      <CardHeader title="À retenir" icon={<StickyNote className="size-4" aria-hidden />} href="/memo" />
+      <CardHeader title="Mémo" icon={<StickyNote className="size-4" aria-hidden />} href="/memo" />
       {pinned.length === 0 ? (
         <Empty>Aucun mémo épinglé. Épingle un mémo pour le retrouver ici.</Empty>
       ) : (

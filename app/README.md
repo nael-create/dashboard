@@ -86,6 +86,7 @@ Le thème clair/sombre suit le réglage du système ; le bouton en haut à droit
 | `/projets` | Focus de la semaine, projets et domaines, filtres par statut et priorité | ✅ |
 | `/projets/<nom>` et `/domaines/<nom>` | Contenu du README, rendu | ✅ |
 | `/news` | Actus : widgets par source ou catégorie, glisser-déposer, masquer, sources gérées depuis l'app | ✅ |
+| `/notions` | Notions : glossaire (« Tout consulter »), gestion, import en masse, impression | ✅ |
 | `/memo` | Choses à retenir (`MEMO.md`) : ajouter, modifier, épingler, filtrer par tag, supprimer | ✅ |
 | `/newsletters` | Dossier « Newsletters » d'Outlook, en lecture seule | ✅ (après configuration) |
 
@@ -112,6 +113,13 @@ Les liens d'abonnement sont **secrets** (quiconque les possède peut lire ton ag
 - **Lien privé** : si un lien contient une clé personnelle (par exemple un flux myFT), coche « Lien privé » : il reste sur ton ordinateur (`app/data/news.local.json`) et ne va jamais sur GitHub.
 - Mise à jour automatique toutes les 5 minutes ; « Rafraîchir » retente les sources en erreur. Repère « Nouveau » sur les articles publiés depuis ta dernière visite.
 - Sur l'accueil, « À la une » montre les 5 derniers titres.
+
+## Notions (répétition espacée)
+
+- **Ajouter** depuis n'importe quelle page : bouton **+** en haut, ou touche **N** (sauf pendant que tu écris dans un champ). Seul le terme est obligatoire ; Entrée enregistre. Sans définition, la notion est « à compléter » et n'est pas proposée en révision.
+- **Réviser** : sur l'accueil, « À retenir aujourd'hui » montre jusqu'à 3 notions (réglage `notionsPerDay`). Touche la carte pour voir la définition, puis « Je savais » ou « À revoir ». Rien n'est obligatoire : une notion ignorée reste à revoir.
+- **Intervalles** : 1, 2, 5, 14, 30 puis 90 jours ; « À revoir » la remet au lendemain. Ta progression reste sur ton ordinateur (`app/data/notions-progress.local.json`).
+- **Page Notions** : « Tout consulter » (glossaire, recherche, tri A→Z / par tag / par date, index A–Z, bouton Imprimer) et « Gérer » (modifier, supprimer, remettre à zéro, importer plusieurs notions au format `terme : définition`).
 
 ## Newsletters Outlook
 

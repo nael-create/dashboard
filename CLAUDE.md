@@ -23,6 +23,7 @@ DASHBOARD.md            # Page de synthèse unique (générée)
 INBOX.md                # Capture rapide, non triée
 MEMO.md                 # Choses à retenir (voir section 10)
 NEWS.md                 # Sources d'actus RSS et disposition des widgets (voir section 11)
+NOTIONS.md              # Glossaire à mémoriser (voir section 12)
 .gitignore              # Secrets et fichiers générés
 Lancer le dashboard.command  # Lanceur macOS en double-clic (doit rester exécutable)
 app/                    # Application web (code uniquement, voir section 9)
@@ -110,6 +111,7 @@ Séparation stricte :
   |---|---|---|
   | `MEMO.md` | 4 | entrées du mémo (ajout, modification, épinglage, suppression avec confirmation) |
   | `NEWS.md` | 6 | sources d'actus publiques, regroupement des widgets, ordre et visibilité des widgets |
+  | `NOTIONS.md` | 7 | notions (ajout rapide, import en masse, modification, suppression avec confirmation) |
 
 - Toute écriture passe par `app/src/lib/content-file.ts` : règle « fichier inchangé depuis la lecture » (empreinte de version, refus HTTP 409 sinon), modification ligne par ligne du seul bloc concerné, écriture atomique. Les fichiers restent modifiables à la main.
 - DASHBOARD.md reste maintenu par les sessions (règles des sections 7 et 8) ; l'app ne le génère pas.
@@ -120,12 +122,13 @@ Règles :
 - Personnalisation (titre, couleur d'accent, fuseau, langue) : un seul fichier, `app/dashboard.config.ts`.
 - **Fuseau d'affichage** : celui de l'ordinateur par défaut (`timeZone: null`). `dashboard.config.ts` PEUT forcer un fuseau précis (ex. `"Asia/Kuala_Lumpur"`). Ne jamais coder un fuseau en dur ailleurs : utiliser `displayTimeZone()` (`app/src/lib/display-tz.ts`).
 - Interface en français, responsive (utilisable sur téléphone), thème clair/sombre (système + bouton manuel), une seule couleur d'accent.
-- Navigation : `app/src/lib/navigation.ts`. Ajouter une page (ex. `/news`) = ajouter une ligne.
+- Navigation : `app/src/lib/navigation.ts`. Ajouter une page = ajouter une ligne ; `mobile: true` la met dans la barre du bas sur téléphone, sinon elle est dans « Plus ».
+- Raccourcis clavier : `app/src/components/shortcuts.tsx`. Les raccourcis à une touche (ex. `N`) ne s'activent JAMAIS pendant la saisie dans un champ.
 - Accueil (`HOME_WIDGETS` dans `app/src/app/page.tsx`), dans cet ordre :
   1. **Calendrier** (pleine largeur, élément le plus grand) ;
-  2. **À la une** (emplacement réservé aux actus, placeholder « Les actus arrivent bientôt » tant que la phase 6 n'est pas faite) à côté de **Projets actifs** ;
-  3. **Dernières newsletters** et **À retenir** (épinglés).
-- La phase 6 (actus RSS) DOIT remplir le widget existant `NewsWidget` (« À la une », juste sous le calendrier) et NE DOIT PAS ajouter un nouveau widget sous le calendrier.
+  2. **À la une** (5 derniers titres d'actus) à côté de **Projets actifs** ;
+  3. **À retenir aujourd'hui** (révision des notions, sous « À la une »), **Dernières newsletters** et **Mémo** (entrées épinglées).
+- Le calendrier reste le premier et le plus grand élément, suivi de « À la une » (`NewsWidget`, rempli par les actus). Aucune fonctionnalité ne doit prendre leur place.
 - Le **Focus de la semaine** n'est plus sur l'accueil : il est en haut de la page `/projets`. DASHBOARD.md garde sa section « Focus de la semaine » inchangée.
 - Lanceur macOS : `Lancer le dashboard.command` vérifie Node.js ≥ 22, installe les dépendances seulement si besoin, démarre l'app et ouvre le navigateur. Il DOIT rester exécutable (`git update-index --chmod=+x`).
 - Les instructions de test données au propriétaire NE DOIVENT contenir que des étapes réalisables sur son ordinateur (l'app n'écoute que sur 127.0.0.1 : pas de test sur téléphone ; pour l'affichage mobile, utiliser le mode « responsive » des outils de développement du navigateur).
@@ -200,3 +203,22 @@ enabled: yes
 - Flux téléchargés côté serveur uniquement, au plus une fois toutes les 5 minutes par flux (un flux en échec peut être retenté par « Rafraîchir » au bout d'une minute) ; dédoublonnage (même URL ou titre quasi identique). Aucun article n'est écrit dans le dépôt, aucun texte d'article n'est récupéré, aucun paywall n'est contourné, aucun identifiant FT n'est utilisé. Pas d'intégration X / Twitter.
 - Vignettes : celles du flux (media:content, media:thumbnail, enclosure), sinon uniquement la balise `og:image` de l'article, au plus une fois par article, en cache dans le dossier temporaire du système (hors dépôt). Jamais pour les liens Google News.
 - Accueil : le widget existant « À la une » affiche les 5 derniers titres ; ne pas ajouter d'autre widget d'actus.
+
+## 12. NOTIONS.md — notions (répétition espacée)
+
+```markdown
+## Terme
+tags: eco, finance
+added: 2026-11-13
+
+Définition (une ou plusieurs lignes).
+
+> Exemple ou contexte (facultatif).
+```
+
+- Une notion sans définition est acceptée (« à compléter ») et n'apparaît jamais en révision.
+- **La progression (boîte, échéance, historique) n'est JAMAIS écrite dans NOTIONS.md** : elle est dans `app/data/notions-progress.local.json` (ignoré par git), indexée par un identifiant dérivé du terme (kebab-case). Fichier perdu ou illisible : tout repart de zéro, sans erreur. Un terme renommé à la main perd sa progression (sans doublon ni erreur) ; renommé depuis l'app, il la garde.
+- Leitner : intervalles 1, 2, 5, 14, 30, 90 jours (boîtes 1 à 6). « Je savais » : boîte suivante ; « À revoir » : boîte 1, à revoir demain. Une nouvelle notion est due le lendemain de son ajout. « Apprise » = boîte 4 ou plus. Réviser n'est jamais obligatoire.
+- Accueil : « À retenir aujourd'hui » propose `notionsPerDay` notions (dashboard.config.ts, 3 par défaut) ; « Encore » en propose d'autres.
+- Ajout rapide : bouton « + » de l'en-tête ou touche `N`. Import en masse « terme : définition » avec aperçu et doublons signalés (page `/notions`, onglet « Gérer »).
+- Pas de secrets dans NOTIONS.md (même contrôle que le mémo).

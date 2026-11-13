@@ -10,7 +10,7 @@ export default async function MemoPage() {
   const { entries, version } = await readMemo();
   return (
     <>
-      <PageHeader title="À retenir" subtitle="Les choses à ne pas oublier, stockées dans MEMO.md." />
+      <PageHeader title="Mémo" subtitle="Les choses à ne pas oublier, stockées dans MEMO.md." />
       <MemoBoard
         initial={entries.map(({ start: _s, end: _e, ...rest }) => rest)}
         initialVersion={version}

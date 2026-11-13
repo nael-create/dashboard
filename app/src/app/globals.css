@@ -82,3 +82,14 @@ body {
 .md table { width: 100%; border-collapse: collapse; font-size: 0.925em; display: block; overflow-x: auto; }
 .md th, .md td { border: 1px solid var(--border); padding: 0.4em 0.7em; text-align: left; }
 .md hr { border-color: var(--border); }
+
+/* Impression : noir sur blanc, sans navigation ni boutons (classes print:hidden). */
+@media print {
+  :root, .dark {
+    --bg: #fff; --surface: #fff; --surface-2: #fff; --border: #ccc; --text: #000; --muted: #333;
+    color-scheme: light;
+  }
+  html, body { background: #fff !important; color: #000 !important; }
+  * { box-shadow: none !important; transition: none !important; }
+  a { color: #000 !important; text-decoration: none; }
+}

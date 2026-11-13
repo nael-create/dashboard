@@ -8,6 +8,7 @@ interface DashboardConfig {
   timeZone: string | null;
   locale: string;
   newslettersFolder: string;
+  notionsPerDay: number;
 }
 
 const dashboardConfig: DashboardConfig = {
@@ -28,6 +29,9 @@ const dashboardConfig: DashboardConfig = {
 
   /** Nom du dossier Outlook lu par la page Newsletters (aucun autre dossier n'est lu). */
   newslettersFolder: "Newsletters",
+
+  /** Nombre de notions proposées sur l'accueil (« À retenir aujourd'hui ») ; « Encore » en propose autant. */
+  notionsPerDay: 3,
 };
 
 export default dashboardConfig;
