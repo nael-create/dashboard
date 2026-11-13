@@ -37,6 +37,28 @@ seule source de vérité : l'application les lit directement, sans copie.
 Laisse la fenêtre Terminal ouverte pendant que tu utilises le dashboard. **Pour l'arrêter**, ferme cette fenêtre.
 Si le dashboard tourne déjà, un nouveau double-clic ouvre simplement le navigateur.
 
+## Démarrage automatique, sans Terminal (recommandé)
+
+Une seule commande, une seule fois, et le dashboard tourne ensuite **tout seul en arrière-plan** :
+il démarre à chaque ouverture de session, se met à jour à chaque démarrage (mêmes étapes 1 à 5
+que ci-dessus), et macOS le relance s'il s'arrête. Plus aucune fenêtre Terminal à garder ouverte.
+
+1. Ferme la fenêtre Terminal du dashboard s'il tourne.
+2. Ouvre le Terminal et colle cette ligne, puis Entrée :
+   ```bash
+   cd ~/dashboard && git pull --ff-only && bash app/scripts/install-service.sh
+   ```
+3. Le navigateur s'ouvre sur le dashboard quand il est prêt. macOS peut afficher la notification
+   « Éléments d'arrière-plan ajoutés » : c'est normal (c'est le dashboard).
+
+Ensuite, il suffit d'ouvrir **http://localhost:3000**. Pour en faire une icône : dans Safari,
+menu **Fichier → Ajouter au Dock**.
+
+- Les mises à jour s'appliquent à chaque démarrage du service (redémarrage du Mac ou nouvelle session).
+- Journal (en cas de souci) : `~/Library/Logs/dashboard.log`.
+- Désinstaller : `bash ~/dashboard/app/scripts/install-service.sh --off`.
+- Ne déplace pas le dossier `dashboard` ensuite (sinon, relance l'installation).
+
 ### Premier lancement : l'avertissement de sécurité de macOS
 
 macOS peut bloquer le fichier au premier double-clic (« Apple ne peut pas vérifier… » ou « développeur non identifié »). C'est normal pour un script que tu n'as pas téléchargé depuis l'App Store. Pour l'autoriser **une seule fois** :
@@ -100,8 +122,7 @@ Sur le Mac, `http://localhost:3000` marche toujours sans mot de passe.
   branché : Réglages Système → Batterie → Options → « Empêcher la suspension d'activité automatique sur
   secteur lorsque l'écran est éteint » (sur un Mac de bureau : Réglages Système → Énergie). Un portable
   dont l'écran est rabattu se met en veille quand même.
-- Pour que le dashboard démarre tout seul : Réglages Système → Général → Ouverture → « Ouvrir à la
-  connexion » → **+** → `Lancer le dashboard.command`.
+- Pour que le dashboard tourne tout seul, sans Terminal : voir « Démarrage automatique, sans Terminal ».
 - **Outlook** : la connexion (« Se connecter ») se fait depuis le Mac. Une fois connecté, les newsletters
   se lisent aussi depuis le téléphone.
 - **Changer le mot de passe** : supprime la ligne `DASHBOARD_BASIC_AUTH=…` de `app/.env.local`, relance le

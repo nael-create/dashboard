@@ -13,13 +13,23 @@
 #      (le résultat s'affiche dans le panneau « Sauvegarder ») ;
 #  puis démarre le dashboard et ouvre http://127.0.0.1:3000.
 #  Pour arrêter : fermer cette fenêtre (ou Ctrl + C).
+#
+#  Mode « service » (DASHBOARD_SERVICE=1, voir app/scripts/install-service.sh) :
+#  le même script est lancé en arrière-plan par macOS à l'ouverture de session,
+#  sans fenêtre, sans question et sans ouvrir le navigateur. Si le dashboard
+#  tourne déjà ainsi, un double-clic ici ouvre simplement le navigateur.
 # ---------------------------------------------------------------
 
 URL="http://127.0.0.1:3000"
 NODE_MIN=22
 ROOT="$(cd "$(dirname "$0")" && pwd)"
+SERVICE="${DASHBOARD_SERVICE:-}"
+
+# Ouvre une adresse dans le navigateur (jamais en mode service).
+open_url() { [ -n "$SERVICE" ] || open "$1" 2>/dev/null; }
 
 pause_and_exit() {
+  [ -n "$SERVICE" ] && exit "${1:-1}"
   echo
   read -n 1 -s -r -p "Appuie sur une touche pour fermer cette fenêtre…"
   echo
@@ -46,6 +56,13 @@ export PATH="/opt/homebrew/bin:/usr/local/bin:$HOME/.volta/bin:$HOME/.fnm/aliase
 if [ -s "$HOME/.nvm/nvm.sh" ]; then
   # shellcheck disable=SC1091
   . "$HOME/.nvm/nvm.sh" >/dev/null 2>&1
+fi
+
+if [ -n "$SERVICE" ]; then
+  # Journal du service : repart de zéro au-delà de 5 Mo.
+  LOG="$HOME/Library/Logs/dashboard.log"
+  [ -f "$LOG" ] && [ "$(wc -c < "$LOG")" -gt 5000000 ] && : > "$LOG"
+  echo "=== $(date '+%Y-%m-%d %H:%M:%S') — démarrage du service ==="
 fi
 
 echo "🚀 Lancement du dashboard…"
@@ -138,7 +155,7 @@ if ! command -v node >/dev/null 2>&1; then
   echo "   https://nodejs.org/fr/download"
   echo
   echo "   Installe-la, puis double-clique à nouveau sur « Lancer le dashboard »."
-  open "https://nodejs.org/fr/download" 2>/dev/null
+  open_url "https://nodejs.org/fr/download"
   pause_and_exit 1
 fi
 
@@ -147,13 +164,18 @@ if [ -z "$NODE_MAJOR" ] || [ "$NODE_MAJOR" -lt "$NODE_MIN" ]; then
   echo "❌ Ta version de Node.js ($(node -v 2>/dev/null)) est trop ancienne : il faut la version $NODE_MIN ou plus récente."
   echo
   echo "   Télécharge la version « LTS » ici : https://nodejs.org/fr/download"
-  open "https://nodejs.org/fr/download" 2>/dev/null
+  open_url "https://nodejs.org/fr/download"
   pause_and_exit 1
 fi
 echo "✓ Node.js $(node -v)"
 
 # Déjà lancé ? On ouvre simplement le navigateur.
 if curl -s -o /dev/null --max-time 3 "$URL/"; then
+  if [ -n "$SERVICE" ]; then
+    # Une fenêtre Terminal le fait déjà tourner : macOS relancera le service plus tard.
+    echo "Le dashboard tourne déjà dans une fenêtre Terminal : nouvel essai dans 30 secondes."
+    exit 1
+  fi
   echo "✓ Le dashboard tourne déjà : ouverture du navigateur."
   open "$URL"
   sleep 2
@@ -181,6 +203,10 @@ echo "✓ Dépendances à jour"
 # Démarrage de l'application.
 # ---------------------------------------------------------------
 echo "⏳ Démarrage…"
+if [ -n "$SERVICE" ]; then
+  # En arrière-plan : macOS surveille ce processus et le relance s'il s'arrête.
+  exec ./node_modules/.bin/next dev --hostname 127.0.0.1 --port 3000
+fi
 ./node_modules/.bin/next dev --hostname 127.0.0.1 --port 3000 &
 SERVER_PID=$!
 trap 'kill "$SERVER_PID" 2>/dev/null; wait "$SERVER_PID" 2>/dev/null' EXIT INT TERM HUP
@@ -195,7 +221,7 @@ for _ in $(seq 1 120); do
   sleep 0.5
 done
 
-open "$URL"
+open_url "$URL"
 echo
 echo "✅ Dashboard prêt : $URL"
 echo "   Laisse cette fenêtre ouverte tant que tu utilises le dashboard."
