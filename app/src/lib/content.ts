@@ -7,7 +7,9 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import matter from "gray-matter";
 
-export const CONTENT_DIR = path.resolve(process.cwd(), process.env.CONTENT_DIR ?? "..");
+// Annotations turbopackIgnore : ces fichiers sont lus à l'exécution, ils ne doivent jamais être
+// embarqués dans une compilation (ni le contenu personnel, ni data/calendars.local.json).
+export const CONTENT_DIR = path.resolve(/*turbopackIgnore: true*/ process.cwd(), process.env.CONTENT_DIR ?? "..");
 
 export const STATUSES = ["idea", "active", "paused", "done", "dropped"] as const;
 export const PRIORITIES = ["P1", "P2", "P3"] as const;
@@ -62,10 +64,10 @@ function asEnum<T extends string>(v: unknown, allowed: readonly T[]): T | null {
 
 async function readEntry(kind: Kind, slug: string): Promise<EntryWithBody | null> {
   if (!isValidSlug(slug)) return null;
-  const file = path.join(CONTENT_DIR, ROOTS[kind], slug, "README.md");
+  const file = path.join(/*turbopackIgnore: true*/ CONTENT_DIR, ROOTS[kind], slug, "README.md");
   let raw: string;
   try {
-    raw = await fs.readFile(file, "utf8");
+    raw = await fs.readFile(/*turbopackIgnore: true*/ file, "utf8");
   } catch {
     return null;
   }
@@ -108,7 +110,7 @@ async function readEntry(kind: Kind, slug: string): Promise<EntryWithBody | null
 async function listEntries(kind: Kind): Promise<Entry[]> {
   let dirs: string[];
   try {
-    const items = await fs.readdir(path.join(CONTENT_DIR, ROOTS[kind]), { withFileTypes: true });
+    const items = await fs.readdir(/*turbopackIgnore: true*/ path.join(/*turbopackIgnore: true*/ CONTENT_DIR, ROOTS[kind]), { withFileTypes: true });
     // Les dossiers commençant par « _ » (templates) sont exclus.
     dirs = items.filter((d) => d.isDirectory() && isValidSlug(d.name)).map((d) => d.name);
   } catch {
@@ -170,13 +172,13 @@ export interface WeeklyFocus {
 export async function getWeeklyFocus(): Promise<WeeklyFocus> {
   let files: string[] = [];
   try {
-    files = (await fs.readdir(path.join(CONTENT_DIR, "reviews"))).filter((f) => REVIEW_RE.test(f));
+    files = (await fs.readdir(/*turbopackIgnore: true*/ path.join(/*turbopackIgnore: true*/ CONTENT_DIR, "reviews"))).filter((f) => REVIEW_RE.test(f));
   } catch {
     /* pas de dossier reviews/ */
   }
   if (!files.length) return { review: null, items: [] };
   const latest = files.sort().at(-1)!;
-  const md = await fs.readFile(path.join(CONTENT_DIR, "reviews", latest), "utf8");
+  const md = await fs.readFile(/*turbopackIgnore: true*/ path.join(/*turbopackIgnore: true*/ CONTENT_DIR, "reviews", latest), "utf8");
   return {
     review: latest.replace(/\.md$/, ""),
     items: sectionItems(md, "Focus semaine prochaine").slice(0, 3),
@@ -190,7 +192,7 @@ export async function getWeeklyFocus(): Promise<WeeklyFocus> {
 /** Nombre d'éléments non cochés sous « ## Éléments » (l'exemple n'est pas compté). */
 export async function countInbox(): Promise<number> {
   try {
-    const md = await fs.readFile(path.join(CONTENT_DIR, "INBOX.md"), "utf8");
+    const md = await fs.readFile(/*turbopackIgnore: true*/ path.join(/*turbopackIgnore: true*/ CONTENT_DIR, "INBOX.md"), "utf8");
     const lines = md.split(/\r?\n/);
     const start = lines.findIndex((l) => l.trim() === "## Éléments");
     if (start === -1) return 0;

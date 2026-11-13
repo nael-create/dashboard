@@ -4,7 +4,7 @@
  */
 const dashboardConfig = {
   /** Titre affiché dans l'en-tête et l'onglet du navigateur. */
-  title: "Le QG de Nael",
+  title: "Nael",
 
   /** Couleur d'accent unique (format hexadécimal #rrggbb). */
   accentColor: "#6366f1",

@@ -2,11 +2,10 @@
 .env*.local
 app/.env
 app/.env*.local
-# Liens d'abonnement aux calendriers (secrets) et tout fichier *.local.json
-app/data/*.local.json
+# Liens d'abonnement aux calendriers (secrets) : tout le dossier app/data/ est ignoré
+app/data/*
+!app/data/.gitkeep
 *.local.json
-# Cache de jetons Microsoft (phase 5)
-app/data/*.cache.json
 
 # --- Fichiers générés ---
 node_modules/

@@ -1,47 +1,17 @@
-import { CalendarDays, FolderKanban, Mail, StickyNote, Target } from "lucide-react";
+import { FolderKanban, Mail, Newspaper, StickyNote } from "lucide-react";
 import Link from "next/link";
 import { Card, CardHeader, Empty } from "@/components/ui/card";
 import { DeadlineText, PriorityBadge, Value } from "@/components/ui/badges";
-import { countInbox, getWeeklyFocus, listProjects } from "@/lib/content";
-import { formatLongToday } from "@/lib/dates";
+import { countInbox, listProjects } from "@/lib/content";
 
 /* Chaque widget est un composant serveur autonome : il lit lui-même ses données. */
 
-export function CalendarWidget() {
-  return (
-    <Card className="min-h-[340px]">
-      <CardHeader title="Calendrier" icon={<CalendarDays className="size-4" aria-hidden />} />
-      <p className="mb-4 text-2xl font-semibold tracking-tight">{formatLongToday()}</p>
-      <Empty>
-        Le calendrier (vues jour / semaine / mois et abonnements ICS) arrive à la phase 3.
-      </Empty>
-    </Card>
-  );
-}
-
-export async function FocusWidget() {
-  const focus = await getWeeklyFocus();
+/** Emplacement réservé à la phase 6 (actus RSS). La phase 6 DOIT remplir ce widget, pas en ajouter un autre. */
+export function NewsWidget() {
   return (
     <Card className="h-full">
-      <CardHeader
-        title="Focus de la semaine"
-        icon={<Target className="size-4" aria-hidden />}
-        aside={focus.review && <span className="text-xs text-muted">d&apos;après {focus.review}</span>}
-      />
-      {focus.items.length === 0 ? (
-        <p className="italic text-muted">TODO: fill in</p>
-      ) : (
-        <ol className="space-y-3">
-          {focus.items.map((item, i) => (
-            <li key={i} className="flex gap-3">
-              <span className="grid size-6 shrink-0 place-items-center rounded-full bg-accent-soft text-xs font-semibold text-accent-text">
-                {i + 1}
-              </span>
-              <span className="pt-0.5"><Value text={item} /></span>
-            </li>
-          ))}
-        </ol>
-      )}
+      <CardHeader title="À la une" icon={<Newspaper className="size-4" aria-hidden />} />
+      <Empty>Les actus arrivent bientôt.</Empty>
     </Card>
   );
 }

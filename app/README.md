@@ -6,7 +6,7 @@ seule source de vérité : l'application les lit directement, sans copie.
 
 ## Prérequis (une seule fois)
 
-1. Installer **Node.js 22 LTS** (ou ≥ 20.9) : https://nodejs.org → bouton « LTS ».
+1. Installer **Node.js 22 LTS** (ou plus récent) : https://nodejs.org/fr/download → version « LTS ».
    Pour vérifier, ouvrir un terminal et taper `node -v` : un numéro comme `v22.x.x` doit s'afficher.
 2. Récupérer le dépôt sur ton ordinateur (si ce n'est pas déjà fait) :
 
@@ -24,7 +24,35 @@ seule source de vérité : l'application les lit directement, sans copie.
    npm ci
    ```
 
-## Lancer l'application
+## Lancer l'application en double-cliquant (macOS)
+
+À la racine du dépôt se trouve le fichier **`Lancer le dashboard.command`**. Double-clique dessus :
+
+1. une fenêtre Terminal s'ouvre ;
+2. le script vérifie que Node.js 22 (ou plus récent) est installé. Sinon, il affiche un message et ouvre la page de téléchargement ;
+3. il installe les dépendances **seulement si nécessaire** (première fois, ou après une mise à jour) ;
+4. il démarre le dashboard et ouvre **http://127.0.0.1:3000** dans ton navigateur.
+
+Laisse la fenêtre Terminal ouverte pendant que tu utilises le dashboard. **Pour l'arrêter**, ferme cette fenêtre.
+Si le dashboard tourne déjà, un nouveau double-clic ouvre simplement le navigateur.
+
+### Premier lancement : l'avertissement de sécurité de macOS
+
+macOS peut bloquer le fichier au premier double-clic (« Apple ne peut pas vérifier… » ou « développeur non identifié »). C'est normal pour un script que tu n'as pas téléchargé depuis l'App Store. Pour l'autoriser **une seule fois** :
+
+1. Clique sur **OK** (ou **Terminé**) dans le message d'avertissement.
+2. Ouvre **Réglages Système → Confidentialité et sécurité**.
+3. Descends jusqu'à la section **Sécurité** : un message mentionne « Lancer le dashboard.command ». Clique sur **Ouvrir quand même**.
+4. Confirme avec ton mot de passe (ou Touch ID), puis clique sur **Ouvrir**.
+
+Sur les anciennes versions de macOS, on peut aussi faire **clic droit (ou Ctrl + clic) → Ouvrir → Ouvrir**.
+
+Autres messages possibles :
+
+- « Terminal souhaite accéder aux fichiers de ton dossier Documents (ou Bureau) » → clique sur **Autoriser**.
+- « Tu n'as pas l'autorisation d'ouvrir l'application » : le fichier a perdu son droit d'exécution (cela peut arriver après un téléchargement en ZIP). Ouvre le Terminal, tape `chmod +x ` (avec l'espace), glisse le fichier dans la fenêtre, puis appuie sur Entrée.
+
+## Lancer l'application en ligne de commande
 
 Depuis le dossier `app/` :
 
@@ -54,11 +82,24 @@ Le thème clair/sombre suit le réglage du système ; le bouton en haut à droit
 
 | Adresse | Contenu | État |
 |---|---|---|
-| `/` | Accueil : calendrier, focus de la semaine, projets actifs, aperçus | ✅ (calendrier en phase 3) |
-| `/projets` | Projets et domaines, filtres par statut et priorité | ✅ |
+| `/` | Accueil : calendrier, « À la une » (phase 6), projets actifs, aperçus newsletters et mémo | ✅ |
+| `/projets` | Focus de la semaine, projets et domaines, filtres par statut et priorité | ✅ |
 | `/projets/<nom>` et `/domaines/<nom>` | Contenu du README, rendu | ✅ |
 | `/memo` | Choses à retenir (`MEMO.md`) | phase 4 |
 | `/newsletters` | Dossier « Newsletters » d'Outlook | phase 5 |
+
+## Calendrier
+
+Le calendrier de l'accueil affiche tes agendas Outlook, Google ou iCloud **en lecture seule**, à partir de leur lien d'abonnement (ICS / iCal).
+
+- **Ajouter** : « Ajouter un calendrier » (ou « Gérer les calendriers » en bas du calendrier), puis colle le lien, choisis un nom et une couleur. Le lien est vérifié avant d'être enregistré.
+- **Renommer / changer la couleur / supprimer** : « Gérer les calendriers ». Clique sur le nom pour le modifier ; la suppression demande une confirmation.
+- **Vues** : Jour (avec les 7 jours suivants), Semaine, Mois. Clic sur un jour → vue Jour.
+- **Rafraîchir** : les agendas sont gardés en mémoire 5 minutes ; le bouton ⟳ force une mise à jour immédiate.
+- **Erreurs** : si un agenda ne répond pas, un message indique lequel et pourquoi ; les autres s'affichent normalement.
+- Fuseau horaire : tout est affiché à l'heure de `Asia/Kuala_Lumpur` (réglable dans `dashboard.config.ts`), récurrences et exceptions comprises.
+
+Les liens d'abonnement sont **secrets** (quiconque les possède peut lire ton agenda). Ils sont enregistrés uniquement dans `app/data/calendars.local.json`, ignoré par git, et ne sont jamais renvoyés au navigateur.
 
 ## Fichiers secrets (jamais versionnés)
 

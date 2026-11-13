@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Empty, PageHeader } from "@/components/ui/card";
 import { FilterChips } from "@/components/projects/filter-chips";
 import { EntryList } from "@/components/projects/entry-list";
+import { FocusCard } from "@/components/focus/focus-card";
 import { PRIORITIES, STATUSES, STATUS_LABELS, listAreas, listProjects } from "@/lib/content";
 
 export const metadata: Metadata = { title: "Projets" };
@@ -33,6 +34,10 @@ export default async function ProjectsPage({ searchParams }: { searchParams: SP 
         title="Projets et domaines"
         subtitle="Lu directement depuis projects/ et areas/ (lecture seule)."
       />
+
+      <div className="mb-6">
+        <FocusCard />
+      </div>
 
       <div className="mb-8 space-y-3 rounded-2xl border border-border bg-surface p-4 sm:p-5">
         <FilterChips

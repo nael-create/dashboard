@@ -7,10 +7,10 @@ Les mots « DOIT », « NE DOIT PAS », « DEVRAIT », « PEUT » ont le sens de
 ## 1. Contraintes générales
 
 - Tous les fichiers de **contenu personnel** DOIVENT être du Markdown simple (`.md`) : pas de base de données, pas de JSON. (Exception technique : `archive/.gitkeep`.)
-- Le code de l'application web vit **uniquement** dans `app/` (voir section 9). Hors de `app/`, aucun script ni dépendance.
+- Le code de l'application web vit **uniquement** dans `app/` (voir section 9). Hors de `app/`, aucun script ni dépendance, à une exception près : le lanceur macOS `Lancer le dashboard.command` à la racine (exécutable, voir `app/README.md`).
 - Les fichiers DOIVENT rester lisibles et modifiables à la main dans n'importe quel éditeur de texte.
 - Noms de fichiers et de dossiers : minuscules, kebab-case (ex. `projects/side-app/`).
-  - **Exceptions autorisées** : les fichiers de revue `reviews/YYYY-Www.md` (ex. `2026-W46.md`, avec `W` majuscule, semaine ISO 8601) ; les fichiers racine imposés `CLAUDE.md`, `DASHBOARD.md`, `INBOX.md` et les `README.md` ; les préfixes `_` des templates (`_template`) ; le contenu de `app/`, qui suit les conventions de Next.js (`[slug]`, `next.config.ts`, `README.md`…) ; `.gitignore`.
+  - **Exceptions autorisées** : les fichiers de revue `reviews/YYYY-Www.md` (ex. `2026-W46.md`, avec `W` majuscule, semaine ISO 8601) ; les fichiers racine imposés `CLAUDE.md`, `DASHBOARD.md`, `INBOX.md` et les `README.md` ; les préfixes `_` des templates (`_template`) ; le contenu de `app/`, qui suit les conventions de Next.js (`[slug]`, `next.config.ts`, `README.md`…) ; `.gitignore` ; le lanceur macOS `Lancer le dashboard.command` (nom imposé par le propriétaire).
 - Dates : ISO 8601, `YYYY-MM-DD`.
 - Langue du contenu : français. Noms de fichiers/dossiers et clés de frontmatter : anglais.
 - NE JAMAIS inventer de projets, de tâches ou de contenu. Toute information inconnue DOIT être laissée sous la forme d'un marqueur explicite : `TODO: fill in`.
@@ -23,6 +23,7 @@ DASHBOARD.md            # Page de synthèse unique (générée)
 INBOX.md                # Capture rapide, non triée
 MEMO.md                 # Choses à retenir (créé en phase 4, voir section 10)
 .gitignore              # Secrets et fichiers générés
+Lancer le dashboard.command  # Lanceur macOS en double-clic (doit rester exécutable)
 app/                    # Application web (code uniquement, voir section 9)
 projects/               # Un dossier par projet en cours
   _template/README.md
@@ -110,9 +111,26 @@ Règles :
 - Lancement local : `npm run dev` dans `app/`, documenté en français dans `app/README.md`. L'app écoute uniquement sur `127.0.0.1`.
 - Personnalisation (titre, couleur d'accent, fuseau `Asia/Kuala_Lumpur`, langue) : un seul fichier, `app/dashboard.config.ts`.
 - Interface en français, responsive (utilisable sur téléphone), thème clair/sombre (système + bouton manuel), une seule couleur d'accent.
-- Navigation : `app/src/lib/navigation.ts`. Widgets de l'accueil : tableau `HOME_WIDGETS` dans `app/src/app/page.tsx`. Ajouter une page ou un widget (ex. `/news`, « À la une ») = ajouter une ligne.
+- Navigation : `app/src/lib/navigation.ts`. Ajouter une page (ex. `/news`) = ajouter une ligne.
+- Accueil (`HOME_WIDGETS` dans `app/src/app/page.tsx`), dans cet ordre :
+  1. **Calendrier** (pleine largeur, élément le plus grand) ;
+  2. **À la une** (emplacement réservé aux actus, placeholder « Les actus arrivent bientôt » tant que la phase 6 n'est pas faite) à côté de **Projets actifs** ;
+  3. **Dernières newsletters** et **À retenir** (épinglés).
+- La phase 6 (actus RSS) DOIT remplir le widget existant `NewsWidget` (« À la une », juste sous le calendrier) et NE DOIT PAS ajouter un nouveau widget sous le calendrier.
+- Le **Focus de la semaine** n'est plus sur l'accueil : il est en haut de la page `/projets`. DASHBOARD.md garde sa section « Focus de la semaine » inchangée.
+- Lanceur macOS : `Lancer le dashboard.command` vérifie Node.js ≥ 22, installe les dépendances seulement si besoin, démarre l'app et ouvre le navigateur. Il DOIT rester exécutable (`git update-index --chmod=+x`).
+- Les instructions de test données au propriétaire NE DOIVENT contenir que des étapes réalisables sur son ordinateur (l'app n'écoute que sur 127.0.0.1 : pas de test sur téléphone ; pour l'affichage mobile, utiliser le mode « responsive » des outils de développement du navigateur).
+- Toutes les phases sont commitées sur la même branche de travail ; la fusion dans `main` se fait par une pull request ouverte par le propriétaire sur GitHub.
 - **Ne rien déployer.** Tout déploiement futur DOIT exiger une authentification : `app/src/proxy.ts` bloque tout accès non local tant que `DASHBOARD_BASIC_AUTH` n'est pas défini.
 - **Dépendances** : versions figées exactement dans `package.json` (pas de `^` ni `~`, `save-exact=true` dans `app/.npmrc`). Ne JAMAIS installer une version publiée il y a moins de 14 jours ; utiliser `npm install --before=<aujourd'hui − 14 j>`.
+
+### Calendrier
+
+- Abonnements ICS ajoutés depuis l'interface (nom, couleur, lien) ; renommer, recolorer, supprimer depuis « Gérer les calendriers ».
+- Flux téléchargés **côté serveur** (`app/src/lib/ics.ts`), cache en mémoire de 5 minutes, bouton de rafraîchissement forcé.
+- Récurrences (RRULE, RDATE, EXDATE, RECURRENCE-ID, occurrences annulées) développées par `ical.js` ; fuseaux : VTIMEZONE du flux, sinon TZID IANA ou Windows (`app/src/lib/tz.ts`), sinon fuseau du dashboard.
+- Un flux en échec affiche le nom du calendrier et la raison, sans bloquer les autres.
+- Lecture seule : pas de création ni de modification d'événements.
 
 ### Secrets
 
