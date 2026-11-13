@@ -85,6 +85,7 @@ Le thème clair/sombre suit le réglage du système ; le bouton en haut à droit
 | `/` | Accueil : calendrier, « À la une » (phase 6), projets actifs, aperçus newsletters et mémo | ✅ |
 | `/projets` | Focus de la semaine, projets et domaines, filtres par statut et priorité | ✅ |
 | `/projets/<nom>` et `/domaines/<nom>` | Contenu du README, rendu | ✅ |
+| `/news` | Actus : widgets par source ou catégorie, glisser-déposer, masquer, sources gérées depuis l'app | ✅ |
 | `/memo` | Choses à retenir (`MEMO.md`) : ajouter, modifier, épingler, filtrer par tag, supprimer | ✅ |
 | `/newsletters` | Dossier « Newsletters » d'Outlook, en lecture seule | ✅ (après configuration) |
 
@@ -102,6 +103,15 @@ Le calendrier de l'accueil affiche tes agendas Outlook, Google ou iCloud **en le
 - **Regrouper les événements consécutifs** (activé par défaut) : trois cours identiques de 08:00 à 11:00 s'affichent en un seul bloc. Affichage seulement ; désactivable dans « Gérer les calendriers ».
 
 Les liens d'abonnement sont **secrets** (quiconque les possède peut lire ton agenda). Ils sont enregistrés uniquement dans `app/data/calendars.local.json`, ignoré par git, et ne sont jamais renvoyés au navigateur.
+
+## Actus (flux RSS)
+
+- **Page Actus** : un widget par source (ou par catégorie : bouton « Sources » → « Un widget par »). 5 derniers articles par widget ; clic sur le nom du widget → liste complète ; clic sur un article → il s'ouvre sur son site, dans un nouvel onglet.
+- **Organiser** : glisse les widgets pour les réordonner (ou ↑ ↓), l'œil les masque. Tout est enregistré dans `NEWS.md`.
+- **Sources** : ajouter (lien RSS, nom, catégorie, couleur), renommer, changer de couleur ou de catégorie, désactiver, retirer. Le lien est vérifié avant d'être ajouté.
+- **Lien privé** : si un lien contient une clé personnelle (par exemple un flux myFT), coche « Lien privé » : il reste sur ton ordinateur (`app/data/news.local.json`) et ne va jamais sur GitHub.
+- Mise à jour automatique toutes les 5 minutes ; « Rafraîchir » retente les sources en erreur. Repère « Nouveau » sur les articles publiés depuis ta dernière visite.
+- Sur l'accueil, « À la une » montre les 5 derniers titres.
 
 ## Newsletters Outlook
 

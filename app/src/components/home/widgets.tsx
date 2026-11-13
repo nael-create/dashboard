@@ -1,4 +1,4 @@
-import { FolderKanban, Mail, Newspaper, StickyNote } from "lucide-react";
+import { FolderKanban, Mail, StickyNote } from "lucide-react";
 import Link from "next/link";
 import { Card, CardHeader, Empty } from "@/components/ui/card";
 import { DeadlineText, PriorityBadge, Value } from "@/components/ui/badges";
@@ -7,18 +7,14 @@ import { readMemo } from "@/lib/memo";
 import { listNewsletters, OutlookError, type NewsletterSummary } from "@/lib/outlook";
 import { relativeTime } from "@/lib/relative-time";
 import { OutlookState } from "@/components/newsletters/outlook-state";
+import { HeadlinesWidget } from "@/components/news/headlines-widget";
 import { Pin } from "lucide-react";
 
 /* Chaque widget est un composant serveur autonome : il lit lui-même ses données. */
 
-/** Emplacement réservé à la phase 6 (actus RSS). La phase 6 DOIT remplir ce widget, pas en ajouter un autre. */
+/** « À la une » (phase 6) : rempli par HeadlinesWidget, à cet emplacement juste sous le calendrier. */
 export function NewsWidget() {
-  return (
-    <Card className="h-full">
-      <CardHeader title="À la une" icon={<Newspaper className="size-4" aria-hidden />} />
-      <Empty>Les actus arrivent bientôt.</Empty>
-    </Card>
-  );
+  return <HeadlinesWidget />;
 }
 
 export async function ActiveProjectsWidget() {

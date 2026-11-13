@@ -21,7 +21,8 @@ Les mots « DOIT », « NE DOIT PAS », « DEVRAIT », « PEUT » ont le sens de
 CLAUDE.md               # Ce fichier : règles pour les sessions futures
 DASHBOARD.md            # Page de synthèse unique (générée)
 INBOX.md                # Capture rapide, non triée
-MEMO.md                 # Choses à retenir (créé en phase 4, voir section 10)
+MEMO.md                 # Choses à retenir (voir section 10)
+NEWS.md                 # Sources d'actus RSS et disposition des widgets (voir section 11)
 .gitignore              # Secrets et fichiers générés
 Lancer le dashboard.command  # Lanceur macOS en double-clic (doit rester exécutable)
 app/                    # Application web (code uniquement, voir section 9)
@@ -108,6 +109,7 @@ Séparation stricte :
   | Fichier | Phase | Ce que l'app y écrit |
   |---|---|---|
   | `MEMO.md` | 4 | entrées du mémo (ajout, modification, épinglage, suppression avec confirmation) |
+  | `NEWS.md` | 6 | sources d'actus publiques, regroupement des widgets, ordre et visibilité des widgets |
 
 - Toute écriture passe par `app/src/lib/content-file.ts` : règle « fichier inchangé depuis la lecture » (empreinte de version, refus HTTP 409 sinon), modification ligne par ligne du seul bloc concerné, écriture atomique. Les fichiers restent modifiables à la main.
 - DASHBOARD.md reste maintenu par les sessions (règles des sections 7 et 8) ; l'app ne le génère pas.
@@ -175,3 +177,26 @@ Texte libre, sur une ou plusieurs lignes.
 - L'app refuse elle aussi ces contenus (`app/src/lib/secrets.ts` : « mot de passe : … », digicode, numéro de carte valide, IBAN, clé ou jeton) et affiche un rappel d'une ligne sous chaque zone de saisie.
 - Une entrée écrite à la main sans `id:` est acceptée ; l'app lui ajoute un `id:` à sa première modification. Les titres `##` qui ne suivent pas le format `## YYYY-MM-DD — Titre` sont ignorés et conservés tels quels.
 - Page `/memo` : ajout, modification, épingler/désépingler, filtre par tag, recherche, suppression avec confirmation. L'accueil affiche les entrées épinglées (« À retenir »).
+
+## 11. NEWS.md — actus (flux RSS)
+
+```markdown
+## Réglages
+widgets: source              # « source » (un widget par source) ou « category » (un par catégorie)
+
+## Ordre des widgets
+- [x] ft-world               # [x] visible, [ ] masqué ; « cat:Marchés » en mode catégorie
+
+## FT World
+id: ft-world
+url: https://www.ft.com/world?format=rss
+category: Monde
+color: #d9612f
+enabled: yes
+```
+
+- `## Réglages` et `## Ordre des widgets` sont des sections réservées ; tout autre titre `##` avec une ligne `url:` est une source. Les autres lignes d'un bloc (notes à la main) sont conservées.
+- **Lien privé** (URL contenant une clé personnelle, ex. flux myFT) : JAMAIS dans NEWS.md. Il est stocké dans `app/data/news.local.json` (ignoré par git). L'app refuse d'enregistrer dans NEWS.md un lien qui ressemble à une clé et demande de cocher « Lien privé ».
+- Flux téléchargés côté serveur uniquement, au plus une fois toutes les 5 minutes par flux (un flux en échec peut être retenté par « Rafraîchir » au bout d'une minute) ; dédoublonnage (même URL ou titre quasi identique). Aucun article n'est écrit dans le dépôt, aucun texte d'article n'est récupéré, aucun paywall n'est contourné, aucun identifiant FT n'est utilisé. Pas d'intégration X / Twitter.
+- Vignettes : celles du flux (media:content, media:thumbnail, enclosure), sinon uniquement la balise `og:image` de l'article, au plus une fois par article, en cache dans le dossier temporaire du système (hors dépôt). Jamais pour les liens Google News.
+- Accueil : le widget existant « À la une » affiche les 5 derniers titres ; ne pas ajouter d'autre widget d'actus.
