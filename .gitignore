@@ -1,0 +1,21 @@
+# --- Secrets : ne JAMAIS versionner ---
+.env*.local
+app/.env
+app/.env*.local
+# Liens d'abonnement aux calendriers (secrets) et tout fichier *.local.json
+app/data/*.local.json
+*.local.json
+# Cache de jetons Microsoft (phase 5)
+app/data/*.cache.json
+
+# --- Fichiers générés ---
+node_modules/
+app/.next/
+app/out/
+app/next-env.d.ts
+*.tsbuildinfo
+npm-debug.log*
+
+# --- Système ---
+.DS_Store
+Thumbs.db

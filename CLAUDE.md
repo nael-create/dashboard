@@ -6,10 +6,11 @@ Les mots « DOIT », « NE DOIT PAS », « DEVRAIT », « PEUT » ont le sens de
 
 ## 1. Contraintes générales
 
-- Tous les fichiers de contenu DOIVENT être du Markdown simple (`.md`). Pas de base de données, pas de JSON, pas de scripts, pas de dépendances externes. (Seule exception technique : `archive/.gitkeep`, qui garde le dossier vide suivi par git.)
+- Tous les fichiers de **contenu personnel** DOIVENT être du Markdown simple (`.md`) : pas de base de données, pas de JSON. (Exception technique : `archive/.gitkeep`.)
+- Le code de l'application web vit **uniquement** dans `app/` (voir section 9). Hors de `app/`, aucun script ni dépendance.
 - Les fichiers DOIVENT rester lisibles et modifiables à la main dans n'importe quel éditeur de texte.
 - Noms de fichiers et de dossiers : minuscules, kebab-case (ex. `projects/side-app/`).
-  - **Exceptions autorisées** : les fichiers de revue `reviews/YYYY-Www.md` (ex. `2026-W46.md`, avec `W` majuscule, semaine ISO 8601) ; les fichiers racine imposés `CLAUDE.md`, `DASHBOARD.md`, `INBOX.md` et les `README.md` ; les préfixes `_` des templates (`_template`).
+  - **Exceptions autorisées** : les fichiers de revue `reviews/YYYY-Www.md` (ex. `2026-W46.md`, avec `W` majuscule, semaine ISO 8601) ; les fichiers racine imposés `CLAUDE.md`, `DASHBOARD.md`, `INBOX.md` et les `README.md` ; les préfixes `_` des templates (`_template`) ; le contenu de `app/`, qui suit les conventions de Next.js (`[slug]`, `next.config.ts`, `README.md`…) ; `.gitignore`.
 - Dates : ISO 8601, `YYYY-MM-DD`.
 - Langue du contenu : français. Noms de fichiers/dossiers et clés de frontmatter : anglais.
 - NE JAMAIS inventer de projets, de tâches ou de contenu. Toute information inconnue DOIT être laissée sous la forme d'un marqueur explicite : `TODO: fill in`.
@@ -20,6 +21,9 @@ Les mots « DOIT », « NE DOIT PAS », « DEVRAIT », « PEUT » ont le sens de
 CLAUDE.md               # Ce fichier : règles pour les sessions futures
 DASHBOARD.md            # Page de synthèse unique (générée)
 INBOX.md                # Capture rapide, non triée
+MEMO.md                 # Choses à retenir (créé en phase 4, voir section 10)
+.gitignore              # Secrets et fichiers générés
+app/                    # Application web (code uniquement, voir section 9)
 projects/               # Un dossier par projet en cours
   _template/README.md
 areas/                  # Responsabilités continues sans date de fin (finances, santé…)
@@ -34,7 +38,7 @@ reviews/                # Revues hebdomadaires, un fichier par semaine
 
 Créer un projet = copier `projects/_template/` vers `projects/<nom-kebab-case>/` et remplir.
 
-Frontmatter YAML obligatoire :
+Frontmatter YAML obligatoire (toute valeur contenant « : » DOIT être entre guillemets, ex. `title: "TODO: fill in"`, sinon le YAML est invalide) :
 
 | Clé | Valeurs |
 |-----|---------|
@@ -91,3 +95,48 @@ Les dossiers `_template` et `archive/` sont toujours exclus du dashboard.
 - DASHBOARD.md DEVRAIT rester sous ~80 lignes. S'il dépasse, proposer une simplification au propriétaire au lieu de couper silencieusement.
 - Il FAUT demander avant de supprimer un fichier, quel qu'il soit.
 - Si le dépôt contient des fichiers inattendus (hors structure ci-dessus), demander avant d'y toucher.
+
+## 9. Application web (`app/`)
+
+Séparation stricte :
+
+- **Contenu** (racine du dépôt, Markdown) = seule source de vérité : projets, domaines, inbox, revues, mémo.
+- **Code** (`app/`) = Next.js (App Router) + TypeScript + Tailwind CSS. Il lit le Markdown à chaque requête et NE DOIT PAS dupliquer ce contenu dans un autre format (pas de base, pas de JSON, pas de cache sur disque).
+- Le seul fichier de contenu que l'app écrit est `MEMO.md`. Elle ne fait jamais de commit.
+- DASHBOARD.md reste maintenu par les sessions (règles des sections 7 et 8) ; l'app ne le génère pas.
+
+Règles :
+
+- Lancement local : `npm run dev` dans `app/`, documenté en français dans `app/README.md`. L'app écoute uniquement sur `127.0.0.1`.
+- Personnalisation (titre, couleur d'accent, fuseau `Asia/Kuala_Lumpur`, langue) : un seul fichier, `app/dashboard.config.ts`.
+- Interface en français, responsive (utilisable sur téléphone), thème clair/sombre (système + bouton manuel), une seule couleur d'accent.
+- Navigation : `app/src/lib/navigation.ts`. Widgets de l'accueil : tableau `HOME_WIDGETS` dans `app/src/app/page.tsx`. Ajouter une page ou un widget (ex. `/news`, « À la une ») = ajouter une ligne.
+- **Ne rien déployer.** Tout déploiement futur DOIT exiger une authentification : `app/src/proxy.ts` bloque tout accès non local tant que `DASHBOARD_BASIC_AUTH` n'est pas défini.
+- **Dépendances** : versions figées exactement dans `package.json` (pas de `^` ni `~`, `save-exact=true` dans `app/.npmrc`). Ne JAMAIS installer une version publiée il y a moins de 14 jours ; utiliser `npm install --before=<aujourd'hui − 14 j>`.
+
+### Secrets
+
+- Identifiants et jetons Microsoft : `app/.env.local` (ignoré par git). Modèle sans valeur : `app/.env.example`.
+- Liens d'abonnement aux calendriers (secrets) : `app/data/calendars.local.json` (ignoré par git). Ne JAMAIS les versionner.
+- Outlook : lecture seule, permission Microsoft Graph `Mail.Read` uniquement (plus les permissions de connexion `openid`, `profile`, `offline_access`), et seulement le dossier « Newsletters » (configurable). Les newsletters ne sont JAMAIS enregistrées dans le dépôt.
+- **Avant chaque commit**, vérifier qu'aucun secret, jeton ou lien de calendrier n'est indexé : `git status`, `git diff --cached --name-only` (aucun `.env*` réel ni `*.local.json`) et une recherche dans `git diff --cached` de motifs comme `webcal:`, `.ics`, `client_secret`, `token`, `password`.
+
+## 10. MEMO.md — choses à retenir
+
+Fichier unique à la racine. Une entrée = un bloc, du plus récent au plus ancien :
+
+```markdown
+# Mémo
+
+## 2026-11-13 — Titre court
+id: 20261113-1
+pinned: yes
+tags: maison, admin
+
+Texte libre, sur une ou plusieurs lignes.
+```
+
+- Titre : `## YYYY-MM-DD — Titre court` (tiret cadratin `—`). Plusieurs entrées le même jour sont permises.
+- `id:` court et lisible, `YYYYMMDD-n` (n = numéro d'ordre dans la journée), unique : c'est lui qui distingue deux entrées de même date et de même titre.
+- `pinned:` `yes` ou `no`. `tags:` liste séparée par des virgules, éventuellement vide.
+- **MEMO.md NE DOIT JAMAIS contenir de mots de passe, codes d'accès, numéros de carte ni aucun secret** : le dépôt est sur GitHub. Si une demande en contient, refuser de l'y écrire et le signaler.
