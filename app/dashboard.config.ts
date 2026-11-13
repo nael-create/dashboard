@@ -29,8 +29,11 @@ const dashboardConfig: DashboardConfig = {
   /** Langue / format des dates. */
   locale: "fr-FR",
 
-  /** Nom du dossier Outlook lu par la page Newsletters (aucun autre dossier n'est lu). */
-  newslettersFolder: "Newsletters",
+  /**
+   * Dossier Outlook lu par la page Newsletters (aucun autre dossier n'est lu).
+   * « inbox » = la Boîte de réception (adresse dédiée aux newsletters) ; sinon le nom exact d'un dossier, ex. « Newsletters ».
+   */
+  newslettersFolder: "inbox",
 
   /** Nombre de notions proposées sur l'accueil (« À retenir aujourd'hui ») ; « Encore » en propose autant. */
   notionsPerDay: 3,
