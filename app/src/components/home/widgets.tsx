@@ -3,6 +3,8 @@ import Link from "next/link";
 import { Card, CardHeader, Empty } from "@/components/ui/card";
 import { DeadlineText, PriorityBadge, Value } from "@/components/ui/badges";
 import { countInbox, listProjects } from "@/lib/content";
+import { readMemo } from "@/lib/memo";
+import { Pin } from "lucide-react";
 
 /* Chaque widget est un composant serveur autonome : il lit lui-même ses données. */
 
@@ -65,11 +67,27 @@ export function NewslettersWidget() {
   );
 }
 
-export function MemoWidget() {
+export async function MemoWidget() {
+  const { entries } = await readMemo();
+  const pinned = entries.filter((e) => e.pinned).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5);
   return (
     <Card className="h-full">
       <CardHeader title="À retenir" icon={<StickyNote className="size-4" aria-hidden />} href="/memo" />
-      <Empty>Les choses à retenir (MEMO.md) arrivent à la phase 4.</Empty>
+      {pinned.length === 0 ? (
+        <Empty>Aucun mémo épinglé. Épingle un mémo pour le retrouver ici.</Empty>
+      ) : (
+        <ul className="space-y-2.5">
+          {pinned.map((e) => (
+            <li key={e.key} className="flex gap-2.5">
+              <Pin className="mt-1 size-3.5 shrink-0 text-accent-text" aria-hidden />
+              <div className="min-w-0">
+                <p className="truncate font-medium">{e.title}</p>
+                {e.text && <p className="line-clamp-2 text-sm text-muted">{e.text.replace(/[#*_>`[\]]/g, "")}</p>}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
     </Card>
   );
 }

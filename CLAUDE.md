@@ -103,7 +103,13 @@ Séparation stricte :
 
 - **Contenu** (racine du dépôt, Markdown) = seule source de vérité : projets, domaines, inbox, revues, mémo.
 - **Code** (`app/`) = Next.js (App Router) + TypeScript + Tailwind CSS. Il lit le Markdown à chaque requête et NE DOIT PAS dupliquer ce contenu dans un autre format (pas de base, pas de JSON, pas de cache sur disque).
-- Le seul fichier de contenu que l'app écrit est `MEMO.md`. Elle ne fait jamais de commit.
+- Fichiers de contenu que l'app écrit (et uniquement ceux-là) — tableau tenu à jour à chaque phase :
+
+  | Fichier | Phase | Ce que l'app y écrit |
+  |---|---|---|
+  | `MEMO.md` | 4 | entrées du mémo (ajout, modification, épinglage, suppression avec confirmation) |
+
+- Toute écriture passe par `app/src/lib/content-file.ts` : règle « fichier inchangé depuis la lecture » (empreinte de version, refus HTTP 409 sinon), modification ligne par ligne du seul bloc concerné, écriture atomique. Les fichiers restent modifiables à la main.
 - DASHBOARD.md reste maintenu par les sessions (règles des sections 7 et 8) ; l'app ne le génère pas.
 
 Règles :
@@ -164,3 +170,6 @@ Texte libre, sur une ou plusieurs lignes.
 - `id:` court et lisible, `YYYYMMDD-n` (n = numéro d'ordre dans la journée), unique : c'est lui qui distingue deux entrées de même date et de même titre.
 - `pinned:` `yes` ou `no`. `tags:` liste séparée par des virgules, éventuellement vide.
 - **MEMO.md NE DOIT JAMAIS contenir de mots de passe, codes d'accès, numéros de carte ni aucun secret** : le dépôt est sur GitHub. Si une demande en contient, refuser de l'y écrire et le signaler.
+- L'app refuse elle aussi ces contenus (`app/src/lib/secrets.ts` : « mot de passe : … », digicode, numéro de carte valide, IBAN, clé ou jeton) et affiche un rappel d'une ligne sous chaque zone de saisie.
+- Une entrée écrite à la main sans `id:` est acceptée ; l'app lui ajoute un `id:` à sa première modification. Les titres `##` qui ne suivent pas le format `## YYYY-MM-DD — Titre` sont ignorés et conservés tels quels.
+- Page `/memo` : ajout, modification, épingler/désépingler, filtre par tag, recherche, suppression avec confirmation. L'accueil affiche les entrées épinglées (« À retenir »).

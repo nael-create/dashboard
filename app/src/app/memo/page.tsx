@@ -1,13 +1,20 @@
 import type { Metadata } from "next";
-import { Empty, PageHeader } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/card";
+import { MemoBoard } from "@/components/memo/memo-board";
+import { readMemo } from "@/lib/memo";
 
 export const metadata: Metadata = { title: "Mémo" };
+export const dynamic = "force-dynamic";
 
-export default function MemoPage() {
+export default async function MemoPage() {
+  const { entries, version } = await readMemo();
   return (
     <>
       <PageHeader title="À retenir" subtitle="Les choses à ne pas oublier, stockées dans MEMO.md." />
-      <Empty>Cette page arrive à la phase 4.</Empty>
+      <MemoBoard
+        initial={entries.map(({ start: _s, end: _e, ...rest }) => rest)}
+        initialVersion={version}
+      />
     </>
   );
 }

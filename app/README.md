@@ -85,7 +85,7 @@ Le thème clair/sombre suit le réglage du système ; le bouton en haut à droit
 | `/` | Accueil : calendrier, « À la une » (phase 6), projets actifs, aperçus newsletters et mémo | ✅ |
 | `/projets` | Focus de la semaine, projets et domaines, filtres par statut et priorité | ✅ |
 | `/projets/<nom>` et `/domaines/<nom>` | Contenu du README, rendu | ✅ |
-| `/memo` | Choses à retenir (`MEMO.md`) | phase 4 |
+| `/memo` | Choses à retenir (`MEMO.md`) : ajouter, modifier, épingler, filtrer par tag, supprimer | ✅ |
 | `/newsletters` | Dossier « Newsletters » d'Outlook | phase 5 |
 
 ## Calendrier
