@@ -1,5 +1,5 @@
 ---
-title: TODO: fill in
+title: "TODO: fill in"
 status: active        # idea | active | paused | done | dropped
 priority: P3          # P1 | P2 | P3
 created: YYYY-MM-DD
