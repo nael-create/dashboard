@@ -199,15 +199,29 @@ if [ ! -d node_modules ] || [ ! -f "$STAMP" ] || [ "$(cat "$STAMP" 2>/dev/null)"
 fi
 echo "✓ Dépendances à jour"
 
-# Version changée depuis le dernier démarrage ? On vide le cache de compilation (dossier .next,
-# entièrement régénéré) pour ne jamais servir une page ou un style d'une version précédente.
+# ---------------------------------------------------------------
+# Construction de la version (mode production) : d'un seul bloc, et seulement
+# si la version a changé depuis la dernière construction. Pages, scripts et
+# styles viennent toujours de la même version (jamais de styles périmés).
+# ---------------------------------------------------------------
 HEAD_NOW="$(git -C "$ROOT" rev-parse HEAD 2>/dev/null)"
 HEAD_STAMP="node_modules/.dashboard-head"
-if [ -n "$HEAD_NOW" ] && [ "$(cat "$HEAD_STAMP" 2>/dev/null)" != "$HEAD_NOW" ]; then
+BUILD_LOG="${TMPDIR:-/tmp}/dashboard-build.log"
+RUN_MODE="start"
+if [ ! -f .next/BUILD_ID ] || [ "$(cat "$HEAD_STAMP" 2>/dev/null)" != "$HEAD_NOW" ]; then
+  echo "🔧 Préparation de la nouvelle version (1 à 2 minutes)…"
   rm -rf .next
-  echo "$HEAD_NOW" > "$HEAD_STAMP"
-  echo "✓ Cache de compilation vidé (nouvelle version)"
+  if ./node_modules/.bin/next build > "$BUILD_LOG" 2>&1; then
+    echo "$HEAD_NOW" > "$HEAD_STAMP"
+    echo "✓ Nouvelle version prête"
+  else
+    tail -n 25 "$BUILD_LOG"
+    rm -f "$HEAD_STAMP"
+    RUN_MODE="dev"
+    note "La préparation de la nouvelle version a échoué (message ci-dessus) : le dashboard démarre quand même, en mode développement (plus lent). Envoie ce message à Claude."
+  fi
 fi
+SERVER=(./node_modules/.bin/next "$RUN_MODE" --hostname 127.0.0.1 --port 3000)
 
 # ---------------------------------------------------------------
 # Démarrage de l'application.
@@ -215,9 +229,9 @@ fi
 echo "⏳ Démarrage…"
 if [ -n "$SERVICE" ]; then
   # En arrière-plan : macOS surveille ce processus et le relance s'il s'arrête.
-  exec ./node_modules/.bin/next dev --hostname 127.0.0.1 --port 3000
+  exec "${SERVER[@]}"
 fi
-./node_modules/.bin/next dev --hostname 127.0.0.1 --port 3000 &
+"${SERVER[@]}" &
 SERVER_PID=$!
 trap 'kill "$SERVER_PID" 2>/dev/null; wait "$SERVER_PID" 2>/dev/null' EXIT INT TERM HUP
 

@@ -119,7 +119,7 @@ export function UpdateButton() {
                     : state?.behind === 0
                       ? "Tu as déjà la dernière version. Tu peux quand même relancer le dashboard."
                       : "Impossible de vérifier GitHub pour le moment. Tu peux quand même relancer le dashboard."}{" "}
-                  Le dashboard va se relancer (≈ 30 secondes, plus après une grosse mise à jour). Ton contenu n&apos;est pas touché.
+                  Le dashboard va se relancer et préparer la nouvelle version (1 à 2 minutes). Ton contenu n&apos;est pas touché.
                 </p>
                 <div className="mt-5 flex justify-end gap-2">
                   <button type="button" className={btnGhost} onClick={() => setPhase("idle")}>Annuler</button>

@@ -74,12 +74,25 @@ function git(args: readonly string[], input?: string, timeoutMs = 60_000): Promi
  * (null si GitHub est injoignable). « git fetch » au plus toutes les 10 minutes, sans question.
  */
 let updateCache: { at: number; behind: number | null } | null = null;
+
+/** Commit de la version construite et en service (node_modules/.dashboard-head), ou null. */
+async function runningVersion(): Promise<string | null> {
+  try {
+    const sha = (await fs.readFile(/*turbopackIgnore: true*/ path.join(process.cwd(), "node_modules", ".dashboard-head"), "utf8")).trim();
+    return /^[0-9a-f]{40}$/.test(sha) ? sha : null;
+  } catch {
+    return null;
+  }
+}
 export async function updatesAvailable(force = false): Promise<number | null> {
   if (!force && updateCache && Date.now() - updateCache.at < 10 * 60_000) return updateCache.behind;
   let behind: number | null = null;
   const fetched = await git(["fetch", "--quiet", "origin", "main"], undefined, 20_000);
   if (fetched.code === 0) {
-    const count = await git(["rev-list", "--count", "HEAD..origin/main"]);
+    // Version réellement en service : celle de la dernière construction (écrite par le lanceur),
+    // car « Sauvegarder » peut avoir déjà récupéré du code que le serveur n'utilise pas encore.
+    const built = await runningVersion();
+    const count = await git(["rev-list", "--count", `${built ?? "HEAD"}..origin/main`]);
     if (count.code === 0) behind = Number.parseInt(count.stdout.trim(), 10) || 0;
   }
   updateCache = { at: Date.now(), behind };
