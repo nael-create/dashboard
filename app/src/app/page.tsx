@@ -7,6 +7,8 @@ import { ReviewLink } from "@/components/review/review-link";
 import { Section } from "@/components/ui/card";
 import { HeadlinesSkeleton } from "@/components/home/headlines-grid";
 import { ActiveProjectsWidget, MemoWidget, NewsWidget, NewslettersWidget } from "@/components/home/widgets";
+import { todayInTz } from "@/lib/calendar-view";
+import { displayTimeZone } from "@/lib/display-tz";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +22,8 @@ export default function HomePage() {
   return (
     <div className="space-y-20 sm:space-y-28">
       <Section n="01" title="agenda">
-        <CalendarWidget />
+        {/* Date du jour calculée ici, dans le fuseau d'affichage : identique au rendu serveur et navigateur. */}
+        <CalendarWidget initialToday={todayInTz(displayTimeZone())} />
       </Section>
 
       <Section

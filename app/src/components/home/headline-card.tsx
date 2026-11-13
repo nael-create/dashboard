@@ -72,11 +72,11 @@ export function HeadlineCard({
               className="absolute inset-0 size-full object-cover transition-transform duration-700 ease-[var(--ease)] group-hover:scale-[1.03]"
             />
           ) : (
-            <div className="absolute inset-0 flex flex-col justify-between p-5 sm:p-6">
+            <div className="absolute inset-0 flex flex-col justify-between p-4 sm:p-5">
               <span className="label opacity-70">{sourceName}</span>
               <p
                 className={`font-light leading-[1.02] tracking-[-0.035em] ${
-                  big ? "text-[clamp(1.9rem,4vw,3.6rem)] line-clamp-5" : "text-[clamp(1.5rem,2.1vw,1.9rem)] line-clamp-6"
+                  big ? "text-[clamp(1.6rem,3vw,2.6rem)] line-clamp-4" : "text-[clamp(1.15rem,1.6vw,1.45rem)] line-clamp-4"
                 } transition-transform duration-700 ease-[var(--ease)] group-hover:-translate-y-1`}
               >
                 {article.title}
@@ -85,7 +85,7 @@ export function HeadlineCard({
           )}
         </div>
         {hasImage && (
-          <h3 className={`mt-3 font-normal leading-snug tracking-[-0.01em] ${big ? "text-[clamp(1.25rem,2vw,1.75rem)] font-light tracking-[-0.025em]" : "text-[15px]"}`}>
+          <h3 className={`mt-3 font-normal leading-snug tracking-[-0.01em] ${big ? "text-[clamp(1.1rem,1.6vw,1.4rem)] font-light tracking-[-0.025em]" : "text-[15px]"}`}>
             <span className="link-underline">{article.title}</span>
           </h3>
         )}
