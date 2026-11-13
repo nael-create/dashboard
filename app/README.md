@@ -31,6 +31,7 @@ seule source de vérité : l'application les lit directement, sans copie.
 1. **revient sur la branche `main`** si tu étais ailleurs. S'il reste des modifications non sauvegardées, il reste sur ta branche et te demande d'abord de cliquer sur « Sauvegarder » ;
 2. **récupère la dernière version** depuis GitHub, en avance rapide uniquement : jamais forcé, tes modifications ne sont jamais effacées. Si ce n'est pas possible sans risque (pas d'internet, versions différentes), il démarre sur ta version actuelle et explique pourquoi ;
 3. **installe les dépendances seulement si elles ont changé** (`package-lock.json`) ;
+   puis, **après une mise à jour seulement**, prépare la nouvelle version d'un seul bloc (1 à 2 minutes ; les démarrages suivants sont immédiats) ;
 4. **vérifie que l'envoi vers GitHub marche sans mot de passe**. Sinon, une petite clé orange apparaît à côté de « Sauvegarder » : clique dessus pour voir la solution (à faire une fois) ;
 5. vérifie Node.js 22 (sinon il affiche la page de téléchargement), démarre le dashboard et ouvre **http://127.0.0.1:3000**.
 
