@@ -7,6 +7,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { BottomNav, TopNav } from "@/components/nav";
 import { Shortcuts } from "@/components/shortcuts";
 import { QuickAddNotion } from "@/components/notions/quick-add";
+import { SaveButton } from "@/components/save-button";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -34,6 +35,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               </Link>
               <div className="flex items-center gap-1">
                 <TopNav />
+                <SaveButton />
                 <QuickAddNotion />
                 <ThemeToggle />
               </div>

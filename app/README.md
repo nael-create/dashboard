@@ -121,6 +121,45 @@ Les liens d'abonnement sont **secrets** (quiconque les possède peut lire ton ag
 - **Intervalles** : 1, 2, 5, 14, 30 puis 90 jours ; « À revoir » la remet au lendemain. Ta progression reste sur ton ordinateur (`app/data/notions-progress.local.json`).
 - **Page Notions** : « Tout consulter » (glossaire, recherche, tri A→Z / par tag / par date, index A–Z, bouton Imprimer) et « Gérer » (modifier, supprimer, remettre à zéro, importer plusieurs notions au format `terme : définition`).
 
+## Sauvegarder (envoyer ton contenu sur GitHub)
+
+Le bouton **Sauvegarder** (en haut) affiche le nombre de fichiers de contenu modifiés, ou **À jour**. Un clic :
+
+1. prépare **uniquement** le contenu (`*.md` à la racine, `projects/`, `areas/`, `reviews/`, `archive/`) — jamais le code, `app/data/`, `.env*` ni un fichier ignoré ;
+2. vérifie qu'aucun secret ne s'y trouve (lien de calendrier, clé, mot de passe…) ; sinon il s'arrête sans rien enregistrer et dit quel fichier corriger ;
+3. crée un commit avec un message en français (ex. « Contenu : MEMO.md, 2 mémos ajoutés ; projet site-perso modifié ») ;
+4. récupère les modifications de GitHub puis envoie les tiennes. Jamais d'envoi forcé.
+
+- **Pas sur la branche `main`** : un petit panneau demande confirmation avant d'enregistrer.
+- **Conflit** (le même passage modifié ici et sur GitHub) : tout est annulé proprement, tes fichiers ne bougent pas, et un message explique quoi faire (GitHub Desktop → « Fetch origin » puis « Pull »).
+- **Envoi impossible** (pas d'internet, pas d'accès GitHub) : la sauvegarde reste sur ton ordinateur ; le bouton affiche « ↑ » et un nouveau clic la renverra.
+- **Rappel discret** : un point orange apparaît sur le bouton si des modifications attendent depuis plus de 3 jours (réglage `saveReminderDays`).
+
+### Envoyer sur GitHub sans mot de passe
+
+**Vérifier** (dans le Terminal, depuis le dossier `dashboard`) :
+
+```bash
+GIT_TERMINAL_PROMPT=0 git push --dry-run
+```
+
+- « Everything up-to-date » ou une ligne « To https://github.com/… » → **c'est bon**, le bouton pourra envoyer tout seul.
+- « could not read Username », « Authentication failed » ou « Permission denied » → il faut connecter ton Mac à GitHub, une seule fois :
+
+**Le plus simple :**
+
+1. Installe **GitHub Desktop** (https://desktop.github.com), ouvre-le et connecte-toi à ton compte GitHub (*GitHub Desktop → Settings → Accounts → Sign in*). Il configure aussi ton nom et ton e-mail pour git.
+2. *File → Add Local Repository…* → choisis le dossier `dashboard`.
+3. Pour que **le bouton du dashboard** puisse aussi envoyer tout seul, installe l'outil officiel **GitHub CLI** : télécharge le fichier `.pkg` pour macOS sur https://cli.github.com, installe-le, puis tape dans le Terminal :
+
+   ```bash
+   gh auth login --hostname github.com --git-protocol https --web
+   ```
+
+   Réponds **Yes** à « Authenticate Git with your GitHub credentials? », valide le code dans le navigateur. Relance ensuite la commande de vérification ci-dessus.
+
+Sans l'étape 3, tout fonctionne quand même : le bouton enregistre la sauvegarde sur ton ordinateur, et tu l'envoies en cliquant sur **Push origin** dans GitHub Desktop.
+
 ## Newsletters Outlook
 
 La page **Newsletters** lit **uniquement** le dossier « Newsletters » de ta boîte Outlook (nom modifiable dans `dashboard.config.ts`, réglage `newslettersFolder`). Accès **en lecture seule** (permission `Mail.Read`). Rien n'est enregistré dans le dépôt : les messages sont lus à la demande et gardés quelques minutes en mémoire. Ta connexion (jetons) est stockée uniquement sur ton ordinateur, dans `app/data/msal-cache.local.json` (jamais envoyé sur GitHub). Pour l'effacer : bouton « Se déconnecter ».

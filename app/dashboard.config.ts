@@ -9,6 +9,7 @@ interface DashboardConfig {
   locale: string;
   newslettersFolder: string;
   notionsPerDay: number;
+  saveReminderDays: number;
 }
 
 const dashboardConfig: DashboardConfig = {
@@ -32,6 +33,9 @@ const dashboardConfig: DashboardConfig = {
 
   /** Nombre de notions proposées sur l'accueil (« À retenir aujourd'hui ») ; « Encore » en propose autant. */
   notionsPerDay: 3,
+
+  /** Rappel discret sur le bouton « Sauvegarder » quand des modifications attendent depuis ce nombre de jours. */
+  saveReminderDays: 3,
 };
 
 export default dashboardConfig;

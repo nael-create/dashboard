@@ -105,6 +105,7 @@ Séparation stricte :
 
 - **Contenu** (racine du dépôt, Markdown) = seule source de vérité : projets, domaines, inbox, revues, mémo.
 - **Code** (`app/`) = Next.js (App Router) + TypeScript + Tailwind CSS. Il lit le Markdown à chaque requête et NE DOIT PAS dupliquer ce contenu dans un autre format (pas de base, pas de JSON, pas de cache sur disque).
+- L'app ne commite que via le bouton **Sauvegarder** (section 13), à la demande du propriétaire.
 - Fichiers de contenu que l'app écrit (et uniquement ceux-là) — tableau tenu à jour à chaque phase :
 
   | Fichier | Phase | Ce que l'app y écrit |
@@ -222,3 +223,14 @@ Définition (une ou plusieurs lignes).
 - Accueil : « À retenir aujourd'hui » propose `notionsPerDay` notions (dashboard.config.ts, 3 par défaut) ; « Encore » en propose d'autres.
 - Ajout rapide : bouton « + » de l'en-tête ou touche `N`. Import en masse « terme : définition » avec aperçu et doublons signalés (page `/notions`, onglet « Gérer »).
 - Pas de secrets dans NOTIONS.md (même contrôle que le mémo).
+
+## 13. Bouton « Sauvegarder » (git)
+
+- Code : `app/src/lib/git.ts`. git est lancé **sans shell, avec des arguments fixes** ; le message de commit passe par l'entrée standard. Aucune saisie ne doit jamais devenir un argument de git.
+- N'ajoute que le contenu : `*.md` à la racine, `projects/`, `areas/`, `reviews/`, `archive/`. Jamais `app/`, `app/data/`, `.env*`, ni un fichier ignoré. Refuse de continuer si des fichiers hors contenu sont déjà indexés.
+- Contrôle des secrets sur les lignes ajoutées avant le commit (mêmes motifs que la vérification des commits de code + `lib/secrets.ts`) ; en cas de doute : `git reset`, rien n'est commité, fichiers intacts.
+- Message automatique en français (« Contenu : MEMO.md, 2 mémos ajoutés ; projet x modifié »).
+- `pull --rebase --autostash` puis `push`. **Jamais de push forcé.** Conflit : `rebase --abort`, fichiers intacts, commit local conservé, explication en français. Échec du push : commit local conservé (le bouton affiche « ↑ » et renverra au prochain clic).
+- Hors de la branche `main` : confirmation demandée (panneau sous le bouton) avant tout commit.
+- Rappel discret (point orange) si des modifications attendent depuis `saveReminderDays` jours (dashboard.config.ts, 3 par défaut).
+- Tests : `app/test/git.test.ts` (dépôts temporaires : contenu seul, secret, autre branche, conflit, échec de push).
