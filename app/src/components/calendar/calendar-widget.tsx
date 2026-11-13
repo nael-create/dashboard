@@ -2,11 +2,13 @@
 
 import { AlertTriangle, ArrowLeft, ArrowRight, MapPin, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   WEEKDAYS, bucketByDay, fmtDayNum, fmtLongDay, fmtShortDay, fmtWeekday, shift, timeLabel,
   mergeAdjacent, todayInTz, viewTitle, visibleRange, type DisplayEvent, type View, type ViewEvent,
 } from "@/lib/calendar-view";
 import { CalendarManager, type PublicCalendar, type ZoneInfo } from "./calendar-manager";
+import { EventDialog, type EventDialogState } from "./event-dialog";
 
 interface FeedError { calendarId: string; name: string; message: string; staleSince?: string }
 interface Payload {
@@ -33,12 +35,7 @@ const VIEWS: { id: View; label: string }[] = [
 ];
 const VIEW_KEY = "dashboard.calendar.view";
 
-export function CalendarWidget({ handlers = {}, reloadKey = 0, extraActions }: {
-  handlers?: CalendarHandlers;
-  /** Change de valeur pour forcer un rechargement (après ajout d'un événement). */
-  reloadKey?: number;
-  extraActions?: React.ReactNode;
-} = {}) {
+export function CalendarWidget() {
   const [today, setToday] = useState(todayInTz);
   const [view, setView] = useState<View>("day");
   const [cursor, setCursor] = useState(today);
@@ -49,6 +46,16 @@ export function CalendarWidget({ handlers = {}, reloadKey = 0, extraActions }: {
   const [managerOpen, setManagerOpen] = useState(false);
   const requestId = useRef(0);
   const displayTzRef = useRef<string | undefined>(undefined);
+  const [dialog, setDialog] = useState<EventDialogState>(null);
+
+  // Ouverture sur un jour précis (ex. depuis la palette : /?jour=2026-11-20).
+  const jour = useSearchParams().get("jour");
+  useEffect(() => {
+    if (jour && /^\d{4}-\d{2}-\d{2}$/.test(jour)) {
+      setCursor(jour);
+      setView("day");
+    }
+  }, [jour]);
 
   // Vue mémorisée dans ce navigateur (confort uniquement).
   useEffect(() => {
@@ -105,7 +112,7 @@ export function CalendarWidget({ handlers = {}, reloadKey = 0, extraActions }: {
 
   useEffect(() => {
     load();
-  }, [load, reloadKey]);
+  }, [load]);
 
   const colorOf = useMemo(() => {
     const m = new Map(data?.calendars.map((c) => [c.id, c.color]));
@@ -118,6 +125,22 @@ export function CalendarWidget({ handlers = {}, reloadKey = 0, extraActions }: {
   }, [data]);
 
   const noCalendars = data !== null && data.calendars.length === 0;
+  const perso = data?.calendars.find((c) => c.editable);
+
+  // Calendrier « Perso » : clic sur un créneau libre / un jour → nouvel événement ;
+  // clic sur un événement « Perso » → modifier ; sur un événement abonné → détails seulement.
+  const handlers: CalendarHandlers = perso
+    ? {
+        onSlot: (day, minutes) => setDialog({ mode: "create", date: day, minutes }),
+        onEvent: (ev, day) => {
+          if (ev.editable && ev.sourceId) setDialog({ mode: "edit", id: ev.sourceId });
+          else {
+            const cal = data?.calendars.find((c) => c.id === ev.calendarId);
+            setDialog({ mode: "view", event: ev, day, calendarName: cal?.name ?? "Calendrier", color: cal?.color ?? "var(--muted)" });
+          }
+        },
+      }
+    : {};
   const openDay = (d: string) => {
     setCursor(d);
     changeView("day");
@@ -225,7 +248,12 @@ export function CalendarWidget({ handlers = {}, reloadKey = 0, extraActions }: {
             {data?.displayTz && <li title="Fuseau d'affichage">Heure — {data.displayTz.replace(/_/g, " ")}</li>}
           </ul>
           <div className="flex items-center gap-5">
-            {extraActions}
+            {perso && (
+              <button type="button" onClick={() => setDialog({ mode: "create", date: view === "day" ? cursor : today, minutes: null })}
+                className="label link-underline text-text">
+                + Événement
+              </button>
+            )}
             <button type="button" onClick={() => setManagerOpen(true)} className="label link-underline text-muted transition-colors hover:text-text">
               Gérer les calendriers
             </button>
@@ -240,6 +268,16 @@ export function CalendarWidget({ handlers = {}, reloadKey = 0, extraActions }: {
         zones={data?.zones ?? {}}
         mergeAdjacent={data?.options.mergeAdjacent ?? true}
         onChanged={() => load()}
+      />
+      <EventDialog
+        state={dialog}
+        onClose={() => setDialog(null)}
+        onSaved={() => {
+          load();
+          window.dispatchEvent(new Event("content-changed"));
+        }}
+        persoName={perso?.name ?? "Perso"}
+        timeZone={data?.displayTz ?? ""}
       />
     </div>
   );

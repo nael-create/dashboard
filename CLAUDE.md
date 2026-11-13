@@ -28,6 +28,7 @@ MEMO.md                 # Choses à retenir (voir section 10)
 NEWS.md                 # Sources d'actus RSS et disposition des widgets (voir section 11)
 NOTIONS.md              # Glossaire à mémoriser (voir section 12)
 FAVORIS.md              # Favoris (voir section 15)
+AGENDA.md               # Événements personnels, calendrier « Perso » (voir section 18)
 .gitignore              # Secrets et fichiers générés
 Lancer le dashboard.command  # Lanceur macOS en double-clic (doit rester exécutable)
 app/                    # Application web (code uniquement, voir section 9)
@@ -119,6 +120,7 @@ Séparation stricte :
   | `NOTIONS.md` | 7 | notions (ajout rapide, import en masse, modification, suppression avec confirmation) |
   | `INBOX.md` | 11 | ajout daté (palette), élément routé coché `- [x]`, « Supprimer » retire la ligne |
   | `reviews/YYYY-Www.md` | 11 | revue générée depuis `reviews/_template.md` (ou sections mises à jour si elle existe déjà) |
+  | `AGENDA.md` | 18 | événements « Perso » (création, modification, suppression avec confirmation), nom et couleur du calendrier |
   | `FAVORIS.md` | 10 | favoris (ajout / retrait par l'étoile, note personnelle, retrait d'un élément supprimé) |
   | `projects/*/README.md`, `areas/*/README.md` | 9 | frontmatter, sections, actions, journal ; création depuis `_template` |
   | `archive/` | 9 | déplacement d'un projet passé à `done` / `dropped` (après confirmation) |
@@ -160,7 +162,7 @@ Règles :
 - Réglages du calendrier (abonnements, fuseaux, regroupement) : `app/data/calendars.local.json` (ignoré par git).
 - Tests : `npm test` dans `app/` (Vitest). Les fichiers ICS de test sont dans `app/test/fixtures/` (données fictives) ; tout cas réel problématique DOIT y être reproduit avec un test.
 - Un flux en échec affiche le nom du calendrier et la raison, sans bloquer les autres.
-- Lecture seule : pas de création ni de modification d'événements.
+- Les calendriers **abonnés** restent en lecture seule (clic = détails). Les événements personnels vont dans le calendrier intégré « Perso » (section 18).
 
 ### Secrets
 
@@ -291,3 +293,30 @@ note: Note personnelle courte  # facultatif
 - Recherche approximative sans dépendance (`app/src/lib/fuzzy.ts`, insensible aux accents) sur : projets, domaines, mémos, notions, éléments de l'inbox, favoris, newsletters (objet et expéditeur seulement, liste déjà en mémoire) et titres d'actus déjà en cache. Index : `GET /api/search-index` (aucun appel réseau).
 - Actions : « Ajouter à l'inbox : … », « Nouvelle notion », « Nouveau mémo », « Nouveau projet » (reprennent le texte tapé), « Aller à … » pour chaque page, « Sauvegarder », « Changer de thème », « Faire la revue ».
 - Un texte qui ne correspond à rien propose « Ajouter à l'inbox » comme action par défaut (Entrée) : capture en un raccourci et une touche.
+
+## 18. AGENDA.md — calendrier « Perso »
+
+```markdown
+## Réglages
+name: Perso
+color: #a3451f
+
+## 2026-11-20 — Dîner chez Paul
+id: evt-20261120-1
+start: 2026-11-20 19:30          # « YYYY-MM-DD » seul = journée entière
+end: 2026-11-20 22:00            # journée entière : date de fin INCLUSE
+timezone: Asia/Kuala_Lumpur      # fuseau IANA explicite, OBLIGATOIRE
+location: Chez Paul              # facultatif
+repeat: weekly                   # facultatif (seule répétition proposée)
+until: 2026-12-31                # facultatif
+
+Note libre (facultative).
+```
+
+- Calendrier intégré, toujours présent, nom et couleur modifiables dans « Gérer les calendriers » (jamais supprimé, pas de réglage de fuseau : chaque événement porte le sien).
+- Création : clic sur un créneau libre (vues jour / semaine sur grand écran), « + Ajouter » d'un jour (semaine sur téléphone), clic sur un jour (vue mois) ou « + Événement ». Fenêtre : titre (obligatoire), date, heures ou « toute la journée », lieu, note, « chaque semaine ». Entrée enregistre.
+- Clic sur un événement « Perso » : modifier ou supprimer (avec confirmation ; une répétition est modifiée / supprimée en entier). Clic sur un événement abonné : détails seulement.
+- Nouvel événement : fuseau = fuseau d'affichage, écrit explicitement ; une modification garde le fuseau d'origine. Les occurrences sont recalculées dans le fuseau d'affichage (l'heure murale est conservée aux changements d'heure).
+- Inclus dans le regroupement d'affichage, le fuseau, la palette (groupe « Agenda perso », ouvre `/?jour=YYYY-MM-DD`) et le bouton « Sauvegarder » (fichier `.md` racine). Bloc illisible (ex. sans fuseau) : ignoré sans erreur. Pas de secrets.
+- Code : `app/src/lib/agenda.ts`, routes `app/src/app/api/agenda/`, fenêtre `app/src/components/calendar/event-dialog.tsx`, tests `app/test/agenda.test.ts`.
+- Écrire dans Outlook ou Google est hors périmètre (voir `app/README.md` pour une piste future).

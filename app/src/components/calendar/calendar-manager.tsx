@@ -3,7 +3,11 @@
 import { Check, Globe, Lock, Plus, Trash2, X } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 
-export interface PublicCalendar { id: string; name: string; color: string; host: string; timeZone: string | null }
+export interface PublicCalendar {
+  id: string; name: string; color: string; host: string; timeZone: string | null;
+  /** Calendrier intégré « Perso » (AGENDA.md) : nom et couleur modifiables, jamais supprimé. */
+  editable?: boolean;
+}
 export interface ZoneInfo { source: "calendar" | "x-wr-timezone" | "vtimezone" | "display"; name: string }
 
 const SOURCE_LABELS: Record<ZoneInfo["source"], string> = {
@@ -217,7 +221,8 @@ function CalendarRow({
   const save = async (patch: { name?: string; color?: string; timeZone?: string | null }) => {
     setError(null);
     try {
-      await api(`/api/calendars/${cal.id}`, { method: "PATCH", body: JSON.stringify(patch) });
+      if (cal.editable) await api("/api/agenda/settings", { method: "PATCH", body: JSON.stringify({ name: patch.name, color: patch.color }) });
+      else await api(`/api/calendars/${cal.id}`, { method: "PATCH", body: JSON.stringify(patch) });
       onChanged();
       return true;
     } catch (e) {
@@ -249,7 +254,9 @@ function CalendarRow({
           aria-label="Nom du calendrier"
           className="min-w-0 flex-1 rounded-md bg-transparent px-1.5 py-1 font-medium outline-none transition-colors hover:bg-surface-2 focus:bg-surface-2"
         />
-        {confirming ? (
+        {cal.editable ? (
+          <span className="label text-muted" title="Calendrier intégré : ses événements se créent depuis le calendrier">Intégré</span>
+        ) : confirming ? (
           <span className="flex items-center gap-1.5 text-sm">
             <span className="text-muted">Supprimer ?</span>
             <button type="button" onClick={remove} disabled={busy} className="rounded-full bg-rose-600 px-2.5 py-0.5 text-white hover:bg-rose-700">Oui</button>
@@ -265,7 +272,11 @@ function CalendarRow({
         <ColorPicker value={color} label={`Couleur de « ${cal.name} »`} onChange={(c) => { setColor(c); save({ color: c }); }} />
         <span className="text-xs text-muted">{cal.host}</span>
       </div>
-      <TimeZoneField cal={cal} zone={zone} listId={listId} timeZones={timeZones} onSave={(tz) => save({ timeZone: tz })} />
+      {cal.editable ? (
+        <p className="mt-2 pl-5 text-xs text-muted">Événements créés depuis le calendrier, avec leur fuseau horaire enregistré dans AGENDA.md.</p>
+      ) : (
+        <TimeZoneField cal={cal} zone={zone} listId={listId} timeZones={timeZones} onSave={(tz) => save({ timeZone: tz })} />
+      )}
       {error && <p className="mt-2 pl-5 text-sm text-rose-600">{error}</p>}
     </li>
   );

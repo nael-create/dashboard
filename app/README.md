@@ -108,6 +108,18 @@ Le calendrier de l'accueil affiche tes agendas Outlook, Google ou iCloud **en le
 
 Les liens d'abonnement sont **secrets** (quiconque les possède peut lire ton agenda). Ils sont enregistrés uniquement dans `app/data/calendars.local.json`, ignoré par git, et ne sont jamais renvoyés au navigateur.
 
+### Tes propres événements (calendrier « Perso »)
+
+Les calendriers abonnés (Outlook, Google, iCloud) restent en lecture seule. Pour noter tes propres rendez-vous, le dashboard a un calendrier intégré **« Perso »**, enregistré dans `AGENDA.md` (lisible et modifiable à la main, sauvegardé avec le bouton « Sauvegarder »).
+
+- **Ajouter** : clique sur une heure libre (vues Jour et Semaine), sur un jour (vue Mois), sur « + Ajouter » d'un jour (semaine sur téléphone) ou sur **+ Événement** en bas du calendrier. Indique le titre (obligatoire), la date, les heures ou « Toute la journée », et si tu veux un lieu, une note, « Chaque semaine ». **Entrée** enregistre.
+- **Modifier / supprimer** : clique sur l'événement. La suppression demande une confirmation. Un événement répété est modifié ou supprimé pour toutes les semaines.
+- **Événement d'un calendrier abonné** : un clic affiche ses détails seulement (il se modifie dans Outlook, Google ou iCloud).
+- **Nom et couleur** de « Perso » : « Gérer les calendriers ».
+- Chaque événement enregistre son fuseau horaire (celui de ton ordinateur au moment de la création) : en voyage, il s'affiche à la bonne heure locale.
+
+**Plus tard : écrire directement dans Outlook ou Google ?** Ce n'est pas fait ici (les abonnements ICS sont en lecture seule par nature). Il faudrait passer par l'API de chaque service avec une autorisation d'écriture : Microsoft Graph avec la permission `Calendars.ReadWrite` (même principe de connexion que les newsletters, mais avec une permission plus large), ou l'API Google Calendar avec une connexion Google (OAuth) et la portée `calendar.events`. Le dashboard enverrait alors l'événement au service au lieu de l'écrire dans `AGENDA.md`.
+
 ## Actus (flux RSS)
 
 - **Page Actus** : un widget par source (ou par catégorie : bouton « Sources » → « Un widget par »). 5 derniers articles par widget ; clic sur le nom du widget → liste complète ; clic sur un article → il s'ouvre sur son site, dans un nouvel onglet.

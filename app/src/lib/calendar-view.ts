@@ -16,6 +16,9 @@ export interface ViewEvent {
   start: string;
   end: string;
   location?: string;
+  /** Calendrier « Perso » : identifiant de l'événement dans AGENDA.md. */
+  sourceId?: string;
+  editable?: boolean;
 }
 
 export { addDays };

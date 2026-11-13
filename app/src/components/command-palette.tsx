@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  ArrowRight, CalendarCheck, CornerDownLeft, FolderKanban, GraduationCap, Inbox, Layers, Mail, Newspaper,
+  ArrowRight, CalendarCheck, CalendarDays, CornerDownLeft, FolderKanban, GraduationCap, Inbox, Layers, Mail, Newspaper,
   Palette, Plus, Save, Search, Star, StickyNote, type LucideIcon,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -15,7 +15,7 @@ import { SAVE_EVENT } from "./save-button";
 
 export const OPEN_PALETTE = "dashboard:open-palette";
 
-type ItemType = "project" | "area" | "memo" | "notion" | "inbox" | "favorite" | "newsletter" | "news";
+type ItemType = "project" | "area" | "memo" | "notion" | "inbox" | "favorite" | "newsletter" | "news" | "event";
 interface SearchItem { type: ItemType; id: string; title: string; subtitle?: string; href: string; external?: boolean }
 
 interface Row {
@@ -28,6 +28,7 @@ interface Row {
 }
 
 const GROUPS: { type: ItemType; label: string; icon: LucideIcon }[] = [
+  { type: "event", label: "Agenda perso", icon: CalendarDays },
   { type: "project", label: "Projets", icon: FolderKanban },
   { type: "area", label: "Domaines", icon: Layers },
   { type: "notion", label: "Notions", icon: GraduationCap },
@@ -116,7 +117,7 @@ export function CommandPalette() {
 
     // Actions reconnues par leur nom (ex. « sauv » → Sauvegarder, « nouveau projet » → Nouveau projet).
     const named = fuzzyFilter(text, [...creations, ...others], (a) => `${a.label} ${a.keywords}`)
-      .filter((a) => (fuzzyScore(text, `${a.label} ${a.keywords}`) ?? 0) >= 100);
+      .filter((a) => (fuzzyScore(text, `${a.label} ${a.keywords}`) ?? 0) >= 600); // texte présent tel quel (pas de lettres éparses)
     const namedKeys = new Set(named.map((a) => a.key));
     // Sinon, les actions de création reprennent le texte tapé.
     const prefilled: Row[] = creations.filter((c) => !namedKeys.has(c.key)).map((c) => ({
