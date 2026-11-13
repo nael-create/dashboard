@@ -46,7 +46,8 @@ export async function HeadlinesGrid() {
   // Grille éditoriale : un grand sujet + un sujet vertical, puis des rangées de quatre.
   const layout = (i: number) =>
     i === 0 ? "lg:col-span-8" : i === 1 ? "lg:col-span-4" : "sm:col-span-1 lg:col-span-3";
-  const ratio = (i: number) => (i === 0 ? "aspect-[3/2] lg:aspect-[16/10]" : "aspect-[3/2] sm:aspect-[4/5]");
+  // Photos plus basses : le grand sujet et son voisin gardent la même hauteur (2/1 sur 8 colonnes = 1/1 sur 4).
+  const ratio = (i: number) => (i === 0 ? "aspect-[16/9] lg:aspect-[2/1]" : i === 1 ? "aspect-[16/9] sm:aspect-[4/3] lg:aspect-square" : "aspect-[16/9] sm:aspect-[4/3]");
 
   return (
     <div>
@@ -78,8 +79,8 @@ export async function HeadlinesGrid() {
 export function HeadlinesSkeleton() {
   return (
     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-12" aria-label="Chargement des actus">
-      <div className="aspect-[16/10] animate-pulse bg-surface-2 lg:col-span-8" />
-      <div className="aspect-[4/5] animate-pulse bg-surface-2 lg:col-span-4" />
+      <div className="aspect-[2/1] animate-pulse bg-surface-2 lg:col-span-8" />
+      <div className="aspect-square animate-pulse bg-surface-2 lg:col-span-4" />
     </div>
   );
 }

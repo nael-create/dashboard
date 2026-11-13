@@ -35,8 +35,8 @@ const VIEWS: { id: View; label: string }[] = [
 ];
 const VIEW_KEY = "dashboard.calendar.view";
 
-export function CalendarWidget() {
-  const [today, setToday] = useState(todayInTz);
+export function CalendarWidget({ initialToday }: { initialToday?: string }) {
+  const [today, setToday] = useState(() => initialToday ?? todayInTz());
   const [view, setView] = useState<View>("day");
   const [cursor, setCursor] = useState(today);
   const [data, setData] = useState<Payload | null>(null);
@@ -152,7 +152,7 @@ export function CalendarWidget() {
     <div>
       {/* Titre et commandes */}
       <div className="mb-6 grid gap-5 lg:grid-cols-12 lg:items-end">
-        <h3 className="text-[clamp(2.25rem,5.5vw,4.75rem)] font-light lowercase leading-[0.95] tracking-[-0.045em] lg:col-span-7" aria-live="polite">
+        <h3 className="text-[clamp(1.75rem,3.6vw,3rem)] font-light lowercase leading-[1] tracking-[-0.04em] lg:col-span-7" aria-live="polite">
           {viewTitle(view, cursor)}
         </h3>
         <div className="flex flex-wrap items-center gap-x-6 gap-y-3 lg:col-span-5 lg:justify-end">
@@ -216,7 +216,7 @@ export function CalendarWidget() {
 
       <div className={`transition-opacity duration-300 ${loading && data ? "opacity-50" : ""}`}>
         {!data && loading ? (
-          <div className="h-[420px] animate-pulse bg-surface-2" aria-label="Chargement du calendrier" />
+          <div className="h-[340px] animate-pulse bg-surface-2" aria-label="Chargement du calendrier" />
         ) : noCalendars ? (
           <div className="border-y border-dashed border-border py-12">
             <p className="title-md mb-2">aucun calendrier pour l&apos;instant</p>
@@ -320,7 +320,7 @@ function EventRow({ ev, day, colorOf, onEvent }: { ev: DisplayEvent; day: string
 
 /* --------------------------- Grille horaire --------------------------- */
 
-const HOUR = 44; // hauteur d'une heure (px)
+const HOUR = 34; // hauteur d'une heure (px)
 const toMin = (stamp: string) => Number(stamp.slice(11, 13)) * 60 + Number(stamp.slice(14, 16));
 
 interface Placed { ev: DisplayEvent; top: number; height: number; lane: number; lanes: number; start: number; end: number }
@@ -352,7 +352,7 @@ function place(events: DisplayEvent[], day: string): Placed[] {
     const used = new Set(cluster.filter((p) => p.end > t.start).map((p) => p.lane));
     let lane = 0;
     while (used.has(lane)) lane++;
-    cluster.push({ ...t, top: (t.start / 60) * HOUR, height: Math.max(22, ((t.end - t.start) / 60) * HOUR - 2), lane, lanes: 1 });
+    cluster.push({ ...t, top: (t.start / 60) * HOUR, height: Math.max(18, ((t.end - t.start) / 60) * HOUR - 2), lane, lanes: 1 });
     clusterEnd = Math.max(clusterEnd, t.end);
   }
   if (cluster.length) flush();
@@ -402,7 +402,7 @@ function TimeGrid({
           {days.map((d) => (
             <button key={d} type="button" onClick={() => onOpenDay?.(d)} className="group px-2 py-2 text-left">
               <span className="label block text-muted">{fmtWeekday(d)}</span>
-              <span className={`text-2xl font-light tracking-[-0.03em] ${d === today ? "text-accent-text" : ""}`}>
+              <span className={`text-lg font-light tracking-[-0.02em] ${d === today ? "text-accent-text" : ""}`}>
                 <span className="link-underline">{fmtDayNum(d)}</span>
               </span>
             </button>
@@ -429,7 +429,7 @@ function TimeGrid({
         </div>
       )}
       {/* Heures */}
-      <div ref={scroller} className="relative max-h-[560px] overflow-y-auto overscroll-contain">
+      <div ref={scroller} className="relative max-h-[440px] overflow-y-auto overscroll-contain">
         <div className="grid" style={{ ...cols, height: 24 * HOUR }}>
           <div className="relative">
             {Array.from({ length: 24 }, (_, h) => (
@@ -503,7 +503,7 @@ function DayView({
           <div className="space-y-5 border-t border-text/80 pt-3">
             {upcoming.map((d) => (
               <div key={d}>
-                <p className={`mb-1 text-lg font-light tracking-[-0.02em] ${d === today ? "text-accent-text" : ""}`}>{fmtShortDay(d).toLowerCase()}</p>
+                <p className={`mb-1 text-base font-light tracking-[-0.02em] ${d === today ? "text-accent-text" : ""}`}>{fmtShortDay(d).toLowerCase()}</p>
                 <ul>{byDay.get(d)!.map((ev) => <EventRow key={ev.id} ev={ev} day={d} colorOf={colorOf} onEvent={handlers.onEvent} />)}</ul>
               </div>
             ))}
@@ -532,7 +532,7 @@ function WeekView({
           return (
             <li key={d} className="border-b border-border py-3">
               <div className="mb-1 flex items-baseline justify-between gap-2">
-                <button type="button" onClick={() => onOpenDay(d)} className={`text-lg font-light tracking-[-0.02em] ${d === today ? "text-accent-text" : ""}`}>
+                <button type="button" onClick={() => onOpenDay(d)} className={`text-base font-light tracking-[-0.02em] ${d === today ? "text-accent-text" : ""}`}>
                   <span className="link-underline">{fmtShortDay(d).toLowerCase()}</span>
                 </button>
                 {handlers.onSlot && (
@@ -583,9 +583,9 @@ function MonthView({
                 }
               }}
               aria-label={`${fmtLongDay(d)} : ${events.length} événement(s)${handlers.onSlot ? " — ajouter un événement" : ""}`}
-              className={`group flex min-h-16 flex-col border-b border-border p-1 text-left transition-colors hover:bg-surface/60 sm:min-h-28 sm:p-2 ${i % 7 ? "border-l" : ""} ${inMonth ? "" : "opacity-45"} ${handlers.onSlot ? "cursor-cell" : "cursor-pointer"}`}
+              className={`group flex min-h-14 flex-col border-b border-border p-1 text-left transition-colors hover:bg-surface/60 sm:min-h-20 sm:p-1.5 ${i % 7 ? "border-l" : ""} ${inMonth ? "" : "opacity-45"} ${handlers.onSlot ? "cursor-cell" : "cursor-pointer"}`}
             >
-              <button type="button" onClick={() => onOpenDay(d)} className={`mb-1 self-start text-sm font-light tabular-nums sm:text-lg ${isToday ? "rounded-full bg-accent px-1.5 text-white" : ""}`} aria-label={`Voir le ${fmtLongDay(d)}`}>
+              <button type="button" onClick={() => onOpenDay(d)} className={`mb-1 self-start text-sm font-light tabular-nums sm:text-base ${isToday ? "rounded-full bg-accent px-1.5 text-white" : ""}`} aria-label={`Voir le ${fmtLongDay(d)}`}>
                 {fmtDayNum(d)}
               </button>
               {/* Téléphone : pastilles ; écran large : titres */}
