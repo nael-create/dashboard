@@ -83,8 +83,8 @@ Le thème clair/sombre suit le réglage du système ; le bouton en haut à droit
 | Adresse | Contenu | État |
 |---|---|---|
 | `/` | Accueil : calendrier, « À la une » (phase 6), projets actifs, aperçus newsletters et mémo | ✅ |
-| `/projets` | Focus de la semaine, projets et domaines, filtres par statut et priorité | ✅ |
-| `/projets/<nom>` et `/domaines/<nom>` | Contenu du README, rendu | ✅ |
+| `/projets` | Focus de la semaine, projets et domaines, filtres, « Nouveau projet » / « Nouveau domaine » | ✅ |
+| `/projets/<nom>` et `/domaines/<nom>` | Modifier le projet / domaine (champs, sections, actions, journal) | ✅ |
 | `/news` | Actus : widgets par source ou catégorie, glisser-déposer, masquer, sources gérées depuis l'app | ✅ |
 | `/notions` | Notions : glossaire (« Tout consulter »), gestion, import en masse, impression | ✅ |
 | `/memo` | Choses à retenir (`MEMO.md`) : ajouter, modifier, épingler, filtrer par tag, supprimer | ✅ |
@@ -120,6 +120,15 @@ Les liens d'abonnement sont **secrets** (quiconque les possède peut lire ton ag
 - **Réviser** : sur l'accueil, « À retenir aujourd'hui » montre jusqu'à 3 notions (réglage `notionsPerDay`). Touche la carte pour voir la définition, puis « Je savais » ou « À revoir ». Rien n'est obligatoire : une notion ignorée reste à revoir.
 - **Intervalles** : 1, 2, 5, 14, 30 puis 90 jours ; « À revoir » la remet au lendemain. Ta progression reste sur ton ordinateur (`app/data/notions-progress.local.json`).
 - **Page Notions** : « Tout consulter » (glossaire, recherche, tri A→Z / par tag / par date, index A–Z, bouton Imprimer) et « Gérer » (modifier, supprimer, remettre à zéro, importer plusieurs notions au format `terme : définition`).
+
+## Modifier un projet ou un domaine
+
+- Sur la page d'un projet : change le **statut**, la **priorité**, la **prochaine action** et la **deadline** dans la colonne de droite ; clique sur le titre pour le renommer.
+- **Prochaines actions** : ajoute-les en bas, réordonne-les avec ↑ ↓, modifie-les avec le crayon. **Coche une action** : elle disparaît de la liste et s'inscrit dans le **Journal** (« 2026-11-13 — Fait : … »).
+- **Objectif, Notes, Liens** : crayon → éditeur avec onglets « Écrire » et « Aperçu ».
+- **Journal** : choisis la date et ajoute une entrée ; elle se place en haut.
+- **Terminé / Abandonné** : une confirmation s'affiche, puis le dossier est déplacé dans `archive/`. Il n'y a pas de bouton de suppression : on archive.
+- Chaque modification met à jour la date `updated` et le fichier `DASHBOARD.md`, et apparaît dans le compteur du bouton **Sauvegarder**.
 
 ## Sauvegarder (envoyer ton contenu sur GitHub)
 

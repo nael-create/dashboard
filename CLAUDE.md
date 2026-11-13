@@ -113,9 +113,12 @@ Séparation stricte :
   | `MEMO.md` | 4 | entrées du mémo (ajout, modification, épinglage, suppression avec confirmation) |
   | `NEWS.md` | 6 | sources d'actus publiques, regroupement des widgets, ordre et visibilité des widgets |
   | `NOTIONS.md` | 7 | notions (ajout rapide, import en masse, modification, suppression avec confirmation) |
+  | `projects/*/README.md`, `areas/*/README.md` | 9 | frontmatter, sections, actions, journal ; création depuis `_template` |
+  | `archive/` | 9 | déplacement d'un projet passé à `done` / `dropped` (après confirmation) |
+  | `DASHBOARD.md` | 9 | régénéré entièrement après chaque modification de projet / domaine (et de revue ou d'inbox) |
 
 - Toute écriture passe par `app/src/lib/content-file.ts` : règle « fichier inchangé depuis la lecture » (empreinte de version, refus HTTP 409 sinon), modification ligne par ligne du seul bloc concerné, écriture atomique. Les fichiers restent modifiables à la main.
-- DASHBOARD.md reste maintenu par les sessions (règles des sections 7 et 8) ; l'app ne le génère pas.
+- DASHBOARD.md est régénéré par l'app (`app/src/lib/dashboard-md.ts`) selon la section 7 ; une session qui modifie le contenu à la main DOIT aussi le régénérer (section 8).
 
 Règles :
 
@@ -234,3 +237,14 @@ Définition (une ou plusieurs lignes).
 - Hors de la branche `main` : confirmation demandée (panneau sous le bouton) avant tout commit.
 - Rappel discret (point orange) si des modifications attendent depuis `saveReminderDays` jours (dashboard.config.ts, 3 par défaut).
 - Tests : `app/test/git.test.ts` (dépôts temporaires : contenu seul, secret, autre branche, conflit, échec de push).
+
+## 14. Modifier projets et domaines depuis l'app
+
+- Code : `app/src/lib/markdown-doc.ts` (modifications ligne par ligne) et `app/src/lib/entries-edit.ts`.
+- Projet : titre, statut, priorité, `next_action`, `deadline` (sélecteurs et calendrier) ; sections Objectif, Notes, Liens (éditeur « Écrire / Aperçu ») ; prochaines actions (ajout, modification, ↑/↓) ; journal (entrée datée ajoutée en haut).
+- Cocher une prochaine action la retire de la liste et ajoute `- YYYY-MM-DD — Fait : …` en haut du Journal.
+- Domaine : titre, statut, priorité ; sections Rôle, Standards à maintenir, Notes.
+- Chaque modification met `updated` à la date du jour et régénère DASHBOARD.md. Les commentaires du frontmatter (ex. `# idea | active…`) et les sections ajoutées à la main sont conservés (ces dernières affichées en lecture seule).
+- « Nouveau projet » / « Nouveau domaine » : seul le titre est demandé ; copie de `_template`, `idea`/`P3` (projet) ou `active`/`P3` (domaine), le reste à `TODO: fill in`.
+- Passer un projet à `done` ou `dropped` demande une confirmation, puis déplace son dossier tel quel dans `archive/` (suffixe de date si le nom existe déjà). **Aucune suppression de projet depuis l'interface.**
+- Pas de titres `#`/`##` ni de secrets dans les textes saisis.

@@ -3,6 +3,8 @@ import { Empty, PageHeader } from "@/components/ui/card";
 import { FilterChips } from "@/components/projects/filter-chips";
 import { EntryList } from "@/components/projects/entry-list";
 import { FocusCard } from "@/components/focus/focus-card";
+import { NewEntryButtons } from "@/components/projects/new-entry";
+import { Notice } from "@/components/ui/notice";
 import { PRIORITIES, STATUSES, STATUS_LABELS, listAreas, listProjects } from "@/lib/content";
 
 export const metadata: Metadata = { title: "Projets" };
@@ -17,6 +19,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: SP 
     return allowed.includes(v) ? v : "all";
   };
   const status = pick("statut", STATUSES);
+  const archived = typeof sp.archive === "string" && /^[a-z0-9-]+$/.test(sp.archive) ? sp.archive : null;
   const priority = pick("priorite", PRIORITIES);
 
   const [projects, areas] = await Promise.all([listProjects(), listAreas()]);
@@ -30,10 +33,14 @@ export default async function ProjectsPage({ searchParams }: { searchParams: SP 
 
   return (
     <>
-      <PageHeader
-        title="Projets et domaines"
-        subtitle="Lu directement depuis projects/ et areas/ (lecture seule)."
-      />
+      <PageHeader title="Projets et domaines" subtitle="Lu et modifié directement dans projects/ et areas/.">
+        <NewEntryButtons />
+      </PageHeader>
+      {archived && (
+        <div className="mb-6">
+          <Notice>Projet archivé : son dossier a été déplacé tel quel dans archive/{archived}/.</Notice>
+        </div>
+      )}
 
       <div className="mb-6">
         <FocusCard />
