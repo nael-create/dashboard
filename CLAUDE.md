@@ -236,6 +236,7 @@ Définition (une ou plusieurs lignes).
 - **La progression (boîte, échéance, historique) n'est JAMAIS écrite dans NOTIONS.md** : elle est dans `app/data/notions-progress.local.json` (ignoré par git), indexée par un identifiant dérivé du terme (kebab-case). Fichier perdu ou illisible : tout repart de zéro, sans erreur. Un terme renommé à la main perd sa progression (sans doublon ni erreur) ; renommé depuis l'app, il la garde.
 - Leitner : intervalles 1, 2, 5, 14, 30, 90 jours (boîtes 1 à 6). « Je savais » : boîte suivante ; « À revoir » : boîte 1, à revoir demain. Une nouvelle notion est due le lendemain de son ajout. « Apprise » = boîte 4 ou plus. Réviser n'est jamais obligatoire.
 - Accueil : « À retenir aujourd'hui » propose `notionsPerDay` notions (dashboard.config.ts, 3 par défaut) ; « Encore » en propose d'autres.
+- Face visible des cartes : `notionsFront` (dashboard.config.ts) — `"definition"` (réglage du propriétaire : la définition d'abord, il faut retrouver le mot) ou `"term"`. Une définition ne DEVRAIT pas contenir le mot à trouver.
 - Ajout rapide : bouton « + » de l'en-tête ou touche `N`. Import en masse « terme : définition » avec aperçu et doublons signalés (page `/notions`, onglet « Gérer »).
 - Pas de secrets dans NOTIONS.md (même contrôle que le mémo).
 

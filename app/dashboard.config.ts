@@ -9,6 +9,7 @@ interface DashboardConfig {
   locale: string;
   newslettersFolder: string;
   notionsPerDay: number;
+  notionsFront: "definition" | "term";
   saveReminderDays: number;
   reviewDay: number;
 }
@@ -37,6 +38,12 @@ const dashboardConfig: DashboardConfig = {
 
   /** Nombre de notions proposées sur l'accueil (« À retenir aujourd'hui ») ; « Encore » en propose autant. */
   notionsPerDay: 3,
+
+  /**
+   * Face visible des cartes de révision : « definition » = la définition d'abord, il faut retrouver le mot ;
+   * « term » = le mot d'abord, il faut retrouver la définition.
+   */
+  notionsFront: "definition",
 
   /** Rappel discret sur le bouton « Sauvegarder » quand des modifications attendent depuis ce nombre de jours. */
   saveReminderDays: 3,
