@@ -1,46 +1,23 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { decideAccess } from "@/lib/remote-access";
 
 /**
- * Garde-fou pour un éventuel déploiement futur.
- * - En local (127.0.0.1 / localhost) : accès libre.
- * - Ailleurs : authentification HTTP Basic OBLIGATOIRE via DASHBOARD_BASIC_AUTH
- *   (« identifiant:mot-de-passe »). Sans cette variable, tout accès distant est refusé.
+ * Garde-fou d'accès (voir src/lib/remote-access.ts) :
+ * - navigateur du Mac (127.0.0.1 / localhost) : accès libre ;
+ * - tout le reste (téléphone via Tailscale Serve…) : mot de passe OBLIGATOIRE
+ *   (DASHBOARD_BASIC_AUTH = « identifiant:mot-de-passe », 12 caractères minimum pour le mot de passe).
+ *   Sans mot de passe valide, tout accès distant est refusé.
  */
-const LOCAL_HOSTS = new Set(["127.0.0.1", "localhost", "::1", "[::1]"]);
-
 export function proxy(request: NextRequest) {
-  const credentials = process.env.DASHBOARD_BASIC_AUTH;
-  // En-tête Host tel qu'envoyé par le navigateur, sans le port.
-  const host = (request.headers.get("host") ?? "").replace(/:\d+$/, "").toLowerCase();
-
-  if (!credentials) {
-    if (LOCAL_HOSTS.has(host)) return NextResponse.next();
-    return new NextResponse("Accès refusé : authentification non configurée.", { status: 403 });
-  }
-
-  const header = request.headers.get("authorization") ?? "";
-  const [scheme, encoded] = header.split(" ");
-  let given = "";
-  try {
-    given = scheme === "Basic" && encoded ? atob(encoded) : "";
-  } catch {
-    /* en-tête mal formé */
-  }
-  if (given && safeEqual(given, credentials)) return NextResponse.next();
-
-  return new NextResponse("Authentification requise.", {
-    status: 401,
-    headers: { "WWW-Authenticate": 'Basic realm="dashboard", charset="UTF-8"' },
+  const decision = decideAccess(request.headers, process.env.DASHBOARD_BASIC_AUTH);
+  if (decision.allow) return NextResponse.next();
+  return new NextResponse(decision.message, {
+    status: decision.status,
+    headers: {
+      "Content-Type": "text/plain; charset=utf-8",
+      ...(decision.status === 401 ? { "WWW-Authenticate": 'Basic realm="dashboard", charset="UTF-8"' } : {}),
+    },
   });
 }
 
-function safeEqual(a: string, b: string) {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return diff === 0;
-}
-
-export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
-};
+// Pas de « matcher » : le contrôle s'applique à toutes les adresses (pages, API, fichiers de l'app).
