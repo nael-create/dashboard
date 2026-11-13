@@ -12,7 +12,9 @@ export function isSameOrigin(req: Request): boolean {
   const origin = req.headers.get("origin");
   if (!origin) return req.headers.get("sec-fetch-site") !== "cross-site";
   try {
-    return new URL(origin).host === req.headers.get("host");
+    const host = new URL(origin).host;
+    // Derrière Tailscale Serve, l'hôte d'origine est aussi transmis dans X-Forwarded-Host.
+    return host === req.headers.get("host") || host === req.headers.get("x-forwarded-host");
   } catch {
     return false;
   }

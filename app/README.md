@@ -64,6 +64,50 @@ npm run dev
 Puis ouvrir **http://127.0.0.1:3000** dans le navigateur. Pour arrêter : `Ctrl + C` dans le terminal.
 
 L'application n'écoute que sur ton ordinateur (127.0.0.1) : elle n'est pas visible depuis le réseau.
+Pour l'ouvrir depuis ton téléphone, voir « Accès depuis ton téléphone (Tailscale) » ci-dessous.
+
+## Accès depuis ton téléphone (Tailscale)
+
+[Tailscale](https://tailscale.com) (gratuit) relie tes appareils entre eux par un réseau **privé**.
+Le dashboard reste sur ton Mac ; ton téléphone y accède à travers ce réseau, avec un mot de passe.
+Rien n'est publié sur internet : seuls les appareils connectés à **ton** compte Tailscale voient l'adresse.
+
+### Mise en place (une seule fois, ≈ 15 minutes)
+
+1. **Sur le Mac** : installe l'app **Tailscale** (App Store, ou tailscale.com/download), ouvre-la et
+   connecte-toi (compte Google, Apple ou Microsoft). Une icône apparaît dans la barre des menus.
+2. **Sur l'iPhone** : installe l'app **Tailscale** (App Store) et connecte-toi **avec le même compte**.
+3. **Sur le Mac**, dans le Terminal :
+   ```bash
+   cd dashboard
+   ```
+   ```bash
+   bash app/scripts/enable-phone-access.sh
+   ```
+   Le script crée un mot de passe (dans `app/.env.local`, jamais envoyé sur GitHub), active le relais
+   privé de Tailscale et affiche **l'adresse**, l'**identifiant** et le **mot de passe**.
+   S'il affiche un lien « …login.tailscale.com… », ouvre-le et clique sur **Enable HTTPS**, puis reviens.
+4. **Ferme puis relance le dashboard** (pour que le mot de passe soit pris en compte).
+5. **Sur l'iPhone** : Tailscale connecté, ouvre l'adresse affichée (`https://<ton-mac>.<…>.ts.net`)
+   dans Safari, saisis identifiant et mot de passe (Safari propose de les mémoriser).
+   Astuce : Partager → « Sur l'écran d'accueil » pour en faire une icône.
+
+Sur le Mac, `http://localhost:3000` marche toujours sans mot de passe.
+
+### Bon à savoir
+
+- **Le Mac doit être allumé, pas en veille, et le dashboard lancé.** Pour éviter la veille quand il est
+  branché : Réglages Système → Batterie → Options → « Empêcher la suspension d'activité automatique sur
+  secteur lorsque l'écran est éteint » (sur un Mac de bureau : Réglages Système → Énergie). Un portable
+  dont l'écran est rabattu se met en veille quand même.
+- Pour que le dashboard démarre tout seul : Réglages Système → Général → Ouverture → « Ouvrir à la
+  connexion » → **+** → `Lancer le dashboard.command`.
+- **Outlook** : la connexion (« Se connecter ») se fait depuis le Mac. Une fois connecté, les newsletters
+  se lisent aussi depuis le téléphone.
+- **Changer le mot de passe** : supprime la ligne `DASHBOARD_BASIC_AUTH=…` de `app/.env.local`, relance le
+  script, puis relance le dashboard.
+- **Désactiver** : `bash app/scripts/enable-phone-access.sh --off`.
+- Ne jamais utiliser `tailscale funnel` : cela rendrait l'adresse publique sur internet.
 
 ## Personnaliser
 
@@ -281,7 +325,7 @@ Comment le vérifier, sans risque :
 
 | Fichier | Contenu |
 |---|---|
-| `app/.env.local` | identifiant de l'application Microsoft — modèle : `app/.env.example` |
+| `app/.env.local` | identifiant de l'application Microsoft, mot de passe de l'accès depuis le téléphone — modèle : `app/.env.example` |
 | `app/data/msal-cache.local.json` | ta connexion Outlook (jetons), créée à la connexion, supprimée par « Se déconnecter » |
 | `app/data/calendars.local.json` | liens d'abonnement aux calendriers (phase 3) |
 
@@ -289,9 +333,11 @@ Ces fichiers sont listés dans le `.gitignore` à la racine du dépôt.
 
 ## Sécurité et déploiement
 
-Rien n'est déployé. Si un jour l'application est hébergée, l'accès distant est **bloqué par défaut** :
-il faut définir `DASHBOARD_BASIC_AUTH=identifiant:mot-de-passe` (voir `src/proxy.ts`), sans quoi
-toute requête qui ne vient pas de `127.0.0.1`/`localhost` reçoit une erreur 403.
+Rien n'est déployé : l'app tourne sur ton Mac et n'écoute que sur `127.0.0.1`. Toute requête qui ne vient
+pas du navigateur du Mac (téléphone via Tailscale, ou tout autre accès) exige un mot de passe :
+`DASHBOARD_BASIC_AUTH=identifiant:mot-de-passe` dans `app/.env.local`, 12 caractères minimum pour le mot de
+passe (voir `src/proxy.ts` et `src/lib/remote-access.ts`). Sans mot de passe valide, l'accès distant est
+refusé (erreur 403).
 
 ## Pour les développeurs
 
