@@ -7,6 +7,7 @@ interface DashboardConfig {
   accentColor: string;
   timeZone: string | null;
   locale: string;
+  newslettersFolder: string;
 }
 
 const dashboardConfig: DashboardConfig = {
@@ -24,6 +25,9 @@ const dashboardConfig: DashboardConfig = {
 
   /** Langue / format des dates. */
   locale: "fr-FR",
+
+  /** Nom du dossier Outlook lu par la page Newsletters (aucun autre dossier n'est lu). */
+  newslettersFolder: "Newsletters",
 };
 
 export default dashboardConfig;

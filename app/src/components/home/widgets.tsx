@@ -4,6 +4,9 @@ import { Card, CardHeader, Empty } from "@/components/ui/card";
 import { DeadlineText, PriorityBadge, Value } from "@/components/ui/badges";
 import { countInbox, listProjects } from "@/lib/content";
 import { readMemo } from "@/lib/memo";
+import { listNewsletters, OutlookError, type NewsletterSummary } from "@/lib/outlook";
+import { relativeTime } from "@/lib/relative-time";
+import { OutlookState } from "@/components/newsletters/outlook-state";
 import { Pin } from "lucide-react";
 
 /* Chaque widget est un composant serveur autonome : il lit lui-même ses données. */
@@ -58,11 +61,36 @@ export async function ActiveProjectsWidget() {
   );
 }
 
-export function NewslettersWidget() {
+export async function NewslettersWidget() {
+  let items: NewsletterSummary[] = [];
+  let error: OutlookError | null = null;
+  try {
+    items = (await listNewsletters()).slice(0, 3);
+  } catch (e) {
+    error = e instanceof OutlookError ? e : new OutlookError("Newsletters indisponibles pour le moment.");
+  }
   return (
     <Card className="h-full">
       <CardHeader title="Dernières newsletters" icon={<Mail className="size-4" aria-hidden />} href="/newsletters" />
-      <Empty>La connexion Outlook arrive à la phase 5.</Empty>
+      {error ? (
+        <OutlookState error={error} compact />
+      ) : items.length === 0 ? (
+        <Empty>Aucune newsletter pour l&apos;instant.</Empty>
+      ) : (
+        <ul className="-mx-2 space-y-0.5">
+          {items.map((m) => (
+            <li key={m.id}>
+              <Link href={`/newsletters/${encodeURIComponent(m.id)}`} className="block rounded-xl px-2 py-2 transition-colors hover:bg-surface-2">
+                <span className="flex items-baseline justify-between gap-2 text-xs text-muted">
+                  <span className="truncate">{m.from}</span>
+                  <span className="shrink-0">{relativeTime(m.received)}</span>
+                </span>
+                <span className={`block truncate ${m.isRead ? "" : "font-semibold"}`}>{m.subject}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
     </Card>
   );
 }

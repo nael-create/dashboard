@@ -148,7 +148,9 @@ Règles :
 
 - Identifiants et jetons Microsoft : `app/.env.local` (ignoré par git). Modèle sans valeur : `app/.env.example`.
 - Liens d'abonnement aux calendriers (secrets) : `app/data/calendars.local.json` (ignoré par git). Ne JAMAIS les versionner.
-- Outlook : lecture seule, permission Microsoft Graph `Mail.Read` uniquement (plus les permissions de connexion `openid`, `profile`, `offline_access`), et seulement le dossier « Newsletters » (configurable). Les newsletters ne sont JAMAIS enregistrées dans le dépôt.
+- Outlook : lecture seule, permission Microsoft Graph `Mail.Read` uniquement (plus les permissions de connexion `openid`, `profile`, `offline_access`), et seulement le dossier « Newsletters » (`newslettersFolder` dans `dashboard.config.ts`). Les newsletters ne sont JAMAIS enregistrées dans le dépôt (mémoire seulement, quelques minutes).
+- Application Microsoft « publique » (PKCE, aucun secret client) ; `MS_CLIENT_ID` et `MS_TENANT` dans `app/.env.local` ; URI de redirection `http://localhost:3000/api/outlook/callback`. Jetons : `app/data/msal-cache.local.json` (ignoré par git, droits 0600), supprimés par « Se déconnecter ».
+- HTML des e-mails : nettoyé par `sanitize-html` puis affiché dans une iframe `sandbox` sans script avec une CSP stricte ; images distantes bloquées par défaut (bouton « Charger les images »).
 - **Avant chaque commit**, vérifier qu'aucun secret, jeton ou lien de calendrier n'est indexé : `git status`, `git diff --cached --name-only` (aucun `.env*` réel ni `*.local.json`) et une recherche dans `git diff --cached` de motifs comme `webcal:`, `.ics`, `client_secret`, `token`, `password`.
 
 ## 10. MEMO.md — choses à retenir

@@ -86,7 +86,7 @@ Le thème clair/sombre suit le réglage du système ; le bouton en haut à droit
 | `/projets` | Focus de la semaine, projets et domaines, filtres par statut et priorité | ✅ |
 | `/projets/<nom>` et `/domaines/<nom>` | Contenu du README, rendu | ✅ |
 | `/memo` | Choses à retenir (`MEMO.md`) : ajouter, modifier, épingler, filtrer par tag, supprimer | ✅ |
-| `/newsletters` | Dossier « Newsletters » d'Outlook | phase 5 |
+| `/newsletters` | Dossier « Newsletters » d'Outlook, en lecture seule | ✅ (après configuration) |
 
 ## Calendrier
 
@@ -103,11 +103,79 @@ Le calendrier de l'accueil affiche tes agendas Outlook, Google ou iCloud **en le
 
 Les liens d'abonnement sont **secrets** (quiconque les possède peut lire ton agenda). Ils sont enregistrés uniquement dans `app/data/calendars.local.json`, ignoré par git, et ne sont jamais renvoyés au navigateur.
 
+## Newsletters Outlook
+
+La page **Newsletters** lit **uniquement** le dossier « Newsletters » de ta boîte Outlook (nom modifiable dans `dashboard.config.ts`, réglage `newslettersFolder`). Accès **en lecture seule** (permission `Mail.Read`). Rien n'est enregistré dans le dépôt : les messages sont lus à la demande et gardés quelques minutes en mémoire. Ta connexion (jetons) est stockée uniquement sur ton ordinateur, dans `app/data/msal-cache.local.json` (jamais envoyé sur GitHub). Pour l'effacer : bouton « Se déconnecter ».
+
+Il faut **une seule fois** : (1) créer le dossier et une règle dans Outlook, (2) déclarer l'application chez Microsoft, (3) coller un identifiant dans `app/.env.local`.
+
+### Étape 1 — Ranger les newsletters dans un dossier « Newsletters »
+
+1. Ouvre **https://outlook.live.com** (compte personnel) ou **https://outlook.office.com** (compte pro/école) et connecte-toi.
+2. Dans la colonne de gauche, fais un clic droit sur **Dossiers** (ou sur « Boîte de réception ») → **Créer un dossier** → nomme-le exactement **Newsletters** → Entrée.
+3. Clique sur la **roue dentée** (Paramètres, en haut à droite) → **Courrier** → **Règles** → **+ Ajouter une nouvelle règle**.
+4. Nom : `Newsletters`.
+5. Condition : choisis **« L'en-tête du message inclut »** et tape `List-Unsubscribe` (presque toutes les newsletters contiennent cet en-tête). Si cette condition n'existe pas chez toi, choisis **« De »** et ajoute les adresses des newsletters une par une.
+6. Action : **Déplacer vers** → **Newsletters**.
+7. Coche **« Exécuter la règle maintenant »** si l'option est proposée, puis **Enregistrer**.
+
+### Étape 2 — Déclarer l'application chez Microsoft (≈ 10 minutes)
+
+Microsoft exige que toute application qui lit des e-mails soit « inscrite ». C'est gratuit, et cette inscription ne donne accès qu'à ce que **tu** autorises, uniquement quand **tu** te connectes.
+
+1. Ouvre **https://entra.microsoft.com** et connecte-toi avec ton compte Microsoft.
+   - Compte **personnel** (outlook.com, hotmail, live) : si le site indique que ton compte n'a pas d'annuaire (« directory ») ou te refuse l'accès, va sur **https://portal.azure.com**, accepte la création d'un compte Azure gratuit (un « Default Directory » est créé ; inscrire une application ne coûte rien, mais Microsoft peut demander une carte pour vérifier ton identité), puis reviens à l'étape 1 de cette liste.
+   - Compte **professionnel ou scolaire** : lis d'abord la section « Compte professionnel ou scolaire » ci-dessous.
+2. Menu de gauche : **Applications** → **Inscriptions d'applications** → **+ Nouvelle inscription**.
+3. **Nom** : `Dashboard personnel` (au choix).
+4. **Types de comptes pris en charge** : choisis **« Comptes dans un annuaire organisationnel (tout annuaire Microsoft Entra ID – multilocataire) et comptes Microsoft personnels »**.
+5. **URI de redirection** : dans la liste, choisis **« Client public/natif (mobile et bureau) »** et colle exactement :
+   `http://localhost:3000/api/outlook/callback`
+6. Clique sur **Inscrire**.
+7. Sur la page qui s'affiche, copie **« ID d'application (client) »** (une suite comme `1a2b3c4d-…`). Garde-la pour l'étape 3.
+8. Menu de gauche de l'application : **Authentification** → en bas, **« Autoriser les flux clients publics »** → **Oui** → **Enregistrer**.
+9. Menu **Autorisations de l'API** :
+   - s'il y a une ligne `User.Read`, clique sur **…** → **Supprimer l'autorisation** (inutile ici) ;
+   - **+ Ajouter une autorisation** → **Microsoft Graph** → **Autorisations déléguées** → cherche `Mail.Read` → coche **Mail.Read** → **Ajouter des autorisations**.
+   - Il doit rester **uniquement `Mail.Read`**. Surtout pas `Mail.ReadWrite` ni `Mail.Send`.
+
+Aucun « secret client » n'est nécessaire : ne crée pas de secret.
+
+### Étape 3 — Coller l'identifiant dans le dashboard
+
+1. Dans le dossier `app/`, duplique le fichier `.env.example` et renomme la copie **`.env.local`** (sur Mac, les fichiers commençant par un point sont cachés : dans le Finder, `Cmd + Maj + .` les affiche).
+2. Ouvre `.env.local` avec TextEdit et remplace la ligne `# MS_CLIENT_ID=` par :
+   `MS_CLIENT_ID=ton-identifiant-copié` (sans `#` ni espace).
+3. Optionnel : `MS_TENANT=consumers` si tu n'utilises qu'un compte personnel, `MS_TENANT=organizations` pour un compte pro/école uniquement. Par défaut (`common`), les deux fonctionnent.
+4. Enregistre, puis **relance le dashboard** (ferme la fenêtre Terminal et double-clique de nouveau sur le lanceur).
+5. Va sur **Newsletters** → **Se connecter à Outlook** → choisis ton compte → Microsoft affiche la permission demandée (« Lire vos courriers ») → **Accepter**. Tu reviens sur la liste.
+
+### Compte professionnel ou scolaire
+
+Beaucoup d'entreprises et d'universités **bloquent l'accord donné par un utilisateur à une application tierce** : seul un administrateur peut alors l'autoriser. C'est fréquent ; ce n'est pas un problème de ton côté.
+
+Comment le vérifier, sans risque :
+
+- **Essai direct** : fais les étapes 2 et 3, puis « Se connecter à Outlook ». Si Microsoft affiche **« Approbation nécessaire »**, **« Besoin de l'approbation de l'administrateur »** ou un code **AADSTS65001 / AADSTS90094**, le consentement est bloqué. Le dashboard l'indique aussi en français.
+- **Autre indice** : sur https://entra.microsoft.com, si tu ne peux pas créer d'inscription d'application (« Vous n'avez pas accès » ou bouton grisé), ton organisation restreint aussi les inscriptions. Dans ce cas, inscris l'application avec un compte personnel (étape 2), en « multilocataire », puis tente la connexion avec ton compte pro.
+- **Si c'est bloqué** : demande au service informatique d'approuver l'application « Dashboard personnel » pour la seule permission `Mail.Read` déléguée, ou utilise un compte personnel. N'essaie pas de contourner la règle : elle relève de la politique de sécurité de ton organisation.
+
+### En cas de souci
+
+| Message | Que faire |
+|---|---|
+| « Outlook n'est pas encore configuré » | `MS_CLIENT_ID` absent ou mal copié dans `app/.env.local` ; relance le dashboard après modification. |
+| « L'URI de redirection ne correspond pas » | À l'étape 2.5, l'adresse doit être exactement `http://localhost:3000/api/outlook/callback`, plateforme « Client public/natif ». |
+| « Active Autoriser les flux clients publics » | Étape 2.8. |
+| « Ce type de compte n'est pas accepté » | Étape 2.4 (multilocataire + comptes personnels) et `MS_TENANT`. |
+| « Aucun dossier Newsletters trouvé » | Étape 1 : le dossier doit s'appeler exactement comme `newslettersFolder` dans `dashboard.config.ts`. |
+
 ## Fichiers secrets (jamais versionnés)
 
 | Fichier | Contenu |
 |---|---|
-| `app/.env.local` | identifiants Microsoft (phase 5) — modèle : `app/.env.example` |
+| `app/.env.local` | identifiant de l'application Microsoft — modèle : `app/.env.example` |
+| `app/data/msal-cache.local.json` | ta connexion Outlook (jetons), créée à la connexion, supprimée par « Se déconnecter » |
 | `app/data/calendars.local.json` | liens d'abonnement aux calendriers (phase 3) |
 
 Ces fichiers sont listés dans le `.gitignore` à la racine du dépôt.
