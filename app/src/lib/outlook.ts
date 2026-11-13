@@ -311,14 +311,3 @@ export function sanitizeEmail(html: string): string {
   });
 }
 
-/** Document complet pour l'iframe (srcdoc). Les images distantes ne se chargent que si `allowImages`. */
-export function emailDocument(html: string, allowImages: boolean): string {
-  const csp = [
-    "default-src 'none'",
-    "style-src 'unsafe-inline'",
-    `img-src data:${allowImages ? " https: http:" : ""}`,
-    "font-src 'none'",
-    "form-action 'none'",
-  ].join("; ");
-  return `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="${csp}"><base target="_blank"><style>body{margin:0;padding:16px;font-family:-apple-system,system-ui,sans-serif;color:#15181e;background:#fff;word-wrap:break-word}img{max-width:100%;height:auto}</style></head><body>${html}</body></html>`;
-}
