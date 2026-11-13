@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/ui/card";
 import { Notice } from "@/components/ui/notice";
 import { btnGhost } from "@/components/ui/forms";
 import { OutlookState } from "@/components/newsletters/outlook-state";
-import { connectedAccount, folderName, listNewsletters, OutlookError, type NewsletterSummary } from "@/lib/outlook";
+import { connectedAccount, folderLabel, listNewsletters, OutlookError, type NewsletterSummary } from "@/lib/outlook";
 import { relativeTime } from "@/lib/relative-time";
 import { StarButton } from "@/components/favorites/favorites-context";
 
@@ -32,7 +32,7 @@ export default async function NewslettersPage({ searchParams }: { searchParams: 
     <>
       <PageHeader
         title="Newsletters"
-        subtitle={`Le dossier « ${folderName()} » de ta boîte Outlook, en lecture seule.${account ? ` Connecté : ${account}.` : ""}`}
+        subtitle={`Le dossier « ${folderLabel()} » de ta boîte Outlook, en lecture seule.${account ? ` Connecté : ${account}.` : ""}`}
       >
         {account && (
           <div className="flex gap-1">
@@ -52,7 +52,7 @@ export default async function NewslettersPage({ searchParams }: { searchParams: 
         <OutlookState error={error} />
       ) : items.length === 0 ? (
         <p className="rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted">
-          Le dossier « {folderName()} » est vide.
+          Le dossier « {folderLabel()} » est vide.
         </p>
       ) : (
         <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-surface">

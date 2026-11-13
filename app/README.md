@@ -283,6 +283,10 @@ Il faut **une seule fois** : (1) créer le dossier et une règle dans Outlook, (
 
 ### Étape 1 — Ranger les newsletters dans un dossier « Newsletters »
 
+> **Adresse dédiée aux newsletters ?** Saute cette étape : le dashboard lit directement ta **Boîte de
+> réception** (`newslettersFolder: "inbox"` dans `dashboard.config.ts`, réglage actuel). Cette étape
+> ne sert que si tu veux lire un dossier précis (mets alors son nom exact, ex. `"Newsletters"`).
+
 1. Ouvre **https://outlook.live.com** (compte personnel) ou **https://outlook.office.com** (compte pro/école) et connecte-toi.
 2. Dans la colonne de gauche, fais un clic droit sur **Dossiers** (ou sur « Boîte de réception ») → **Créer un dossier** → nomme-le exactement **Newsletters** → Entrée.
 3. Clique sur la **roue dentée** (Paramètres, en haut à droite) → **Courrier** → **Règles** → **+ Ajouter une nouvelle règle**.

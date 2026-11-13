@@ -24,6 +24,8 @@ const CACHE_FILE = path.join(/*turbopackIgnore: true*/ process.cwd(), "data", "m
 const LIST_TTL_MS = 3 * 60 * 1000;
 
 export const folderName = () => config.newslettersFolder;
+/** Nom affiché du dossier lu (« inbox » → « Boîte de réception »). */
+export const folderLabel = () => (folderName().trim().toLowerCase() === "inbox" ? "Boîte de réception" : folderName());
 
 export function outlookSettings() {
   const clientId = process.env.MS_CLIENT_ID?.trim() || "";
@@ -184,10 +186,16 @@ async function graph<T>(pathAndQuery: string): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-/** Identifiant du dossier configuré (racine de la boîte, puis sous-dossiers de la Boîte de réception). */
+/** Identifiant du dossier configuré : « inbox » (Boîte de réception), sinon recherche par nom (racine, puis sous-dossiers de la Boîte de réception). */
 async function folderId(): Promise<string> {
   const name = folderName();
   if (g.__outlookFolder?.name === name) return g.__outlookFolder.id;
+  // « inbox » : la Boîte de réception elle-même (boîte dédiée aux newsletters).
+  if (name.trim().toLowerCase() === "inbox") {
+    const inbox = await graph<{ id: string }>(`/me/mailFolders/inbox?$select=id`);
+    g.__outlookFolder = { name, id: inbox.id };
+    return inbox.id;
+  }
   const filter = encodeURIComponent(`displayName eq '${name.replace(/'/g, "''")}'`);
   type Folders = { value: { id: string; displayName: string }[] };
   let found = (await graph<Folders>(`/me/mailFolders?$filter=${filter}&$select=id,displayName`)).value[0];
