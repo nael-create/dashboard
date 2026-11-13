@@ -74,7 +74,7 @@ export function ArticleRow({
           <span className="line-clamp-2 leading-snug">{a.title}</span>
           <span className="mt-1 flex items-center gap-1.5 text-xs text-muted">
             {isNew && <span className="rounded-full bg-accent px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide text-white">Nouveau</span>}
-            {a.date && <time dateTime={a.date}>{relativeTime(a.date)}</time>}
+            {a.date && <time dateTime={a.date} suppressHydrationWarning>{relativeTime(a.date)}</time>}
             {showPublisher && a.publisher && <><span aria-hidden>·</span><span className="truncate">{a.publisher}</span></>}
           </span>
         </span>
