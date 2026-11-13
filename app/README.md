@@ -26,12 +26,13 @@ seule source de vérité : l'application les lit directement, sans copie.
 
 ## Lancer l'application en double-cliquant (macOS)
 
-À la racine du dépôt se trouve le fichier **`Lancer le dashboard.command`**. Double-clique dessus :
+À la racine du dépôt se trouve le fichier **`Lancer le dashboard.command`**. Double-clique dessus : tu n'as plus jamais besoin du Terminal pour les mises à jour. À chaque lancement, il :
 
-1. une fenêtre Terminal s'ouvre ;
-2. le script vérifie que Node.js 22 (ou plus récent) est installé. Sinon, il affiche un message et ouvre la page de téléchargement ;
-3. il installe les dépendances **seulement si nécessaire** (première fois, ou après une mise à jour) ;
-4. il démarre le dashboard et ouvre **http://127.0.0.1:3000** dans ton navigateur.
+1. **revient sur la branche `main`** si tu étais ailleurs. S'il reste des modifications non sauvegardées, il reste sur ta branche et te demande d'abord de cliquer sur « Sauvegarder » ;
+2. **récupère la dernière version** depuis GitHub, en avance rapide uniquement : jamais forcé, tes modifications ne sont jamais effacées. Si ce n'est pas possible sans risque (pas d'internet, versions différentes), il démarre sur ta version actuelle et explique pourquoi ;
+3. **installe les dépendances seulement si elles ont changé** (`package-lock.json`) ;
+4. **vérifie que l'envoi vers GitHub marche sans mot de passe**. Sinon, une petite clé orange apparaît à côté de « Sauvegarder » : clique dessus pour voir la solution (à faire une fois) ;
+5. vérifie Node.js 22 (sinon il affiche la page de téléchargement), démarre le dashboard et ouvre **http://127.0.0.1:3000**.
 
 Laisse la fenêtre Terminal ouverte pendant que tu utilises le dashboard. **Pour l'arrêter**, ferme cette fenêtre.
 Si le dashboard tourne déjà, un nouveau double-clic ouvre simplement le navigateur.
