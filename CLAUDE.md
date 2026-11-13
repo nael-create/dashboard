@@ -1,5 +1,8 @@
 # CLAUDE.md — Règles de ce dépôt
 
+> **Rappels pour les sessions futures**
+> - À partir du **2026-11-18**, à la prochaine demande du propriétaire, lui rappeler de mettre à jour `fast-xml-parser` (actuellement 5.11.2, faille de gravité faible) vers 5.12.0 ou la dernière version publiée depuis au moins 14 jours. Retirer ce rappel une fois la mise à jour faite.
+
 Ce dépôt est le tableau de bord personnel et la source unique de vérité de son propriétaire : un dossier de fichiers Markdown, maintenu de session en session. Toute session future DOIT suivre les règles ci-dessous.
 
 Les mots « DOIT », « NE DOIT PAS », « DEVRAIT », « PEUT » ont le sens de la RFC 2119 (MUST, MUST NOT, SHOULD, MAY).
@@ -131,7 +134,7 @@ Règles :
 - **Fuseau d'affichage** : celui de l'ordinateur par défaut (`timeZone: null`). `dashboard.config.ts` PEUT forcer un fuseau précis (ex. `"Asia/Kuala_Lumpur"`). Ne jamais coder un fuseau en dur ailleurs : utiliser `displayTimeZone()` (`app/src/lib/display-tz.ts`).
 - Interface en français, responsive (utilisable sur téléphone), thème clair/sombre (système + bouton manuel), une seule couleur d'accent.
 - Navigation : `app/src/lib/navigation.ts`. Ajouter une page = ajouter une ligne ; `mobile: true` la met dans la barre du bas sur téléphone, sinon elle est dans « Plus ».
-- Raccourcis clavier : `app/src/components/shortcuts.tsx`. Les raccourcis à une touche (ex. `N`) ne s'activent JAMAIS pendant la saisie dans un champ.
+- Raccourcis clavier : `app/src/components/shortcuts.tsx`. Les raccourcis à modificateur (`⌘K` / `Ctrl+K`) DOIVENT fonctionner partout, y compris pendant la saisie ; les raccourcis à une touche (`N`, `?`) ne s'activent JAMAIS pendant la saisie dans un champ.
 - Accueil (`HOME_WIDGETS` dans `app/src/app/page.tsx`), dans cet ordre :
   1. **Calendrier** (pleine largeur, élément le plus grand) ;
   2. **À la une** (5 derniers titres d'actus) à côté de **Projets actifs** ;
@@ -282,7 +285,7 @@ note: Note personnelle courte  # facultatif
 
 ## 17. Palette de commandes et raccourcis
 
-- `⌘K` / `Ctrl+K` (ou la loupe de l'en-tête) ouvre la palette ; `Échap` la ferme. `N` : nouvelle notion. `?` : aide des raccourcis. **Aucun raccourci ne s'active pendant la saisie dans un champ** (ni quand une fenêtre est déjà ouverte).
+- `⌘K` / `Ctrl+K` (ou la loupe de l'en-tête) ouvre la palette, **même pendant la saisie dans un champ** ; `Échap` la ferme. `N` : nouvelle notion. `?` : aide des raccourcis. **Les raccourcis à une touche ne s'activent jamais pendant la saisie** (ni quand une fenêtre est déjà ouverte).
 - Recherche approximative sans dépendance (`app/src/lib/fuzzy.ts`, insensible aux accents) sur : projets, domaines, mémos, notions, éléments de l'inbox, favoris, newsletters (objet et expéditeur seulement, liste déjà en mémoire) et titres d'actus déjà en cache. Index : `GET /api/search-index` (aucun appel réseau).
 - Actions : « Ajouter à l'inbox : … », « Nouvelle notion », « Nouveau mémo », « Nouveau projet » (reprennent le texte tapé), « Aller à … » pour chaque page, « Sauvegarder », « Changer de thème », « Faire la revue ».
 - Un texte qui ne correspond à rien propose « Ajouter à l'inbox » comme action par défaut (Entrée) : capture en un raccourci et une touche.

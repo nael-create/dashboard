@@ -129,7 +129,7 @@ Les liens d'abonnement sont **secrets** (quiconque les possède peut lire ton ag
 - Tape quelques lettres : projets, domaines, mémos, notions, inbox, favoris, newsletters (objet et expéditeur) et titres d'actus s'affichent, groupés par type. **↑ ↓** pour choisir, **Entrée** pour ouvrir.
 - **Capture express** : tape une idée qui ne correspond à rien puis **Entrée** → elle est ajoutée à `INBOX.md` avec la date du jour.
 - Actions disponibles : Nouvelle notion, Nouveau mémo, Nouveau projet (avec le texte tapé), Aller à… (chaque page), Sauvegarder, Changer de thème, Faire la revue.
-- Autres raccourcis : **N** (nouvelle notion), **?** (aide). Ils ne se déclenchent jamais pendant que tu écris dans un champ.
+- **⌘ K** marche partout, même pendant que tu écris. Autres raccourcis : **N** (nouvelle notion), **?** (aide) ; ceux-là ne se déclenchent jamais pendant que tu écris dans un champ.
 
 ## Revue de la semaine
 
