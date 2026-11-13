@@ -1,7 +1,7 @@
 "use client";
 
 import { Lock, Pencil, Pin, PinOff, Plus, Search, Trash2 } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { apiJson, isConflict } from "@/lib/client-api";
@@ -39,6 +39,16 @@ function MemoForm({
 }: { initial: Draft; submitLabel: string; onSubmit: (d: Draft) => Promise<boolean>; onCancel?: () => void }) {
   const [d, setD] = useState(initial);
   const [busy, setBusy] = useState(false);
+  // Arrivée depuis la palette (« Nouveau mémo ») : titre pré-rempli et focus.
+  useEffect(() => {
+    if (onCancel) return;
+    const sp = new URLSearchParams(window.location.search);
+    if (!sp.has("nouveau")) return;
+    const t = sp.get("titre");
+    if (t) setD((x) => ({ ...x, title: t }));
+    document.querySelector<HTMLInputElement>('input[aria-label="Titre"]')?.focus();
+  }, [onCancel]);
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setBusy(true);

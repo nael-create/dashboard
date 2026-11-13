@@ -123,6 +123,14 @@ Les liens d'abonnement sont **secrets** (quiconque les possède peut lire ton ag
 - **Intervalles** : 1, 2, 5, 14, 30 puis 90 jours ; « À revoir » la remet au lendemain. Ta progression reste sur ton ordinateur (`app/data/notions-progress.local.json`).
 - **Page Notions** : « Tout consulter » (glossaire, recherche, tri A→Z / par tag / par date, index A–Z, bouton Imprimer) et « Gérer » (modifier, supprimer, remettre à zéro, importer plusieurs notions au format `terme : définition`).
 
+## Palette de commandes et raccourcis
+
+- **⌘ K** (Mac) ou **Ctrl K**, ou la **loupe** en haut : ouvre la palette. **Échap** la ferme.
+- Tape quelques lettres : projets, domaines, mémos, notions, inbox, favoris, newsletters (objet et expéditeur) et titres d'actus s'affichent, groupés par type. **↑ ↓** pour choisir, **Entrée** pour ouvrir.
+- **Capture express** : tape une idée qui ne correspond à rien puis **Entrée** → elle est ajoutée à `INBOX.md` avec la date du jour.
+- Actions disponibles : Nouvelle notion, Nouveau mémo, Nouveau projet (avec le texte tapé), Aller à… (chaque page), Sauvegarder, Changer de thème, Faire la revue.
+- Autres raccourcis : **N** (nouvelle notion), **?** (aide). Ils ne se déclenchent jamais pendant que tu écris dans un champ.
+
 ## Revue de la semaine
 
 - **Quand ?** Le jour choisi (`reviewDay` dans `dashboard.config.ts` : 0 = dimanche, 1 = lundi… 6 = samedi), une ligne discrète « Revue de la semaine — 5 min » apparaît en haut de l'accueil, jusqu'à ce que la revue soit faite. Tu peux aussi la lancer à tout moment : page Projets → « Faire la revue », ou la palette (⌘K).

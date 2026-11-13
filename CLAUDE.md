@@ -279,3 +279,10 @@ note: Note personnelle courte  # facultatif
 - Focus : 3 éléments max parmi les prochaines actions des projets actifs, ou texte libre.
 - Terminer crée `reviews/YYYY-Www.md` depuis le template et régénère DASHBOARD.md. **Une revue existante n'est jamais écrasée** : l'app propose de la modifier (mise à jour de ses sections).
 - Accueil : ligne discrète « Revue de la semaine — 5 min » au-dessus de la grille, à partir du jour `reviewDay` (dashboard.config.ts, 0 = dimanche) et tant que la revue de la semaine n'existe pas.
+
+## 17. Palette de commandes et raccourcis
+
+- `⌘K` / `Ctrl+K` (ou la loupe de l'en-tête) ouvre la palette ; `Échap` la ferme. `N` : nouvelle notion. `?` : aide des raccourcis. **Aucun raccourci ne s'active pendant la saisie dans un champ** (ni quand une fenêtre est déjà ouverte).
+- Recherche approximative sans dépendance (`app/src/lib/fuzzy.ts`, insensible aux accents) sur : projets, domaines, mémos, notions, éléments de l'inbox, favoris, newsletters (objet et expéditeur seulement, liste déjà en mémoire) et titres d'actus déjà en cache. Index : `GET /api/search-index` (aucun appel réseau).
+- Actions : « Ajouter à l'inbox : … », « Nouvelle notion », « Nouveau mémo », « Nouveau projet » (reprennent le texte tapé), « Aller à … » pour chaque page, « Sauvegarder », « Changer de thème », « Faire la revue ».
+- Un texte qui ne correspond à rien propose « Ajouter à l'inbox » comme action par défaut (Entrée) : capture en un raccourci et une touche.

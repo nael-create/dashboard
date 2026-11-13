@@ -9,6 +9,9 @@ import { Shortcuts } from "@/components/shortcuts";
 import { QuickAddNotion } from "@/components/notions/quick-add";
 import { SaveButton } from "@/components/save-button";
 import { FavoritesProvider } from "@/components/favorites/favorites-context";
+import { CommandPalette } from "@/components/command-palette";
+import { ShortcutsHelp } from "@/components/shortcuts-help";
+import { SearchButton } from "@/components/search-button";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -38,6 +41,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               <div className="flex items-center gap-1">
                 <TopNav />
                 <SaveButton />
+                <SearchButton />
                 <QuickAddNotion />
                 <ThemeToggle />
               </div>
@@ -46,6 +50,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <main className="mx-auto max-w-6xl px-4 pb-28 pt-6 sm:px-6 sm:pt-10 lg:pb-16 print:max-w-none print:p-0">{children}</main>
           <BottomNav />
           <Shortcuts />
+          <CommandPalette />
+          <ShortcutsHelp />
           </FavoritesProvider>
         </ThemeProvider>
       </body>

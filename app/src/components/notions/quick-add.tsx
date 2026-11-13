@@ -21,7 +21,9 @@ export function QuickAddNotion() {
   const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const show = () => {
+    const show = (e: Event) => {
+      const term = (e as CustomEvent<{ term?: string }>).detail?.term;
+      if (term) setTerm(term);
       setOpen(true);
       setMsg(null);
       termRef.current?.focus(); // si déjà ouvert ; sinon autoFocus à l'ouverture

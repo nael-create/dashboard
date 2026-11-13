@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { apiJson } from "@/lib/client-api";
 import { btnGhost, btnPrimary, field } from "@/components/ui/forms";
 
@@ -13,6 +13,15 @@ export function NewEntryButtons() {
   const [title, setTitle] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Arrivée depuis la palette (« Nouveau projet »).
+  useEffect(() => {
+    const sp = new URLSearchParams(window.location.search);
+    if (sp.get("nouveau") === "projet") {
+      setKind("project");
+      setTitle(sp.get("titre") ?? "");
+    }
+  }, []);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
