@@ -26,12 +26,13 @@ seule source de vérité : l'application les lit directement, sans copie.
 
 ## Lancer l'application en double-cliquant (macOS)
 
-À la racine du dépôt se trouve le fichier **`Lancer le dashboard.command`**. Double-clique dessus :
+À la racine du dépôt se trouve le fichier **`Lancer le dashboard.command`**. Double-clique dessus : tu n'as plus jamais besoin du Terminal pour les mises à jour. À chaque lancement, il :
 
-1. une fenêtre Terminal s'ouvre ;
-2. le script vérifie que Node.js 22 (ou plus récent) est installé. Sinon, il affiche un message et ouvre la page de téléchargement ;
-3. il installe les dépendances **seulement si nécessaire** (première fois, ou après une mise à jour) ;
-4. il démarre le dashboard et ouvre **http://127.0.0.1:3000** dans ton navigateur.
+1. **revient sur la branche `main`** si tu étais ailleurs. S'il reste des modifications non sauvegardées, il reste sur ta branche et te demande d'abord de cliquer sur « Sauvegarder » ;
+2. **récupère la dernière version** depuis GitHub, en avance rapide uniquement : jamais forcé, tes modifications ne sont jamais effacées. Si ce n'est pas possible sans risque (pas d'internet, versions différentes), il démarre sur ta version actuelle et explique pourquoi ;
+3. **installe les dépendances seulement si elles ont changé** (`package-lock.json`) ;
+4. **vérifie que l'envoi vers GitHub marche sans mot de passe**. Sinon, une petite clé orange apparaît à côté de « Sauvegarder » : clique dessus pour voir la solution (à faire une fois) ;
+5. vérifie Node.js 22 (sinon il affiche la page de téléchargement), démarre le dashboard et ouvre **http://127.0.0.1:3000**.
 
 Laisse la fenêtre Terminal ouverte pendant que tu utilises le dashboard. **Pour l'arrêter**, ferme cette fenêtre.
 Si le dashboard tourne déjà, un nouveau double-clic ouvre simplement le navigateur.
@@ -82,7 +83,7 @@ Le thème clair/sombre suit le réglage du système ; le bouton en haut à droit
 
 | Adresse | Contenu | État |
 |---|---|---|
-| `/` | Accueil : calendrier, « À la une » (phase 6), projets actifs, aperçus newsletters et mémo | ✅ |
+| `/` | Accueil : 01. agenda, 02. à la une (grille d'images), puis projets actifs, à retenir aujourd'hui, mémo, newsletters | ✅ |
 | `/projets` | Focus de la semaine, projets et domaines, filtres, « Nouveau projet » / « Nouveau domaine » | ✅ |
 | `/projets/<nom>` et `/domaines/<nom>` | Modifier le projet / domaine (champs, sections, actions, journal) | ✅ |
 | `/news` | Actus : widgets par source ou catégorie, glisser-déposer, masquer, sources gérées depuis l'app | ✅ |
@@ -107,6 +108,18 @@ Le calendrier de l'accueil affiche tes agendas Outlook, Google ou iCloud **en le
 
 Les liens d'abonnement sont **secrets** (quiconque les possède peut lire ton agenda). Ils sont enregistrés uniquement dans `app/data/calendars.local.json`, ignoré par git, et ne sont jamais renvoyés au navigateur.
 
+### Tes propres événements (calendrier « Perso »)
+
+Les calendriers abonnés (Outlook, Google, iCloud) restent en lecture seule. Pour noter tes propres rendez-vous, le dashboard a un calendrier intégré **« Perso »**, enregistré dans `AGENDA.md` (lisible et modifiable à la main, sauvegardé avec le bouton « Sauvegarder »).
+
+- **Ajouter** : clique sur une heure libre (vues Jour et Semaine), sur un jour (vue Mois), sur « + Ajouter » d'un jour (semaine sur téléphone) ou sur **+ Événement** en bas du calendrier. Indique le titre (obligatoire), la date, les heures ou « Toute la journée », et si tu veux un lieu, une note, « Chaque semaine ». **Entrée** enregistre.
+- **Modifier / supprimer** : clique sur l'événement. La suppression demande une confirmation. Un événement répété est modifié ou supprimé pour toutes les semaines.
+- **Événement d'un calendrier abonné** : un clic affiche ses détails seulement (il se modifie dans Outlook, Google ou iCloud).
+- **Nom et couleur** de « Perso » : « Gérer les calendriers ».
+- Chaque événement enregistre son fuseau horaire (celui de ton ordinateur au moment de la création) : en voyage, il s'affiche à la bonne heure locale.
+
+**Plus tard : écrire directement dans Outlook ou Google ?** Ce n'est pas fait ici (les abonnements ICS sont en lecture seule par nature). Il faudrait passer par l'API de chaque service avec une autorisation d'écriture : Microsoft Graph avec la permission `Calendars.ReadWrite` (même principe de connexion que les newsletters, mais avec une permission plus large), ou l'API Google Calendar avec une connexion Google (OAuth) et la portée `calendar.events`. Le dashboard enverrait alors l'événement au service au lieu de l'écrire dans `AGENDA.md`.
+
 ## Actus (flux RSS)
 
 - **Page Actus** : un widget par source (ou par catégorie : bouton « Sources » → « Un widget par »). 5 derniers articles par widget ; clic sur le nom du widget → liste complète ; clic sur un article → il s'ouvre sur son site, dans un nouvel onglet.
@@ -129,7 +142,7 @@ Les liens d'abonnement sont **secrets** (quiconque les possède peut lire ton ag
 - Tape quelques lettres : projets, domaines, mémos, notions, inbox, favoris, newsletters (objet et expéditeur) et titres d'actus s'affichent, groupés par type. **↑ ↓** pour choisir, **Entrée** pour ouvrir.
 - **Capture express** : tape une idée qui ne correspond à rien puis **Entrée** → elle est ajoutée à `INBOX.md` avec la date du jour.
 - Actions disponibles : Nouvelle notion, Nouveau mémo, Nouveau projet (avec le texte tapé), Aller à… (chaque page), Sauvegarder, Changer de thème, Faire la revue.
-- Autres raccourcis : **N** (nouvelle notion), **?** (aide). Ils ne se déclenchent jamais pendant que tu écris dans un champ.
+- **⌘ K** marche partout, même pendant que tu écris. Autres raccourcis : **N** (nouvelle notion), **?** (aide) ; ceux-là ne se déclenchent jamais pendant que tu écris dans un champ.
 
 ## Revue de la semaine
 

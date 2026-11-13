@@ -131,7 +131,7 @@ export function MemoBoard({ initial, initialVersion }: { initial: MemoItem[]; in
   return (
     <div className="space-y-6">
       <section className="rounded-2xl border border-border bg-surface p-5 sm:p-6">
-        <h2 className="mb-4 flex items-center gap-2 text-[15px] font-semibold tracking-tight">
+        <h2 className="mb-5 flex items-center gap-2 title-md lowercase">
           <Plus className="size-4 text-accent-text" aria-hidden /> Nouveau mémo
         </h2>
         <MemoForm

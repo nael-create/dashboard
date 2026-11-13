@@ -20,6 +20,33 @@ import { detectSensitive } from "./secrets";
 const CONTENT_PATHSPECS = [":(glob)*.md", "projects", "areas", "reviews", "archive"] as const;
 const repo = () => CONTENT_DIR;
 
+/* ------------------------------------------------------------------ */
+/* Test d'envoi vers GitHub (écrit par le lanceur, mis à jour ici)      */
+/* ------------------------------------------------------------------ */
+
+export type PushCheck = { result: "ok" | "auth" | "network" | "other"; checkedAt: string } | null;
+const pushCheckFile = () =>
+  path.join(/*turbopackIgnore: true*/ process.env.DASHBOARD_DATA_DIR ?? path.join(/*turbopackIgnore: true*/ process.cwd(), "data"), "push-check.local.json");
+
+export async function readPushCheck(): Promise<PushCheck> {
+  try {
+    const raw = JSON.parse(await fs.readFile(/*turbopackIgnore: true*/ pushCheckFile(), "utf8"));
+    return ["ok", "auth", "network", "other"].includes(raw.result) ? raw : null;
+  } catch {
+    return null;
+  }
+}
+
+async function writePushCheck(result: NonNullable<PushCheck>["result"]) {
+  try {
+    const file = pushCheckFile();
+    await fs.mkdir(/*turbopackIgnore: true*/ path.dirname(file), { recursive: true });
+    await fs.writeFile(/*turbopackIgnore: true*/ file, JSON.stringify({ result, checkedAt: new Date().toISOString() }) + "\n");
+  } catch {
+    /* information facultative */
+  }
+}
+
 interface Run { code: number; stdout: string; stderr: string }
 
 function git(args: readonly string[], input?: string, timeoutMs = 60_000): Promise<Run> {
@@ -58,6 +85,8 @@ export interface SaveStatus {
   ahead: number;
   /** Âge (jours) de la plus ancienne modification non sauvegardée. */
   oldestDays: number | null;
+  /** Dernier test d'envoi vers GitHub (lanceur ou dernière sauvegarde). */
+  pushCheck: PushCheck;
 }
 
 /** Analyse `git status --porcelain=v1 -z`. */
@@ -76,7 +105,7 @@ function parseStatus(out: string): string[] {
 export async function saveStatus(): Promise<SaveStatus> {
   const inside = await git(["rev-parse", "--is-inside-work-tree"]);
   if (inside.code !== 0 || inside.stdout.trim() !== "true") {
-    return { isRepo: false, branch: null, files: [], count: 0, ahead: 0, oldestDays: null };
+    return { isRepo: false, branch: null, files: [], count: 0, ahead: 0, oldestDays: null, pushCheck: null };
   }
   const [branch, status, ahead] = await Promise.all([
     git(["rev-parse", "--abbrev-ref", "HEAD"]),
@@ -100,6 +129,7 @@ export async function saveStatus(): Promise<SaveStatus> {
     count: files.length,
     ahead: ahead.code === 0 ? Number(ahead.stdout.trim()) || 0 : 0,
     oldestDays: oldest === null ? null : Math.floor((Date.now() - oldest) / 86_400_000),
+    pushCheck: await readPushCheck(),
   };
 }
 
@@ -326,7 +356,11 @@ async function doSave(confirmOtherBranch: boolean): Promise<SaveResult> {
   const push = upstream.code === 0
     ? await git(["push", "--quiet"], undefined, 120_000)
     : await git(["push", "--quiet", "--set-upstream", "origin", "HEAD"], undefined, 120_000);
-  if (push.code !== 0) return { kind: "error", stage: "push", committed: true, message: explainPush(push.stderr) };
+  if (push.code !== 0) {
+    if (/could not read Username|Authentication failed|terminal prompts disabled|Permission denied|403|denied to/i.test(push.stderr)) await writePushCheck("auth");
+    return { kind: "error", stage: "push", committed: true, message: explainPush(push.stderr) };
+  }
+  await writePushCheck("ok");
   return { kind: "ok", message, pushed: true };
 }
 

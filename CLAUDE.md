@@ -1,5 +1,8 @@
 # CLAUDE.md — Règles de ce dépôt
 
+> **Rappels pour les sessions futures**
+> - À partir du **2026-11-18**, à la prochaine demande du propriétaire, lui rappeler de mettre à jour `fast-xml-parser` (actuellement 5.11.2, faille de gravité faible) vers 5.12.0 ou la dernière version publiée depuis au moins 14 jours. Retirer ce rappel une fois la mise à jour faite.
+
 Ce dépôt est le tableau de bord personnel et la source unique de vérité de son propriétaire : un dossier de fichiers Markdown, maintenu de session en session. Toute session future DOIT suivre les règles ci-dessous.
 
 Les mots « DOIT », « NE DOIT PAS », « DEVRAIT », « PEUT » ont le sens de la RFC 2119 (MUST, MUST NOT, SHOULD, MAY).
@@ -25,6 +28,7 @@ MEMO.md                 # Choses à retenir (voir section 10)
 NEWS.md                 # Sources d'actus RSS et disposition des widgets (voir section 11)
 NOTIONS.md              # Glossaire à mémoriser (voir section 12)
 FAVORIS.md              # Favoris (voir section 15)
+AGENDA.md               # Événements personnels, calendrier « Perso » (voir section 18)
 .gitignore              # Secrets et fichiers générés
 Lancer le dashboard.command  # Lanceur macOS en double-clic (doit rester exécutable)
 app/                    # Application web (code uniquement, voir section 9)
@@ -116,6 +120,7 @@ Séparation stricte :
   | `NOTIONS.md` | 7 | notions (ajout rapide, import en masse, modification, suppression avec confirmation) |
   | `INBOX.md` | 11 | ajout daté (palette), élément routé coché `- [x]`, « Supprimer » retire la ligne |
   | `reviews/YYYY-Www.md` | 11 | revue générée depuis `reviews/_template.md` (ou sections mises à jour si elle existe déjà) |
+  | `AGENDA.md` | 18 | événements « Perso » (création, modification, suppression avec confirmation), nom et couleur du calendrier |
   | `FAVORIS.md` | 10 | favoris (ajout / retrait par l'étoile, note personnelle, retrait d'un élément supprimé) |
   | `projects/*/README.md`, `areas/*/README.md` | 9 | frontmatter, sections, actions, journal ; création depuis `_template` |
   | `archive/` | 9 | déplacement d'un projet passé à `done` / `dropped` (après confirmation) |
@@ -130,17 +135,19 @@ Règles :
 - Personnalisation (titre, couleur d'accent, fuseau, langue) : un seul fichier, `app/dashboard.config.ts`.
 - **Fuseau d'affichage** : celui de l'ordinateur par défaut (`timeZone: null`). `dashboard.config.ts` PEUT forcer un fuseau précis (ex. `"Asia/Kuala_Lumpur"`). Ne jamais coder un fuseau en dur ailleurs : utiliser `displayTimeZone()` (`app/src/lib/display-tz.ts`).
 - Interface en français, responsive (utilisable sur téléphone), thème clair/sombre (système + bouton manuel), une seule couleur d'accent.
-- Navigation : `app/src/lib/navigation.ts`. Ajouter une page = ajouter une ligne ; `mobile: true` la met dans la barre du bas sur téléphone, sinon elle est dans « Plus ».
-- Raccourcis clavier : `app/src/components/shortcuts.tsx`. Les raccourcis à une touche (ex. `N`) ne s'activent JAMAIS pendant la saisie dans un champ.
-- Accueil (`HOME_WIDGETS` dans `app/src/app/page.tsx`), dans cet ordre :
-  1. **Calendrier** (pleine largeur, élément le plus grand) ;
-  2. **À la une** (5 derniers titres d'actus) à côté de **Projets actifs** ;
-  3. **À retenir aujourd'hui** (révision des notions, sous « À la une »), **Dernières newsletters** et **Mémo** (entrées épinglées).
-- Le calendrier reste le premier et le plus grand élément, suivi de « À la une » (`NewsWidget`, rempli par les actus). Aucune fonctionnalité ne doit prendre leur place.
+- **Design** : système éditorial décrit dans `app/previews/redesign/BRIEF.md` (fond grège / noir chaud, police libre Inter Tight auto-hébergée, titres en minuscules très grands, petites capitales pour les étiquettes, fils fins, aucun arrondi sur cartes et images, une seule couleur d'accent). Jetons de couleur et utilitaires (`display`, `section-title`, `title-md`, `label`, `link-underline`, `rise`) dans `app/src/app/globals.css`. Mouvement discret, désactivé si `prefers-reduced-motion`. Contraste au moins AA dans les deux modes, focus visible partout.
+- **En-tête** (`app/src/components/nav.tsx`, liste `HEADER_ITEMS`) : nom, navigation complète (Accueil, Projets, Notions, Mémo, Newsletters, News, Favoris, Revue), heure locale, puis Sauvegarder, loupe (palette), « + » (notion) et thème. Sur téléphone : bouton « Menu » ouvrant un menu plein écran numéroté. La palette utilise `app/src/lib/navigation.ts` pour ses « Aller à … ».
+- Raccourcis clavier : `app/src/components/shortcuts.tsx`. Les raccourcis à modificateur (`⌘K` / `Ctrl+K`) DOIVENT fonctionner partout, y compris pendant la saisie ; les raccourcis à une touche (`N`, `?`) ne s'activent JAMAIS pendant la saisie dans un champ.
+- **Accueil** (`app/src/app/page.tsx`), de haut en bas — cet ordre est imposé :
+  1. **En-tête** ;
+  2. **01. agenda** : le calendrier, premier bloc de contenu et le plus grand (toutes ses fonctions) ;
+  3. **02. à la une** : grille d'images des grands sujets (`app/src/components/home/headlines-grid.tsx`), dans l'ordre éditorial du flux FT International entrecoupé de Reuters (2 pour 1) ; un article sans image devient une carte typographique (titre sur aplat), jamais une image cassée ; étoiles actives ; pas d'autre extraction que la règle `og:image` existante ;
+  4. **tout le reste** : ligne « revue de la semaine » (jour de revue), 03. projets actifs, 04. à retenir aujourd'hui (notions), 05. mémo, 06. newsletters.
+- Aucune fonctionnalité ne doit prendre la place du calendrier ni de « à la une ».
 - Le **Focus de la semaine** n'est plus sur l'accueil : il est en haut de la page `/projets`. DASHBOARD.md garde sa section « Focus de la semaine » inchangée.
-- Lanceur macOS : `Lancer le dashboard.command` vérifie Node.js ≥ 22, installe les dépendances seulement si besoin, démarre l'app et ouvre le navigateur. Il DOIT rester exécutable (`git update-index --chmod=+x`).
+- Lanceur macOS : `Lancer le dashboard.command`. À chaque lancement : (1) repasse sur `main` sauf s'il reste du contenu non sauvegardé (message demandant « Sauvegarder ») ; (2) `git pull --ff-only` (jamais forcé, n'efface rien ; en cas d'échec, démarre sur la version locale et explique) ; (3) `npm ci` seulement si l'empreinte de `package-lock.json` a changé ; (4) `git push --dry-run` non interactif, résultat écrit dans `app/data/push-check.local.json` et affiché dans le panneau « Sauvegarder » (clé orange) ; puis vérifie Node.js ≥ 22 et démarre l'app. Il DOIT rester exécutable (`git update-index --chmod=+x`).
 - Les instructions de test données au propriétaire NE DOIVENT contenir que des étapes réalisables sur son ordinateur (l'app n'écoute que sur 127.0.0.1 : pas de test sur téléphone ; pour l'affichage mobile, utiliser le mode « responsive » des outils de développement du navigateur).
-- Toutes les phases sont commitées sur la même branche de travail ; la fusion dans `main` se fait par une pull request ouverte par le propriétaire sur GitHub.
+- Le travail se fait sur une branche ; une session PEUT ouvrir et fusionner elle-même une pull request vers `main` (autorisation du propriétaire). **Jamais de push forcé, jamais de réécriture de l'historique de `main`.**
 - **Ne rien déployer.** Tout déploiement futur DOIT exiger une authentification : `app/src/proxy.ts` bloque tout accès non local tant que `DASHBOARD_BASIC_AUTH` n'est pas défini.
 - **Dépendances** : versions figées exactement dans `package.json` (pas de `^` ni `~`, `save-exact=true` dans `app/.npmrc`). Ne JAMAIS installer une version publiée il y a moins de 14 jours ; utiliser `npm install --before=<aujourd'hui − 14 j>`.
 
@@ -155,7 +162,7 @@ Règles :
 - Réglages du calendrier (abonnements, fuseaux, regroupement) : `app/data/calendars.local.json` (ignoré par git).
 - Tests : `npm test` dans `app/` (Vitest). Les fichiers ICS de test sont dans `app/test/fixtures/` (données fictives) ; tout cas réel problématique DOIT y être reproduit avec un test.
 - Un flux en échec affiche le nom du calendrier et la raison, sans bloquer les autres.
-- Lecture seule : pas de création ni de modification d'événements.
+- Les calendriers **abonnés** restent en lecture seule (clic = détails). Les événements personnels vont dans le calendrier intégré « Perso » (section 18).
 
 ### Secrets
 
@@ -210,7 +217,7 @@ enabled: yes
 - **Lien privé** (URL contenant une clé personnelle, ex. flux myFT) : JAMAIS dans NEWS.md. Il est stocké dans `app/data/news.local.json` (ignoré par git). L'app refuse d'enregistrer dans NEWS.md un lien qui ressemble à une clé et demande de cocher « Lien privé ».
 - Flux téléchargés côté serveur uniquement, au plus une fois toutes les 5 minutes par flux (un flux en échec peut être retenté par « Rafraîchir » au bout d'une minute) ; dédoublonnage (même URL ou titre quasi identique). Aucun article n'est écrit dans le dépôt, aucun texte d'article n'est récupéré, aucun paywall n'est contourné, aucun identifiant FT n'est utilisé. Pas d'intégration X / Twitter.
 - Vignettes : celles du flux (media:content, media:thumbnail, enclosure), sinon uniquement la balise `og:image` de l'article, au plus une fois par article, en cache dans le dossier temporaire du système (hors dépôt). Jamais pour les liens Google News.
-- Accueil : le widget existant « À la une » affiche les 5 derniers titres ; ne pas ajouter d'autre widget d'actus.
+- Accueil : la section « à la une » (grille d'images, 10 sujets) est la seule présence des actus sur l'accueil ; ne pas en ajouter d'autre.
 
 ## 12. NOTIONS.md — notions (répétition espacée)
 
@@ -278,11 +285,38 @@ note: Note personnelle courte  # facultatif
 - Inbox, élément par élément : « Action d'un projet » (devient une prochaine action), « Notion » (à compléter), « Mémo », « Supprimer » (retire la ligne, avec confirmation), « Garder ». Les éléments routés sont cochés `- [x]`.
 - Focus : 3 éléments max parmi les prochaines actions des projets actifs, ou texte libre.
 - Terminer crée `reviews/YYYY-Www.md` depuis le template et régénère DASHBOARD.md. **Une revue existante n'est jamais écrasée** : l'app propose de la modifier (mise à jour de ses sections).
-- Accueil : ligne discrète « Revue de la semaine — 5 min » au-dessus de la grille, à partir du jour `reviewDay` (dashboard.config.ts, 0 = dimanche) et tant que la revue de la semaine n'existe pas.
+- Accueil : ligne discrète « revue de la semaine — 5 min » en tête de la partie « tout le reste », à partir du jour `reviewDay` (dashboard.config.ts, 0 = dimanche) et tant que la revue de la semaine n'existe pas.
 
 ## 17. Palette de commandes et raccourcis
 
-- `⌘K` / `Ctrl+K` (ou la loupe de l'en-tête) ouvre la palette ; `Échap` la ferme. `N` : nouvelle notion. `?` : aide des raccourcis. **Aucun raccourci ne s'active pendant la saisie dans un champ** (ni quand une fenêtre est déjà ouverte).
+- `⌘K` / `Ctrl+K` (ou la loupe de l'en-tête) ouvre la palette, **même pendant la saisie dans un champ** ; `Échap` la ferme. `N` : nouvelle notion. `?` : aide des raccourcis. **Les raccourcis à une touche ne s'activent jamais pendant la saisie** (ni quand une fenêtre est déjà ouverte).
 - Recherche approximative sans dépendance (`app/src/lib/fuzzy.ts`, insensible aux accents) sur : projets, domaines, mémos, notions, éléments de l'inbox, favoris, newsletters (objet et expéditeur seulement, liste déjà en mémoire) et titres d'actus déjà en cache. Index : `GET /api/search-index` (aucun appel réseau).
 - Actions : « Ajouter à l'inbox : … », « Nouvelle notion », « Nouveau mémo », « Nouveau projet » (reprennent le texte tapé), « Aller à … » pour chaque page, « Sauvegarder », « Changer de thème », « Faire la revue ».
 - Un texte qui ne correspond à rien propose « Ajouter à l'inbox » comme action par défaut (Entrée) : capture en un raccourci et une touche.
+
+## 18. AGENDA.md — calendrier « Perso »
+
+```markdown
+## Réglages
+name: Perso
+color: #a3451f
+
+## 2026-11-20 — Dîner chez Paul
+id: evt-20261120-1
+start: 2026-11-20 19:30          # « YYYY-MM-DD » seul = journée entière
+end: 2026-11-20 22:00            # journée entière : date de fin INCLUSE
+timezone: Asia/Kuala_Lumpur      # fuseau IANA explicite, OBLIGATOIRE
+location: Chez Paul              # facultatif
+repeat: weekly                   # facultatif (seule répétition proposée)
+until: 2026-12-31                # facultatif
+
+Note libre (facultative).
+```
+
+- Calendrier intégré, toujours présent, nom et couleur modifiables dans « Gérer les calendriers » (jamais supprimé, pas de réglage de fuseau : chaque événement porte le sien).
+- Création : clic sur un créneau libre (vues jour / semaine sur grand écran), « + Ajouter » d'un jour (semaine sur téléphone), clic sur un jour (vue mois) ou « + Événement ». Fenêtre : titre (obligatoire), date, heures ou « toute la journée », lieu, note, « chaque semaine ». Entrée enregistre.
+- Clic sur un événement « Perso » : modifier ou supprimer (avec confirmation ; une répétition est modifiée / supprimée en entier). Clic sur un événement abonné : détails seulement.
+- Nouvel événement : fuseau = fuseau d'affichage, écrit explicitement ; une modification garde le fuseau d'origine. Les occurrences sont recalculées dans le fuseau d'affichage (l'heure murale est conservée aux changements d'heure).
+- Inclus dans le regroupement d'affichage, le fuseau, la palette (groupe « Agenda perso », ouvre `/?jour=YYYY-MM-DD`) et le bouton « Sauvegarder » (fichier `.md` racine). Bloc illisible (ex. sans fuseau) : ignoré sans erreur. Pas de secrets.
+- Code : `app/src/lib/agenda.ts`, routes `app/src/app/api/agenda/`, fenêtre `app/src/components/calendar/event-dialog.tsx`, tests `app/test/agenda.test.ts`.
+- Écrire dans Outlook ou Google est hors périmètre (voir `app/README.md` pour une piste future).

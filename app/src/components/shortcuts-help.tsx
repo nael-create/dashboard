@@ -7,7 +7,7 @@ import { iconBtn } from "@/components/ui/forms";
 export const OPEN_HELP = "dashboard:open-help";
 
 const SHORTCUTS: [string, string][] = [
-  ["⌘ K  /  Ctrl K", "Ouvrir la palette de commandes (recherche, actions, capture)"],
+  ["⌘ K  /  Ctrl K", "Ouvrir la palette de commandes (recherche, actions, capture), même pendant la saisie"],
   ["Entrée (dans la palette)", "Valider ; un texte qui ne correspond à rien est ajouté à l'inbox"],
   ["↑  ↓", "Naviguer dans les résultats"],
   ["Échap", "Fermer la palette, l'aide ou l'ajout rapide"],
@@ -44,7 +44,7 @@ export function ShortcutsHelp() {
             </div>
           ))}
         </dl>
-        <p className="mt-4 text-xs text-muted">Les raccourcis à une touche ne s&apos;activent jamais pendant que tu écris dans un champ.</p>
+        <p className="mt-4 text-xs text-muted">Les raccourcis à une touche (N, ?) ne s&apos;activent jamais pendant que tu écris dans un champ ; ⌘ K fonctionne partout.</p>
       </div>
     </div>
   );

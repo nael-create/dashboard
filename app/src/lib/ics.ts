@@ -26,6 +26,9 @@ export interface CalEvent {
   /** Exclusif. Même format que start. */
   end: string;
   location?: string;
+  /** Calendrier « Perso » (AGENDA.md) : identifiant de l'événement d'origine, modifiable. */
+  sourceId?: string;
+  editable?: boolean;
 }
 
 export interface FeedError {

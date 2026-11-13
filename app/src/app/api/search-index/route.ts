@@ -5,13 +5,14 @@ import { readFavorites } from "@/lib/favorites";
 import { readInbox } from "@/lib/inbox";
 import { readMemo } from "@/lib/memo";
 import { readNotions } from "@/lib/notions";
+import { readAgenda } from "@/lib/agenda";
 import { cachedNewsletters } from "@/lib/outlook";
 import { cachedArticles, byDateDesc, dedupe } from "@/lib/rss";
 
 export const dynamic = "force-dynamic";
 
 export interface SearchItem {
-  type: "project" | "area" | "memo" | "notion" | "inbox" | "favorite" | "newsletter" | "news";
+  type: "project" | "area" | "memo" | "notion" | "inbox" | "favorite" | "newsletter" | "news" | "event";
   id: string;
   title: string;
   subtitle?: string;
@@ -25,8 +26,8 @@ export interface SearchItem {
  */
 export async function GET() {
   try {
-    const [projects, areas, memo, notions, inbox, favorites] = await Promise.all([
-      listProjects(), listAreas(), readMemo(), readNotions(), readInbox(), readFavorites(),
+    const [projects, areas, memo, notions, inbox, favorites, agenda] = await Promise.all([
+      listProjects(), listAreas(), readMemo(), readNotions(), readInbox(), readFavorites(), readAgenda(),
     ]);
     const items: SearchItem[] = [
       ...projects.map((p) => ({ type: "project" as const, id: p.slug, title: p.title, subtitle: [p.status, p.priority].filter(Boolean).join(" · "), href: `/projets/${p.slug}` })),
@@ -40,6 +41,11 @@ export async function GET() {
       ...favorites.favorites.map((f) => ({
         type: "favorite" as const, id: f.id, title: f.title, subtitle: f.source || undefined,
         href: f.type === "article" || f.type === "newsletter" ? f.ref : "/favoris", external: f.type === "article" || f.type === "newsletter",
+      })),
+      ...agenda.events.filter((e) => !e.problem).map((e) => ({
+        type: "event" as const, id: e.id, title: e.title,
+        subtitle: [e.allDay ? e.start : e.start.replace(" ", " · "), e.repeat ? "chaque semaine" : "", e.location].filter(Boolean).join(" — "),
+        href: `/?jour=${e.start.slice(0, 10)}`,
       })),
       ...cachedNewsletters().map((m) => ({ type: "newsletter" as const, id: m.id, title: m.subject, subtitle: m.from, href: `/newsletters/${encodeURIComponent(m.id)}` })),
       ...dedupe([...cachedArticles()].sort(byDateDesc)).slice(0, 300).map((a) => ({ type: "news" as const, id: a.id, title: a.title, subtitle: a.publisher, href: a.link, external: true })),

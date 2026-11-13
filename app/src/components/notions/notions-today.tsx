@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, GraduationCap } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
@@ -15,7 +15,7 @@ interface DuePayload { items: DueNotion[]; totalDue: number; learned: number; to
  * Le terme d'abord ; un clic révèle la définition ; « Je savais » / « À revoir ».
  * Une notion ignorée reste simplement à revoir.
  */
-export function NotionsToday() {
+export function NotionsToday({ n }: { n?: string } = {}) {
   const [data, setData] = useState<DuePayload | null>(null);
   const [index, setIndex] = useState(0);
   const [revealed, setRevealed] = useState(false);
@@ -59,13 +59,14 @@ export function NotionsToday() {
 
 
   return (
-    <section className="flex h-full flex-col rounded-2xl border border-border bg-surface p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04)] sm:p-6">
-      <header className="mb-4 flex items-center justify-between gap-3">
-        <h2 className="flex items-center gap-2 text-[15px] font-semibold tracking-tight">
-          <GraduationCap className="size-4 text-accent-text" aria-hidden /> À retenir aujourd&apos;hui
+    <section className="rise flex h-full flex-col border-t border-text/80 pt-4 sm:pt-5">
+      <header className="mb-5 flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+        <h2 className="flex items-baseline gap-3">
+          {n && <span className="label text-muted">{n}.</span>}
+          <span className="title-md lowercase">À retenir aujourd&apos;hui</span>
         </h2>
-        <Link href="/notions" className="group inline-flex items-center gap-1 text-sm text-muted transition-colors hover:text-accent-text">
-          Notions <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" aria-hidden />
+        <Link href="/notions" className="label link-underline inline-flex items-center gap-1 pt-1 text-muted hover:text-text">
+          Notions <ArrowUpRight className="size-3" aria-hidden />
         </Link>
       </header>
 
@@ -90,11 +91,11 @@ export function NotionsToday() {
             onClick={() => setRevealed(true)}
             disabled={revealed}
             aria-expanded={revealed}
-            className="flex-1 rounded-xl bg-surface-2 p-4 text-left transition-colors hover:bg-accent-soft disabled:hover:bg-surface-2"
+            className="flex min-h-48 flex-1 flex-col justify-between bg-surface-2 p-5 text-left transition-colors hover:bg-accent-soft disabled:hover:bg-surface-2 sm:p-6"
           >
-            <p className="text-lg font-semibold leading-snug">{current.term}</p>
+            <p className="text-[clamp(1.6rem,3vw,2.4rem)] font-light leading-[1.02] tracking-[-0.035em]">{current.term}</p>
             {!revealed ? (
-              <p className="mt-2 text-sm text-muted">Touche pour voir la définition</p>
+              <p className="label mt-6 text-muted">Touche pour voir la définition</p>
             ) : (
               <div className="mt-2 space-y-2 text-sm">
                 <div className="md"><ReactMarkdown remarkPlugins={[remarkGfm]} skipHtml>{current.definition}</ReactMarkdown></div>
@@ -104,10 +105,10 @@ export function NotionsToday() {
           </button>
           {revealed && (
             <div className="mt-3 grid grid-cols-2 gap-2">
-              <button type="button" onClick={() => answer(false)} className="rounded-full border border-border px-3 py-2 text-sm transition-colors hover:bg-surface-2">
+              <button type="button" onClick={() => answer(false)} className="rounded-full border border-text px-3 py-2 text-[12px] uppercase tracking-[0.04em] transition-colors hover:bg-surface-2">
                 À revoir
               </button>
-              <button type="button" onClick={() => answer(true)} className="rounded-full bg-accent px-3 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90">
+              <button type="button" onClick={() => answer(true)} className="rounded-full bg-text px-3 py-2 text-[12px] font-medium uppercase tracking-[0.04em] text-bg transition-opacity hover:opacity-85">
                 Je savais
               </button>
             </div>

@@ -63,7 +63,7 @@ export function NewsSourcesDialog({
       <datalist id={catList}>{categories.map((c) => <option key={c} value={c} />)}</datalist>
       <div className="max-h-[85dvh] overflow-y-auto p-5 sm:p-6">
         <header className="mb-5 flex items-center justify-between">
-          <h2 className="text-lg font-semibold tracking-tight">Sources d&apos;actus</h2>
+          <h2 className="title-md lowercase">Sources d&apos;actus</h2>
           <button type="button" onClick={onClose} aria-label="Fermer" className={iconBtn}><X className="size-4" /></button>
         </header>
 

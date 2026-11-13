@@ -1,12 +1,14 @@
 "use client";
 
-import { AlertTriangle, CalendarDays, ChevronLeft, ChevronRight, MapPin, RefreshCw, Settings2 } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ArrowRight, MapPin, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   WEEKDAYS, bucketByDay, fmtDayNum, fmtLongDay, fmtShortDay, fmtWeekday, shift, timeLabel,
   mergeAdjacent, todayInTz, viewTitle, visibleRange, type DisplayEvent, type View, type ViewEvent,
 } from "@/lib/calendar-view";
 import { CalendarManager, type PublicCalendar, type ZoneInfo } from "./calendar-manager";
+import { EventDialog, type EventDialogState } from "./event-dialog";
 
 interface FeedError { calendarId: string; name: string; message: string; staleSince?: string }
 interface Payload {
@@ -18,6 +20,12 @@ interface Payload {
   /** Fuseau d'affichage (celui de l'ordinateur, sauf réglage contraire). */
   displayTz: string;
   options: { mergeAdjacent: boolean };
+}
+
+/** Clic sur un créneau libre (jour + minutes) ou sur un événement : branchés par le calendrier « Perso ». */
+export interface CalendarHandlers {
+  onSlot?: (day: string, minutes: number | null) => void;
+  onEvent?: (ev: DisplayEvent, day: string) => void;
 }
 
 const VIEWS: { id: View; label: string }[] = [
@@ -38,6 +46,16 @@ export function CalendarWidget() {
   const [managerOpen, setManagerOpen] = useState(false);
   const requestId = useRef(0);
   const displayTzRef = useRef<string | undefined>(undefined);
+  const [dialog, setDialog] = useState<EventDialogState>(null);
+
+  // Ouverture sur un jour précis (ex. depuis la palette : /?jour=2026-11-20).
+  const jour = useSearchParams().get("jour");
+  useEffect(() => {
+    if (jour && /^\d{4}-\d{2}-\d{2}$/.test(jour)) {
+      setCursor(jour);
+      setView("day");
+    }
+  }, [jour]);
 
   // Vue mémorisée dans ce navigateur (confort uniquement).
   useEffect(() => {
@@ -107,39 +125,49 @@ export function CalendarWidget() {
   }, [data]);
 
   const noCalendars = data !== null && data.calendars.length === 0;
+  const perso = data?.calendars.find((c) => c.editable);
+
+  // Calendrier « Perso » : clic sur un créneau libre / un jour → nouvel événement ;
+  // clic sur un événement « Perso » → modifier ; sur un événement abonné → détails seulement.
+  const handlers: CalendarHandlers = perso
+    ? {
+        onSlot: (day, minutes) => setDialog({ mode: "create", date: day, minutes }),
+        onEvent: (ev, day) => {
+          if (ev.editable && ev.sourceId) setDialog({ mode: "edit", id: ev.sourceId });
+          else {
+            const cal = data?.calendars.find((c) => c.id === ev.calendarId);
+            setDialog({ mode: "view", event: ev, day, calendarName: cal?.name ?? "Calendrier", color: cal?.color ?? "var(--muted)" });
+          }
+        },
+      }
+    : {};
   const openDay = (d: string) => {
     setCursor(d);
     changeView("day");
   };
 
+  const textBtn = "label inline-flex items-center gap-1.5 py-1 transition-colors disabled:opacity-40";
+
   return (
-    <section className="rounded-2xl border border-border bg-surface p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)] sm:p-6">
-      {/* En-tête : titre, navigation, choix de la vue */}
-      <header className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-2">
-          <CalendarDays className="size-4 shrink-0 text-accent-text" aria-hidden />
-          <h2 className="truncate text-[15px] font-semibold tracking-tight" aria-live="polite">
-            {viewTitle(view, cursor)}
-          </h2>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center rounded-full border border-border">
-            <IconButton label="Précédent" onClick={() => setCursor(shift(view, cursor, -1))}>
-              <ChevronLeft className="size-4" />
-            </IconButton>
-            <button
-              type="button"
-              onClick={() => setCursor(today)}
-              className="px-2 text-sm text-muted transition-colors hover:text-text disabled:opacity-40"
-              disabled={cursor === today}
-            >
+    <div>
+      {/* Titre et commandes */}
+      <div className="mb-6 grid gap-5 lg:grid-cols-12 lg:items-end">
+        <h3 className="text-[clamp(2.25rem,5.5vw,4.75rem)] font-light lowercase leading-[0.95] tracking-[-0.045em] lg:col-span-7" aria-live="polite">
+          {viewTitle(view, cursor)}
+        </h3>
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-3 lg:col-span-5 lg:justify-end">
+          <div className="flex items-center gap-4">
+            <button type="button" className={`${textBtn} text-muted hover:text-text`} onClick={() => setCursor(shift(view, cursor, -1))} aria-label="Période précédente">
+              <ArrowLeft className="size-3.5" aria-hidden /> Préc.
+            </button>
+            <button type="button" className={`${textBtn} ${cursor === today ? "text-muted" : "text-text"} link-underline`} onClick={() => setCursor(today)} disabled={cursor === today}>
               Aujourd&apos;hui
             </button>
-            <IconButton label="Suivant" onClick={() => setCursor(shift(view, cursor, 1))}>
-              <ChevronRight className="size-4" />
-            </IconButton>
+            <button type="button" className={`${textBtn} text-muted hover:text-text`} onClick={() => setCursor(shift(view, cursor, 1))} aria-label="Période suivante">
+              Suiv. <ArrowRight className="size-3.5" aria-hidden />
+            </button>
           </div>
-          <div role="tablist" aria-label="Vue du calendrier" className="flex rounded-full bg-surface-2 p-0.5">
+          <div role="tablist" aria-label="Vue du calendrier" className="flex items-center gap-4">
             {VIEWS.map((v) => (
               <button
                 key={v.id}
@@ -147,25 +175,30 @@ export function CalendarWidget() {
                 type="button"
                 aria-selected={view === v.id}
                 onClick={() => changeView(v.id)}
-                className={`rounded-full px-3 py-1 text-sm transition-all ${
-                  view === v.id ? "bg-surface font-medium text-text shadow-sm" : "text-muted hover:text-text"
-                }`}
+                className={`${textBtn} border-b ${view === v.id ? "border-text text-text" : "border-transparent text-muted hover:text-text"}`}
               >
                 {v.label}
               </button>
             ))}
           </div>
-          <IconButton label="Rafraîchir les calendriers" onClick={() => load(true)} bordered disabled={refreshing}>
-            <RefreshCw className={`size-4 ${refreshing ? "animate-spin" : ""}`} />
-          </IconButton>
+          <button
+            type="button"
+            onClick={() => load(true)}
+            disabled={refreshing}
+            aria-label="Rafraîchir les calendriers"
+            title="Rafraîchir les calendriers"
+            className="grid size-9 place-items-center rounded-full border border-border text-muted transition-colors hover:border-text hover:text-text disabled:opacity-60"
+          >
+            <RefreshCw className={`size-3.5 ${refreshing ? "animate-spin" : ""}`} aria-hidden />
+          </button>
         </div>
-      </header>
+      </div>
 
       {/* Erreurs par calendrier : les autres continuent de s'afficher */}
       {data?.errors.length ? (
-        <ul className="mb-4 space-y-2">
+        <ul className="mb-5 space-y-2">
           {data.errors.map((e) => (
-            <li key={e.calendarId + e.message} className="flex items-start gap-2 rounded-xl bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-300">
+            <li key={e.calendarId + e.message} className="flex items-start gap-2 bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-300">
               <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
               <span>
                 <strong className="font-semibold">« {e.name} »</strong> n&apos;a pas pu être chargé : {e.message}
@@ -176,54 +209,55 @@ export function CalendarWidget() {
         </ul>
       ) : null}
       {fatal && (
-        <p className="mb-4 flex items-start gap-2 rounded-xl bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-300">
+        <p className="mb-5 flex items-start gap-2 bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-300">
           <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden /> {fatal}
         </p>
       )}
 
-      <div className={`transition-opacity duration-200 ${loading && data ? "opacity-50" : ""}`}>
+      <div className={`transition-opacity duration-300 ${loading && data ? "opacity-50" : ""}`}>
         {!data && loading ? (
-          <Skeleton />
+          <div className="h-[420px] animate-pulse bg-surface-2" aria-label="Chargement du calendrier" />
         ) : noCalendars ? (
-          <div className="rounded-xl border border-dashed border-border px-4 py-10 text-center">
-            <p className="mb-1 font-medium">Aucun calendrier pour l&apos;instant</p>
-            <p className="mb-4 text-sm text-muted">Colle le lien d&apos;abonnement (ICS) d&apos;Outlook, Google ou iCloud.</p>
-            <button
-              type="button"
-              onClick={() => setManagerOpen(true)}
-              className="rounded-full bg-accent px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
-            >
+          <div className="border-y border-dashed border-border py-12">
+            <p className="title-md mb-2">aucun calendrier pour l&apos;instant</p>
+            <p className="mb-5 text-sm text-muted">Colle le lien d&apos;abonnement (ICS) d&apos;Outlook, Google ou iCloud.</p>
+            <button type="button" onClick={() => setManagerOpen(true)}
+              className="rounded-full bg-text px-4 py-2 text-[12px] font-medium uppercase tracking-[0.04em] text-bg transition-opacity hover:opacity-85">
               Ajouter un calendrier
             </button>
           </div>
         ) : view === "day" ? (
-          <DayView day={cursor} days={range.days} byDay={byDay} colorOf={colorOf} today={today} />
+          <DayView day={cursor} days={range.days} byDay={byDay} colorOf={colorOf} today={today} handlers={handlers} />
         ) : view === "week" ? (
-          <WeekView days={range.days} byDay={byDay} colorOf={colorOf} today={today} onOpenDay={openDay} />
+          <WeekView days={range.days} byDay={byDay} colorOf={colorOf} today={today} onOpenDay={openDay} handlers={handlers} />
         ) : (
-          <MonthView days={range.days} cursor={cursor} byDay={byDay} colorOf={colorOf} today={today} onOpenDay={openDay} />
+          <MonthView days={range.days} cursor={cursor} byDay={byDay} colorOf={colorOf} today={today} onOpenDay={openDay} handlers={handlers} />
         )}
       </div>
 
-      {/* Pied : légende et gestion */}
+      {/* Pied : légende, fuseau, gestion */}
       {!noCalendars && (
-        <footer className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
-          <ul className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted">
+        <footer className="mt-6 flex flex-wrap items-center justify-between gap-4 border-t border-border pt-4">
+          <ul className="label flex flex-wrap items-center gap-x-5 gap-y-2 text-muted">
             {data?.calendars.map((c) => (
               <li key={c.id} className="flex items-center gap-1.5">
-                <span className="size-2.5 rounded-full" style={{ background: c.color }} aria-hidden />
+                <span className="size-2 rounded-full" style={{ background: c.color }} aria-hidden />
                 {c.name}
               </li>
             ))}
-            {data?.displayTz && <li className="opacity-80" title="Fuseau d'affichage">Heure : {data.displayTz.replace(/_/g, " ")}</li>}
+            {data?.displayTz && <li title="Fuseau d'affichage">Heure — {data.displayTz.replace(/_/g, " ")}</li>}
           </ul>
-          <button
-            type="button"
-            onClick={() => setManagerOpen(true)}
-            className="inline-flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-accent-text"
-          >
-            <Settings2 className="size-4" aria-hidden /> Gérer les calendriers
-          </button>
+          <div className="flex items-center gap-5">
+            {perso && (
+              <button type="button" onClick={() => setDialog({ mode: "create", date: view === "day" ? cursor : today, minutes: null })}
+                className="label link-underline text-text">
+                + Événement
+              </button>
+            )}
+            <button type="button" onClick={() => setManagerOpen(true)} className="label link-underline text-muted transition-colors hover:text-text">
+              Gérer les calendriers
+            </button>
+          </div>
         </footer>
       )}
 
@@ -235,190 +269,350 @@ export function CalendarWidget() {
         mergeAdjacent={data?.options.mergeAdjacent ?? true}
         onChanged={() => load()}
       />
-    </section>
+      <EventDialog
+        state={dialog}
+        onClose={() => setDialog(null)}
+        onSaved={() => {
+          load();
+          window.dispatchEvent(new Event("content-changed"));
+        }}
+        persoName={perso?.name ?? "Perso"}
+        timeZone={data?.displayTz ?? ""}
+      />
+    </div>
   );
 }
 
 /* ------------------------------------------------------------------ */
 
 type ColorOf = (id: string) => string;
-
-function IconButton({
-  label, onClick, children, bordered, disabled,
-}: { label: string; onClick: () => void; children: React.ReactNode; bordered?: boolean; disabled?: boolean }) {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      title={label}
-      onClick={onClick}
-      disabled={disabled}
-      className={`grid size-8 place-items-center rounded-full text-muted transition-colors hover:bg-surface-2 hover:text-text disabled:opacity-60 ${
-        bordered ? "border border-border" : ""
-      }`}
-    >
-      {children}
-    </button>
-  );
-}
+type ByDay = Map<string, DisplayEvent[]>;
 
 const mergedHint = (ev: DisplayEvent) =>
   ev.mergedCount && ev.mergedCount > 1 ? `Regroupe ${ev.mergedCount} événements consécutifs` : undefined;
 
-function EventRow({ ev, day, colorOf }: { ev: DisplayEvent; day: string; colorOf: ColorOf }) {
-  return (
-    <li className="flex gap-3 rounded-xl px-2 py-2 transition-colors hover:bg-surface-2" title={mergedHint(ev)}>
-      <span className="mt-0.5 w-24 shrink-0 text-sm tabular-nums text-muted">{timeLabel(ev, day)}</span>
-      <span className="w-1 shrink-0 self-stretch rounded-full" style={{ background: colorOf(ev.calendarId) }} aria-hidden />
-      <span className="min-w-0">
-        <span className="block font-medium leading-snug">{ev.title}</span>
+/** Ligne d'événement (listes « ensuite », semaine sur téléphone). */
+function EventRow({ ev, day, colorOf, onEvent }: { ev: DisplayEvent; day: string; colorOf: ColorOf; onEvent?: CalendarHandlers["onEvent"] }) {
+  const body = (
+    <>
+      <span className="label w-24 shrink-0 pt-0.5 tabular-nums text-muted">{timeLabel(ev, day)}</span>
+      <span className="mt-1.5 size-2 shrink-0 rounded-full" style={{ background: colorOf(ev.calendarId) }} aria-hidden />
+      <span className="min-w-0 text-left">
+        <span className="block leading-snug">{ev.title}</span>
         {ev.location && (
           <span className="mt-0.5 flex items-center gap-1 truncate text-xs text-muted">
             <MapPin className="size-3 shrink-0" aria-hidden /> {ev.location}
           </span>
         )}
       </span>
+    </>
+  );
+  return (
+    <li title={mergedHint(ev)} className="border-b border-border last:border-b-0">
+      {onEvent ? (
+        <button type="button" onClick={() => onEvent(ev, day)} className="flex w-full gap-3 py-2.5 transition-colors hover:bg-surface-2/60">{body}</button>
+      ) : (
+        <div className="flex gap-3 py-2.5">{body}</div>
+      )}
     </li>
   );
 }
 
+/* --------------------------- Grille horaire --------------------------- */
+
+const HOUR = 44; // hauteur d'une heure (px)
+const toMin = (stamp: string) => Number(stamp.slice(11, 13)) * 60 + Number(stamp.slice(14, 16));
+
+interface Placed { ev: DisplayEvent; top: number; height: number; lane: number; lanes: number; start: number; end: number }
+
+/** Position des événements horaires d'un jour, avec colonnes côte à côte s'ils se chevauchent. */
+function place(events: DisplayEvent[], day: string): Placed[] {
+  const timed = events
+    .filter((e) => !e.allDay)
+    .map((ev) => {
+      const start = ev.start.slice(0, 10) === day ? toMin(ev.start) : 0;
+      const endDay = ev.end.slice(0, 10);
+      let end = endDay === day ? toMin(ev.end) : endDay > day ? 1440 : start;
+      if (end <= start) end = Math.min(1440, start + 30);
+      return { ev, start, end };
+    })
+    .sort((a, b) => a.start - b.start || b.end - a.end);
+
+  const out: Placed[] = [];
+  let cluster: Placed[] = [];
+  let clusterEnd = -1;
+  const flush = () => {
+    const lanes = Math.max(1, ...cluster.map((p) => p.lane + 1));
+    for (const p of cluster) p.lanes = lanes;
+    out.push(...cluster);
+    cluster = [];
+  };
+  for (const t of timed) {
+    if (cluster.length && t.start >= clusterEnd) flush();
+    const used = new Set(cluster.filter((p) => p.end > t.start).map((p) => p.lane));
+    let lane = 0;
+    while (used.has(lane)) lane++;
+    cluster.push({ ...t, top: (t.start / 60) * HOUR, height: Math.max(22, ((t.end - t.start) / 60) * HOUR - 2), lane, lanes: 1 });
+    clusterEnd = Math.max(clusterEnd, t.end);
+  }
+  if (cluster.length) flush();
+  return out;
+}
+
+function nowMinutes() {
+  const d = new Date();
+  return d.getHours() * 60 + d.getMinutes();
+}
+
+function TimeGrid({
+  days, byDay, colorOf, today, handlers, onOpenDay,
+}: { days: string[]; byDay: ByDay; colorOf: ColorOf; today: string; handlers: CalendarHandlers; onOpenDay?: (d: string) => void }) {
+  const scroller = useRef<HTMLDivElement>(null);
+  const [now, setNow] = useState<number | null>(null);
+  useEffect(() => {
+    setNow(nowMinutes());
+    const t = setInterval(() => setNow(nowMinutes()), 60_000);
+    return () => clearInterval(t);
+  }, []);
+  // Ouvre la grille vers 7 h (ou une heure avant maintenant si on affiche aujourd'hui).
+  useEffect(() => {
+    const el = scroller.current;
+    if (!el) return;
+    const focus = days.includes(today) ? Math.max(7 * 60, nowMinutes() - 90) : 7 * 60;
+    el.scrollTop = (focus / 60) * HOUR;
+  }, [days, today]);
+
+  const allDay = days.map((d) => (byDay.get(d) ?? []).filter((e) => e.allDay));
+  const hasAllDay = allDay.some((l) => l.length);
+  const cols = { gridTemplateColumns: `3.25rem repeat(${days.length}, minmax(0, 1fr))` };
+
+  const slotClick = (day: string, e: React.MouseEvent<HTMLDivElement>) => {
+    if (!handlers.onSlot || e.target !== e.currentTarget) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const minutes = Math.max(0, Math.min(1410, Math.floor(((e.clientY - rect.top) / HOUR) * 2) * 30));
+    handlers.onSlot(day, minutes);
+  };
+
+  return (
+    <div className="border-t border-text/80">
+      {/* En-têtes des jours (semaine) */}
+      {days.length > 1 && (
+        <div className="grid border-b border-border" style={cols}>
+          <span />
+          {days.map((d) => (
+            <button key={d} type="button" onClick={() => onOpenDay?.(d)} className="group px-2 py-2 text-left">
+              <span className="label block text-muted">{fmtWeekday(d)}</span>
+              <span className={`text-2xl font-light tracking-[-0.03em] ${d === today ? "text-accent-text" : ""}`}>
+                <span className="link-underline">{fmtDayNum(d)}</span>
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+      {/* Journées entières */}
+      {hasAllDay && (
+        <div className="grid border-b border-border" style={cols}>
+          <span className="label self-center pr-2 text-right text-muted">Jour</span>
+          {allDay.map((list, i) => (
+            <ul key={days[i]} className="space-y-1 border-l border-border p-1">
+              {list.map((ev) => (
+                <li key={ev.id}>
+                  <button type="button" disabled={!handlers.onEvent} onClick={() => handlers.onEvent?.(ev, days[i])}
+                    className="block w-full truncate px-1.5 py-0.5 text-left text-xs disabled:cursor-default"
+                    style={{ background: `color-mix(in oklab, ${colorOf(ev.calendarId)} 22%, transparent)` }} title={ev.title}>
+                    {ev.title}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ))}
+        </div>
+      )}
+      {/* Heures */}
+      <div ref={scroller} className="relative max-h-[560px] overflow-y-auto overscroll-contain">
+        <div className="grid" style={{ ...cols, height: 24 * HOUR }}>
+          <div className="relative">
+            {Array.from({ length: 24 }, (_, h) => (
+              <span key={h} className="label absolute right-2 -translate-y-1/2 tabular-nums text-muted" style={{ top: h * HOUR }}>
+                {h === 0 ? "" : `${String(h).padStart(2, "0")}:00`}
+              </span>
+            ))}
+          </div>
+          {days.map((d) => (
+            <div
+              key={d}
+              onClick={(e) => slotClick(d, e)}
+              className={`relative border-l border-border ${handlers.onSlot ? "cursor-cell" : ""} ${d === today ? "bg-surface/40" : ""}`}
+              style={{ backgroundImage: `repeating-linear-gradient(to bottom, var(--border) 0 1px, transparent 1px ${HOUR}px)` }}
+              aria-label={handlers.onSlot ? `${fmtLongDay(d)} : cliquer sur une heure libre pour ajouter un événement` : undefined}
+            >
+              {place(byDay.get(d) ?? [], d).map((p) => {
+                const color = colorOf(p.ev.calendarId);
+                const label = timeLabel(p.ev, d);
+                return (
+                  <button
+                    key={p.ev.id}
+                    type="button"
+                    disabled={!handlers.onEvent}
+                    onClick={() => handlers.onEvent?.(p.ev, d)}
+                    title={`${label} · ${p.ev.title}${p.ev.location ? ` · ${p.ev.location}` : ""}${mergedHint(p.ev) ? ` (${mergedHint(p.ev)!.toLowerCase()})` : ""}`}
+                    className="absolute overflow-hidden border-l-2 px-1.5 py-1 text-left text-xs leading-tight transition-[filter] hover:brightness-95 disabled:cursor-default"
+                    style={{
+                      top: p.top + 1,
+                      height: p.height,
+                      left: `calc(${(p.lane / p.lanes) * 100}% + 2px)`,
+                      width: `calc(${100 / p.lanes}% - 4px)`,
+                      borderColor: color,
+                      background: `color-mix(in oklab, ${color} 18%, var(--surface))`,
+                    }}
+                  >
+                    <span className="block truncate font-medium">{p.ev.title}</span>
+                    {p.height > 34 && <span className="block truncate tabular-nums text-muted">{label}</span>}
+                    {p.height > 52 && p.ev.location && <span className="block truncate text-muted">{p.ev.location}</span>}
+                  </button>
+                );
+              })}
+              {d === today && now !== null && (
+                <span className="pointer-events-none absolute inset-x-0 z-10 border-t border-accent" style={{ top: (now / 60) * HOUR }} aria-hidden>
+                  <span className="absolute -left-1 -top-1 size-2 rounded-full bg-accent" />
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------ Vues ------------------------------ */
+
 function DayView({
-  day, days, byDay, colorOf, today,
-}: { day: string; days: string[]; byDay: Map<string, DisplayEvent[]>; colorOf: ColorOf; today: string }) {
-  const events = byDay.get(day) ?? [];
+  day, days, byDay, colorOf, today, handlers,
+}: { day: string; days: string[]; byDay: ByDay; colorOf: ColorOf; today: string; handlers: CalendarHandlers }) {
   const upcoming = days.slice(1).filter((d) => byDay.get(d)?.length);
   return (
-    <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-      <div>
-        <p className="mb-3 text-2xl font-semibold tracking-tight">
-          {day === today ? "Aujourd'hui" : fmtLongDay(day)}
-          {day === today && <span className="ml-2 text-base font-normal text-muted">{fmtLongDay(day)}</span>}
-        </p>
-        {events.length ? (
-          <ul className="-mx-2">{events.map((ev) => <EventRow key={ev.id} ev={ev} day={day} colorOf={colorOf} />)}</ul>
-        ) : (
-          <p className="rounded-xl border border-dashed border-border px-4 py-6 text-center text-sm text-muted">
-            Rien de prévu ce jour-là.
-          </p>
-        )}
+    <div className="grid gap-10 lg:grid-cols-12">
+      <div className="lg:col-span-8">
+        <p className="label mb-3 text-muted">{day === today ? `Aujourd'hui — ${fmtLongDay(day)}` : fmtLongDay(day)}</p>
+        <TimeGrid days={[day]} byDay={byDay} colorOf={colorOf} today={today} handlers={handlers} />
       </div>
-      <div className="lg:border-l lg:border-border lg:pl-6">
-        <p className="mb-3 text-xs font-medium uppercase tracking-wide text-muted">Ensuite (7 jours)</p>
+      <div className="lg:col-span-4">
+        <p className="label mb-3 text-muted">Ensuite — 7 jours</p>
         {upcoming.length ? (
-          <div className="space-y-4">
+          <div className="space-y-5 border-t border-text/80 pt-3">
             {upcoming.map((d) => (
               <div key={d}>
-                <p className={`mb-1 text-sm font-medium ${d === today ? "text-accent-text" : ""}`}>{fmtShortDay(d)}</p>
-                <ul className="-mx-2">
-                  {byDay.get(d)!.map((ev) => <EventRow key={ev.id} ev={ev} day={d} colorOf={colorOf} />)}
-                </ul>
+                <p className={`mb-1 text-lg font-light tracking-[-0.02em] ${d === today ? "text-accent-text" : ""}`}>{fmtShortDay(d).toLowerCase()}</p>
+                <ul>{byDay.get(d)!.map((ev) => <EventRow key={ev.id} ev={ev} day={d} colorOf={colorOf} onEvent={handlers.onEvent} />)}</ul>
               </div>
             ))}
           </div>
         ) : (
-          <p className="text-sm text-muted">Rien de prévu.</p>
+          <p className="border-t border-text/80 pt-3 text-sm text-muted">Rien de prévu.</p>
         )}
       </div>
     </div>
   );
 }
 
-function Chip({ ev, day, colorOf, wrap }: { ev: DisplayEvent; day: string; colorOf: ColorOf; wrap?: boolean }) {
-  const color = colorOf(ev.calendarId);
-  const label = timeLabel(ev, day);
-  return (
-    <li
-      className={`rounded-md px-1.5 py-0.5 text-xs leading-5 ${wrap ? "line-clamp-3 break-words" : "truncate"}`}
-      style={{ background: `color-mix(in oklab, ${color} 16%, transparent)` }}
-      title={`${label} · ${ev.title}${ev.location ? ` · ${ev.location}` : ""}${mergedHint(ev) ? ` (${mergedHint(ev)!.toLowerCase()})` : ""}`}
-    >
-      {!ev.allDay && label !== "Journée" && (
-        <span className="mr-1 tabular-nums text-muted">{label.startsWith("→") ? "→" : label.slice(0, 5)}</span>
-      )}
-      <span className="font-medium">{ev.title}</span>
-    </li>
-  );
-}
-
 function WeekView({
-  days, byDay, colorOf, today, onOpenDay,
-}: { days: string[]; byDay: Map<string, DisplayEvent[]>; colorOf: ColorOf; today: string; onOpenDay: (d: string) => void }) {
+  days, byDay, colorOf, today, onOpenDay, handlers,
+}: { days: string[]; byDay: ByDay; colorOf: ColorOf; today: string; onOpenDay: (d: string) => void; handlers: CalendarHandlers }) {
   return (
-    <ol className="grid gap-2 md:grid-cols-7">
-      {days.map((d) => {
-        const events = byDay.get(d) ?? [];
-        const isToday = d === today;
-        return (
-          <li key={d} className={`min-h-0 rounded-xl border p-2 md:min-h-44 ${isToday ? "border-accent/60 bg-accent-soft/40" : "border-border"}`}>
-            <button
-              type="button"
-              onClick={() => onOpenDay(d)}
-              className="mb-1.5 flex w-full items-baseline gap-1.5 rounded-md px-1 text-left transition-colors hover:text-accent-text"
-            >
-              <span className="text-xs text-muted">{fmtWeekday(d)}</span>
-              <span className={`text-sm font-semibold ${isToday ? "text-accent-text" : ""}`}>{fmtDayNum(d)}</span>
-            </button>
-            {events.length ? (
-              <ul className="space-y-1">{events.map((ev) => <Chip key={ev.id} ev={ev} day={d} colorOf={colorOf} wrap />)}</ul>
-            ) : (
-              <p className="px-1 text-xs text-muted/70">—</p>
-            )}
-          </li>
-        );
-      })}
-    </ol>
+    <>
+      {/* Grands écrans : grille horaire sur 7 jours */}
+      <div className="hidden md:block">
+        <TimeGrid days={days} byDay={byDay} colorOf={colorOf} today={today} handlers={handlers} onOpenDay={onOpenDay} />
+      </div>
+      {/* Téléphone : liste par jour */}
+      <ol className="border-t border-text/80 md:hidden">
+        {days.map((d) => {
+          const events = byDay.get(d) ?? [];
+          return (
+            <li key={d} className="border-b border-border py-3">
+              <div className="mb-1 flex items-baseline justify-between gap-2">
+                <button type="button" onClick={() => onOpenDay(d)} className={`text-lg font-light tracking-[-0.02em] ${d === today ? "text-accent-text" : ""}`}>
+                  <span className="link-underline">{fmtShortDay(d).toLowerCase()}</span>
+                </button>
+                {handlers.onSlot && (
+                  <button type="button" onClick={() => handlers.onSlot!(d, null)} className="label text-muted hover:text-text">+ Ajouter</button>
+                )}
+              </div>
+              {events.length ? (
+                <ul>{events.map((ev) => <EventRow key={ev.id} ev={ev} day={d} colorOf={colorOf} onEvent={handlers.onEvent} />)}</ul>
+              ) : (
+                <p className="text-sm text-muted">—</p>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+    </>
   );
 }
 
 function MonthView({
-  days, cursor, byDay, colorOf, today, onOpenDay,
-}: { days: string[]; cursor: string; byDay: Map<string, DisplayEvent[]>; colorOf: ColorOf; today: string; onOpenDay: (d: string) => void }) {
+  days, cursor, byDay, colorOf, today, onOpenDay, handlers,
+}: { days: string[]; cursor: string; byDay: ByDay; colorOf: ColorOf; today: string; onOpenDay: (d: string) => void; handlers: CalendarHandlers }) {
   const month = cursor.slice(0, 7);
   return (
-    <div>
-      <div className="mb-1 grid grid-cols-7 text-center text-xs text-muted">
-        {WEEKDAYS.map((w) => <div key={w} className="py-1">{w}</div>)}
+    <div className="border-t border-text/80">
+      <div className="grid grid-cols-7 border-b border-border">
+        {WEEKDAYS.map((w) => <div key={w} className="label py-2 text-muted">{w}</div>)}
       </div>
-      <div className="grid grid-cols-7 gap-1">
-        {days.map((d) => {
+      <div className="grid grid-cols-7">
+        {days.map((d, i) => {
           const events = byDay.get(d) ?? [];
           const inMonth = d.startsWith(month);
           const isToday = d === today;
           return (
-            <button
+            <div
               key={d}
-              type="button"
-              onClick={() => onOpenDay(d)}
-              aria-label={`${fmtLongDay(d)} : ${events.length} événement(s)`}
-              className={`flex min-h-14 flex-col items-stretch rounded-lg border p-1 text-left transition-colors hover:border-accent/60 sm:min-h-24 sm:p-1.5 ${
-                isToday ? "border-accent/60 bg-accent-soft/40" : "border-border"
-              } ${inMonth ? "" : "opacity-45"}`}
+              role={handlers.onSlot ? "button" : undefined}
+              tabIndex={handlers.onSlot ? 0 : undefined}
+              onClick={(e) => {
+                if (e.target !== e.currentTarget && !(e.target as HTMLElement).dataset.cell) return;
+                if (handlers.onSlot) handlers.onSlot(d, null);
+                else onOpenDay(d);
+              }}
+              onKeyDown={(e) => {
+                if (handlers.onSlot && (e.key === "Enter" || e.key === " ") && e.target === e.currentTarget) {
+                  e.preventDefault();
+                  handlers.onSlot(d, null);
+                }
+              }}
+              aria-label={`${fmtLongDay(d)} : ${events.length} événement(s)${handlers.onSlot ? " — ajouter un événement" : ""}`}
+              className={`group flex min-h-16 flex-col border-b border-border p-1 text-left transition-colors hover:bg-surface/60 sm:min-h-28 sm:p-2 ${i % 7 ? "border-l" : ""} ${inMonth ? "" : "opacity-45"} ${handlers.onSlot ? "cursor-cell" : "cursor-pointer"}`}
             >
-              <span className={`mb-1 text-xs font-medium ${isToday ? "text-accent-text" : ""}`}>{fmtDayNum(d)}</span>
+              <button type="button" onClick={() => onOpenDay(d)} className={`mb-1 self-start text-sm font-light tabular-nums sm:text-lg ${isToday ? "rounded-full bg-accent px-1.5 text-white" : ""}`} aria-label={`Voir le ${fmtLongDay(d)}`}>
+                {fmtDayNum(d)}
+              </button>
               {/* Téléphone : pastilles ; écran large : titres */}
-              <span className="flex flex-wrap gap-0.5 sm:hidden">
-                {events.slice(0, 4).map((ev) => (
-                  <span key={ev.id} className="size-1.5 rounded-full" style={{ background: colorOf(ev.calendarId) }} />
-                ))}
+              <span data-cell="1" className="flex flex-wrap gap-0.5 sm:hidden">
+                {events.slice(0, 4).map((ev) => <span key={ev.id} data-cell="1" className="size-1.5 rounded-full" style={{ background: colorOf(ev.calendarId) }} />)}
               </span>
-              <ul className="hidden space-y-0.5 sm:block">
-                {events.slice(0, 3).map((ev) => <Chip key={ev.id} ev={ev} day={d} colorOf={colorOf} />)}
-                {events.length > 3 && <li className="px-1 text-xs text-muted">+{events.length - 3} autre(s)</li>}
+              <ul data-cell="1" className="hidden space-y-0.5 sm:block">
+                {events.slice(0, 3).map((ev) => {
+                  const label = timeLabel(ev, d);
+                  return (
+                    <li key={ev.id}>
+                      <button type="button" disabled={!handlers.onEvent} onClick={() => handlers.onEvent?.(ev, d)}
+                        className="block w-full truncate px-1 text-left text-xs leading-5 disabled:cursor-default"
+                        style={{ background: `color-mix(in oklab, ${colorOf(ev.calendarId)} 16%, transparent)` }}
+                        title={`${label} · ${ev.title}${mergedHint(ev) ? ` (${mergedHint(ev)!.toLowerCase()})` : ""}`}>
+                        {!ev.allDay && label !== "Journée" && <span className="mr-1 tabular-nums text-muted">{label.startsWith("→") ? "→" : label.slice(0, 5)}</span>}
+                        {ev.title}
+                      </button>
+                    </li>
+                  );
+                })}
+                {events.length > 3 && <li data-cell="1" className="label px-1 text-muted">+{events.length - 3}</li>}
               </ul>
-            </button>
+            </div>
           );
         })}
       </div>
-    </div>
-  );
-}
-
-function Skeleton() {
-  return (
-    <div className="space-y-3" aria-label="Chargement du calendrier">
-      {[0, 1, 2].map((i) => (
-        <div key={i} className="h-12 animate-pulse rounded-xl bg-surface-2" />
-      ))}
     </div>
   );
 }

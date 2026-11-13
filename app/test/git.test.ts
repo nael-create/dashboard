@@ -12,6 +12,7 @@ const env = { GIT_AUTHOR_NAME: "Test", GIT_AUTHOR_EMAIL: "t@example.invalid", GI
 Object.assign(process.env, env);
 const sh = (cwd: string, ...args: string[]) => execFileSync("git", args, { cwd, env: { ...process.env, ...env }, encoding: "utf8" });
 vi.stubEnv("CONTENT_DIR", A);
+vi.stubEnv("DASHBOARD_DATA_DIR", path.join(root, "data"));
 
 const G = await import("@/lib/git");
 const write = (dir: string, rel: string, text: string) => {

@@ -18,7 +18,7 @@ const dashboardConfig: DashboardConfig = {
   title: "Nael",
 
   /** Couleur d'accent unique (format hexadécimal #rrggbb). */
-  accentColor: "#6366f1",
+  accentColor: "#a3451f",
 
   /**
    * Fuseau horaire d'affichage (dates, calendrier).

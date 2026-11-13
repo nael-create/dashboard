@@ -20,10 +20,10 @@ export function FilterChips({
             href={qs ? `/projets?${qs}` : "/projets"}
             scroll={false}
             aria-current={active ? "true" : undefined}
-            className={`rounded-full border px-3 py-1 text-sm transition-colors ${
+            className={`rounded-full border px-3 py-1 text-[12px] uppercase tracking-[0.04em] transition-colors ${
               active
-                ? "border-transparent bg-accent text-white"
-                : "border-border text-muted hover:border-accent hover:text-text"
+                ? "border-text bg-text text-bg"
+                : "border-border text-muted hover:border-text hover:text-text"
             }`}
           >
             {c.label}

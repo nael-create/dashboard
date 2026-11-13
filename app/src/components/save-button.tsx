@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, CloudUpload, Loader2, X } from "lucide-react";
+import { Check, CloudUpload, KeyRound, Loader2, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { EVENTS } from "@/lib/shortcuts";
 import { btnGhost, btnPrimary, iconBtn } from "@/components/ui/forms";
@@ -13,12 +13,14 @@ interface Status {
   ahead: number;
   oldestDays: number | null;
   reminderDays: number;
+  pushCheck: { result: "ok" | "auth" | "network" | "other"; checkedAt: string } | null;
 }
 type Result =
   | { kind: "needs-confirmation"; branch: string }
   | { kind: "nothing" }
   | { kind: "ok"; message: string | null }
-  | { kind: "error"; message: string; committed: boolean };
+  | { kind: "error"; message: string; committed: boolean }
+  | { kind: "push-help" };
 
 export const SAVE_EVENT = "dashboard:save";
 
@@ -88,6 +90,7 @@ export function SaveButton() {
   }, [panel]);
 
   if (!status?.isRepo) return null;
+  const needsLogin = status.pushCheck?.result === "auth";
   const pending = status.count + (status.ahead > 0 && status.count === 0 ? 1 : 0);
   const stale = status.oldestDays !== null && status.oldestDays >= status.reminderDays && status.count > 0;
   const title = status.count
@@ -97,7 +100,7 @@ export function SaveButton() {
       : "Tout est sauvegardé";
 
   return (
-    <div className="relative" ref={ref}>
+    <div className="relative flex items-center" ref={ref}>
       <button
         type="button"
         onClick={() => run(false)}
@@ -115,6 +118,17 @@ export function SaveButton() {
         )}
         {stale && <span className="absolute -right-0.5 -top-0.5 size-2.5 rounded-full border-2 border-bg bg-amber-500" aria-hidden />}
       </button>
+      {needsLogin && (
+        <button
+          type="button"
+          onClick={() => setPanel(panel?.kind === "push-help" ? null : { kind: "push-help" })}
+          aria-label="L'envoi vers GitHub demande un mot de passe : voir la solution"
+          title="L'envoi vers GitHub demande un mot de passe : voir la solution"
+          className="ml-0.5 grid size-7 place-items-center rounded-full text-amber-600 transition-colors hover:bg-surface-2 dark:text-amber-400"
+        >
+          <KeyRound className="size-3.5" aria-hidden />
+        </button>
+      )}
 
       {panel && panel.kind !== "nothing" && (
         <div role="status" className="absolute right-0 top-11 z-40 w-[min(380px,calc(100vw-2rem))] rounded-2xl border border-border bg-surface p-4 text-sm shadow-xl">
@@ -128,18 +142,48 @@ export function SaveButton() {
                 <button type="button" className={btnPrimary} onClick={() => run(true)}>Sauvegarder sur « {panel.branch} »</button>
               </div>
             </>
+          ) : panel.kind === "push-help" ? (
+            <PushHelp onClose={() => setPanel(null)} />
           ) : panel.kind === "ok" ? (
             <p className="flex items-start gap-2 text-emerald-700 dark:text-emerald-400">
               <Check className="mt-0.5 size-4 shrink-0" aria-hidden /> Sauvegardé et envoyé sur GitHub.
             </p>
           ) : (
             <div className="flex items-start gap-2">
-              <p className="flex-1 text-amber-800 dark:text-amber-300">{panel.message}</p>
+              <div className="flex-1">
+                <p className="text-amber-800 dark:text-amber-300">{panel.message}</p>
+                {needsLogin && <div className="mt-3 border-t border-border pt-3"><PushHelp /></div>}
+              </div>
               <button type="button" onClick={() => setPanel(null)} aria-label="Fermer" className={iconBtn}><X className="size-4" /></button>
             </div>
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+/** Explication (à faire une seule fois) quand l'envoi vers GitHub demande un mot de passe. */
+function PushHelp({ onClose }: { onClose?: () => void }) {
+  return (
+    <div className="space-y-2 text-sm">
+      <div className="flex items-start justify-between gap-2">
+        <p className="font-medium">GitHub demande un mot de passe pour recevoir tes sauvegardes</p>
+        {onClose && <button type="button" onClick={onClose} aria-label="Fermer" className={iconBtn}><X className="size-4" /></button>}
+      </div>
+      <p className="text-muted">
+        Tes sauvegardes restent sur cet ordinateur en attendant. À faire une seule fois pour que le bouton les envoie tout seul :
+      </p>
+      <ol className="list-decimal space-y-1 pl-5 text-muted">
+        <li>Télécharge et installe <strong className="text-text">GitHub CLI</strong> (fichier .pkg pour macOS) sur cli.github.com.</li>
+        <li>
+          Ouvre le Terminal et tape :
+          <code className="mt-1 block select-all rounded-md bg-surface-2 px-2 py-1 text-xs text-text">gh auth login --hostname github.com --git-protocol https --web</code>
+        </li>
+        <li>Réponds « Yes » à « Authenticate Git with your GitHub credentials? », puis valide le code dans le navigateur.</li>
+        <li>Relance le dashboard : ce message disparaît si tout est bon.</li>
+      </ol>
+      <p className="text-xs text-muted">En attendant, tu peux aussi envoyer tes sauvegardes avec « Push origin » dans GitHub Desktop.</p>
     </div>
   );
 }

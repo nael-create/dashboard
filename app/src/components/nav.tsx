@@ -2,99 +2,151 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { MoreHorizontal } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
-import { NAV_ITEMS } from "@/lib/navigation";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
+import { X } from "lucide-react";
+
+/** Pages de l'en-tête (ordre et libellés de la refonte). */
+export const HEADER_ITEMS: { href: string; label: string }[] = [
+  { href: "/", label: "Accueil" },
+  { href: "/projets", label: "Projets" },
+  { href: "/notions", label: "Notions" },
+  { href: "/memo", label: "Mémo" },
+  { href: "/newsletters", label: "Newsletters" },
+  { href: "/news", label: "News" },
+  { href: "/favoris", label: "Favoris" },
+  { href: "/revue", label: "Revue" },
+];
 
 function isActive(pathname: string, href: string) {
   return href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
 }
 
-/** Navigation horizontale (grands écrans). */
-export function TopNav() {
-  const pathname = usePathname();
-  return (
-    <nav aria-label="Navigation principale" className="hidden items-center gap-0.5 lg:flex">
-      {NAV_ITEMS.map(({ href, label }) => {
-        const active = isActive(pathname, href);
-        return (
-          <Link
-            key={href}
-            href={href}
-            aria-current={active ? "page" : undefined}
-            className={`rounded-full px-3 py-1.5 text-sm transition-colors ${
-              active ? "bg-accent-soft font-medium text-accent-text" : "text-muted hover:bg-surface-2 hover:text-text"
-            }`}
-          >
-            {label}
-          </Link>
-        );
-      })}
-    </nav>
-  );
+/** Heure locale (fuseau de l'ordinateur), mise à jour chaque minute. */
+function useLocalTime() {
+  const [now, setNow] = useState<Date | null>(null);
+  useEffect(() => {
+    setNow(new Date());
+    const t = setInterval(() => setNow(new Date()), 15_000);
+    return () => clearInterval(t);
+  }, []);
+  if (!now) return { hh: "--", mm: "--", zone: "" };
+  const zone = Intl.DateTimeFormat().resolvedOptions().timeZone?.split("/").pop()?.replace(/_/g, " ") ?? "";
+  return { hh: String(now.getHours()).padStart(2, "0"), mm: String(now.getMinutes()).padStart(2, "0"), zone };
 }
 
-/** Barre d'onglets en bas de l'écran (téléphone, tablette) ; les pages secondaires sont dans « Plus ». */
-export function BottomNav() {
+/**
+ * En-tête éditorial : nom, navigation en petites capitales, heure locale, actions discrètes.
+ * Sur téléphone : « Menu » ouvre un menu plein écran en très grands caractères.
+ */
+export function SiteHeader({ title, actions, mobileExtras }: { title: string; actions: ReactNode; mobileExtras: ReactNode }) {
   const pathname = usePathname();
-  const [more, setMore] = useState(false);
-  const ref = useRef<HTMLLIElement>(null);
-  const primary = NAV_ITEMS.filter((i) => i.mobile);
-  const secondary = NAV_ITEMS.filter((i) => !i.mobile);
-  const secondaryActive = secondary.some((i) => isActive(pathname, i.href));
+  const { hh, mm, zone } = useLocalTime();
+  const [menu, setMenu] = useState(false);
+  const closeRef = useRef<HTMLButtonElement>(null);
 
-  useEffect(() => setMore(false), [pathname]);
+  useEffect(() => setMenu(false), [pathname]);
   useEffect(() => {
-    if (!more) return;
-    const close = (e: MouseEvent) => ref.current && !ref.current.contains(e.target as Node) && setMore(false);
-    document.addEventListener("mousedown", close);
-    return () => document.removeEventListener("mousedown", close);
-  }, [more]);
+    if (!menu) return;
+    closeRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setMenu(false);
+    document.addEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = "";
+    };
+  }, [menu]);
 
-  const tab = (active: boolean) =>
-    `flex w-full flex-col items-center gap-0.5 py-2 text-[11px] transition-colors ${active ? "text-accent-text" : "text-muted"}`;
+  const time = (
+    <span className="tabular-nums">
+      {hh}<span className="mx-1 animate-pulse motion-reduce:animate-none">:</span>{mm}
+    </span>
+  );
 
   return (
-    <nav
-      aria-label="Navigation principale"
-      className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface/90 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden print:hidden"
-    >
-      <ul className="flex">
-        {primary.map(({ href, label, icon: Icon }) => {
-          const active = isActive(pathname, href);
-          return (
-            <li key={href} className="flex-1">
-              <Link href={href} aria-current={active ? "page" : undefined} className={tab(active)}>
-                <Icon className="size-5" aria-hidden />
-                {label}
-              </Link>
-            </li>
-          );
-        })}
-        <li className="relative flex-1" ref={ref}>
-          <button type="button" aria-expanded={more} onClick={() => setMore(!more)} className={tab(secondaryActive)}>
-            <MoreHorizontal className="size-5" aria-hidden />
-            Plus
-          </button>
-          {more && (
-            <ul className="absolute bottom-full right-2 mb-2 w-48 overflow-hidden rounded-2xl border border-border bg-surface py-1 shadow-xl">
-              {secondary.map(({ href, label, icon: Icon }) => (
+    <header className="sticky top-0 z-30 bg-bg/90 backdrop-blur-md print:hidden">
+      <div className="mx-auto grid max-w-[1600px] grid-cols-12 items-start gap-x-4 px-4 pb-3 pt-4 text-[11px] uppercase leading-[1.35] tracking-[0.04em] sm:px-6 sm:pt-5">
+        {/* Nom */}
+        <Link href="/" className="col-span-5 sm:col-span-4 lg:col-span-3">
+          <span className="block font-medium">{title}</span>
+          <span className="block text-muted">Tableau de bord</span>
+        </Link>
+
+        {/* Navigation (grands écrans) */}
+        <nav aria-label="Navigation principale" className="hidden lg:col-span-4 lg:block">
+          <ul className="grid grid-flow-col grid-cols-2 grid-rows-4 gap-x-6">
+            {HEADER_ITEMS.map(({ href, label }) => {
+              const active = isActive(pathname, href);
+              return (
                 <li key={href}>
                   <Link
                     href={href}
-                    aria-current={isActive(pathname, href) ? "page" : undefined}
-                    className={`flex items-center gap-3 px-4 py-2.5 text-sm transition-colors hover:bg-surface-2 ${
-                      isActive(pathname, href) ? "text-accent-text" : ""
-                    }`}
+                    aria-current={active ? "page" : undefined}
+                    className={`group inline-flex items-center gap-1.5 transition-colors ${active ? "text-text" : "text-muted hover:text-text"}`}
                   >
-                    <Icon className="size-4" aria-hidden /> {label}
+                    <span className={`size-1.5 rounded-full transition-colors ${active ? "bg-accent" : "bg-transparent group-hover:bg-text/40"}`} aria-hidden />
+                    <span className="link-underline">{label}</span>
                   </Link>
                 </li>
-              ))}
-            </ul>
-          )}
-        </li>
-      </ul>
-    </nav>
+              );
+            })}
+          </ul>
+        </nav>
+
+        {/* Heure locale */}
+        <div className="col-span-3 hidden sm:block lg:col-span-2">
+          <span className="block text-muted">Heure locale{zone ? ` — ${zone}` : ""}</span>
+          <span className="block">{time}</span>
+        </div>
+
+        {/* Actions (Sauvegarder, recherche, ajout rapide, thème) */}
+        <div className="col-span-7 flex items-start justify-end gap-1 sm:col-span-5 lg:col-span-3">
+          {actions}
+          <button
+            type="button"
+            onClick={() => setMenu(true)}
+            aria-expanded={menu}
+            aria-controls="menu-plein-ecran"
+            className="ml-1 grid h-9 place-items-center rounded-full border border-text px-3 transition-colors hover:bg-text hover:text-bg lg:hidden"
+          >
+            Menu
+          </button>
+        </div>
+      </div>
+
+      {/* Menu plein écran (téléphone, tablette) — rendu hors de l'en-tête (son flou enfermerait le menu). */}
+      {menu && createPortal(
+        <div id="menu-plein-ecran" role="dialog" aria-modal="true" aria-label="Menu" className="fixed inset-0 z-50 flex flex-col bg-bg px-4 pb-8 pt-4 sm:px-6 lg:hidden">
+          <div className="flex items-start justify-between text-[11px] uppercase tracking-[0.04em]">
+            <span>
+              <span className="block font-medium">{title}</span>
+              <span className="block text-muted">Heure locale — {time}</span>
+            </span>
+            <button ref={closeRef} type="button" onClick={() => setMenu(false)} aria-label="Fermer le menu"
+              className="grid size-11 place-items-center rounded-full border border-text transition-colors hover:bg-text hover:text-bg">
+              <X className="size-4" aria-hidden />
+            </button>
+          </div>
+          <nav aria-label="Navigation principale" className="mt-10 flex-1 overflow-y-auto">
+            <ol className="space-y-1">
+              {HEADER_ITEMS.map(({ href, label }, i) => {
+                const active = isActive(pathname, href);
+                return (
+                  <li key={href} className="rise" style={{ animationDelay: `${i * 40}ms` }}>
+                    <Link href={href} aria-current={active ? "page" : undefined} className="flex items-baseline gap-4 py-1">
+                      <span className="label w-6 text-muted">{String(i + 1).padStart(2, "0")}.</span>
+                      <span className={`text-[clamp(2.5rem,12vw,4rem)] font-light lowercase leading-[1] tracking-[-0.04em] ${active ? "text-accent-text" : ""}`}>{label}</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ol>
+          </nav>
+          <div className="flex items-center gap-2 border-t border-border pt-4">{mobileExtras}</div>
+        </div>,
+        document.body,
+      )}
+    </header>
   );
 }

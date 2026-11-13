@@ -3,29 +3,34 @@
 /* Le mode sombre est piloté par la classe .dark (posée par next-themes). */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/*
+ * Système de design « éditorial » (voir app/previews/redesign/BRIEF.md).
+ * Fond grège chaud / noir chaud, grotesque fine, fils fins, aucun arrondi sur les cartes.
+ */
 :root {
   /* --accent est injectée depuis dashboard.config.ts (voir layout.tsx). */
-  --accent: #6366f1;
-  --bg: #f6f7f9;
-  --surface: #ffffff;
-  --surface-2: #f1f3f6;
-  --border: #e4e7ec;
-  --text: #15181e;
-  --muted: #667085;
-  --accent-soft: color-mix(in oklab, var(--accent) 12%, var(--surface));
-  --accent-text: color-mix(in oklab, var(--accent) 80%, black);
+  --accent: #a3451f;
+  --bg: #d6d1c5;
+  --surface: #dedacf;
+  --surface-2: #cdc8bb;
+  --border: #b3ad9f;
+  --text: #111111;
+  --muted: #4e4a42;
+  --accent-soft: color-mix(in oklab, var(--accent) 14%, var(--surface));
+  --accent-text: color-mix(in oklab, var(--accent) 82%, black);
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
   color-scheme: light;
 }
 
 .dark {
-  --bg: #0d0f13;
-  --surface: #15181e;
-  --surface-2: #1c2028;
-  --border: #262b35;
-  --text: #e8eaee;
-  --muted: #98a2b3;
-  --accent-soft: color-mix(in oklab, var(--accent) 20%, var(--surface));
-  --accent-text: color-mix(in oklab, var(--accent) 65%, white);
+  --bg: #141310;
+  --surface: #1c1b17;
+  --surface-2: #25231e;
+  --border: #3a372f;
+  --text: #e9e5da;
+  --muted: #a7a194;
+  --accent-soft: color-mix(in oklab, var(--accent) 24%, var(--surface));
+  --accent-text: color-mix(in oklab, var(--accent) 55%, white);
   color-scheme: dark;
 }
 
@@ -39,7 +44,19 @@
   --color-accent: var(--accent);
   --color-accent-soft: var(--accent-soft);
   --color-accent-text: var(--accent-text);
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-sans: "Inter Tight Variable", "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
+}
+
+/* Arrondis quasi nuls (cartes, images, champs) ; « rounded-full » reste rond (pilules, pastilles). */
+@theme {
+  --radius-sm: 1px;
+  --radius-md: 2px;
+  --radius-lg: 2px;
+  --radius-xl: 2px;
+  --radius-2xl: 0px;
+  --radius-3xl: 0px;
+  --shadow-sm: none;
+  --shadow-md: none;
 }
 
 html,
@@ -49,38 +66,110 @@ body {
 }
 
 body {
-  transition: background-color 200ms ease, color 200ms ease;
+  font-feature-settings: "ss01", "cv11";
+  letter-spacing: -0.005em;
+  transition: background-color 300ms var(--ease), color 300ms var(--ease);
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-  border-radius: 6px;
+::selection {
+  background: var(--text);
+  color: var(--bg);
+}
+
+/* Dans la couche « base » : les classes utilitaires (ex. focus-visible:outline-none) peuvent la remplacer. */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Typographie éditoriale                                               */
+/* ------------------------------------------------------------------ */
+
+@utility display {
+  font-size: clamp(3rem, 9vw, 7.5rem);
+  font-weight: 300;
+  letter-spacing: -0.045em;
+  line-height: 0.92;
+  text-transform: lowercase;
+}
+
+@utility section-title {
+  font-size: clamp(2rem, 4.5vw, 3.75rem);
+  font-weight: 300;
+  letter-spacing: -0.035em;
+  line-height: 1;
+  text-transform: lowercase;
+}
+
+@utility title-md {
+  font-size: clamp(1.4rem, 2.4vw, 2rem);
+  font-weight: 300;
+  letter-spacing: -0.03em;
+  line-height: 1.08;
+}
+
+@utility label {
+  font-size: 11px;
+  line-height: 1.3;
+  font-weight: 450;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* Lien éditorial : soulignement qui se déploie au survol. */
+@utility link-underline {
+  background-image: linear-gradient(currentColor, currentColor);
+  background-size: 0% 1px;
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  transition: background-size 400ms var(--ease);
+  &:hover,
+  &:focus-visible {
+    background-size: 100% 1px;
+  }
+}
+
+/* Apparition douce des sections. */
+@keyframes rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+@utility rise {
+  animation: rise 600ms var(--ease) both;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { transition: none !important; animation: none !important; }
+  *, *::before, *::after {
+    transition: none !important;
+    animation: none !important;
+    scroll-behavior: auto !important;
+  }
 }
 
-/* Rendu des README Markdown (sans dépendance supplémentaire). */
-.md { line-height: 1.7; }
+/* Rendu des textes Markdown (README, mémos, notions…). */
+.md { line-height: 1.6; }
 .md > * + * { margin-top: 0.9em; }
-.md h1 { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.01em; }
-.md h2 { font-size: 1.15rem; font-weight: 650; margin-top: 1.8em; padding-bottom: 0.3em; border-bottom: 1px solid var(--border); }
+.md h1 { font-size: 1.6rem; font-weight: 300; letter-spacing: -0.03em; }
+.md h2 { font-size: 1.15rem; font-weight: 500; margin-top: 1.8em; padding-bottom: 0.3em; border-bottom: 1px solid var(--border); }
 .md h3 { font-size: 1rem; font-weight: 600; margin-top: 1.4em; }
-.md a { color: var(--accent-text); text-decoration: underline; text-underline-offset: 3px; }
+.md a { color: inherit; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+.md a:hover { color: var(--accent-text); }
 .md ul { list-style: disc; padding-left: 1.4em; }
 .md ol { list-style: decimal; padding-left: 1.4em; }
 .md li + li { margin-top: 0.25em; }
 .md li:has(> input[type="checkbox"]) { list-style: none; margin-left: -1.4em; }
 .md input[type="checkbox"] { margin-right: 0.5em; accent-color: var(--accent); }
-.md code { font-size: 0.875em; background: var(--surface-2); padding: 0.1em 0.35em; border-radius: 4px; }
-.md pre { background: var(--surface-2); padding: 1em; border-radius: 10px; overflow-x: auto; }
+.md code { font-size: 0.875em; background: var(--surface-2); padding: 0.1em 0.35em; }
+.md pre { background: var(--surface-2); padding: 1em; overflow-x: auto; }
 .md pre code { background: none; padding: 0; }
-.md blockquote { border-left: 3px solid var(--border); padding-left: 1em; color: var(--muted); }
+.md blockquote { border-left: 1px solid var(--text); padding-left: 1em; color: var(--muted); }
 .md table { width: 100%; border-collapse: collapse; font-size: 0.925em; display: block; overflow-x: auto; }
-.md th, .md td { border: 1px solid var(--border); padding: 0.4em 0.7em; text-align: left; }
+.md th, .md td { border-bottom: 1px solid var(--border); padding: 0.4em 0.7em 0.4em 0; text-align: left; }
 .md hr { border-color: var(--border); }
 
 /* Impression : noir sur blanc, sans navigation ni boutons (classes print:hidden). */

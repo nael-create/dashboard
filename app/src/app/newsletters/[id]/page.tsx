@@ -35,7 +35,7 @@ export default async function NewsletterPage({ params, searchParams }: Props) {
         <div className="overflow-hidden rounded-2xl border border-border bg-surface">
           <header className="flex flex-wrap items-start justify-between gap-3 border-b border-border p-5 sm:p-6">
             <div className="min-w-0">
-              <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">{msg.subject}</h1>
+              <h1 className="text-[clamp(1.75rem,3.5vw,3rem)] font-light leading-[1.05] tracking-[-0.035em]">{msg.subject}</h1>
               <p className="mt-1 text-sm text-muted">
                 {msg.from}{msg.fromAddress && msg.fromAddress !== msg.from ? ` <${msg.fromAddress}>` : ""} · {formatDateTime(msg.received)}
               </p>
