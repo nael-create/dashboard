@@ -3,6 +3,7 @@ import { z } from "zod";
 import { fail, isSameOrigin } from "@/lib/api";
 import { HEX_COLOR, publicCalendar, updateCalendars } from "@/lib/calendar-store";
 import { forgetFeed } from "@/lib/ics";
+import { isValidTimeZone } from "@/lib/tz";
 
 export const dynamic = "force-dynamic";
 type Ctx = { params: Promise<{ id: string }> };
@@ -11,8 +12,14 @@ const patchSchema = z
   .object({
     name: z.string().trim().min(1, "Le nom ne peut pas être vide.").max(60, "Nom trop long (60 caractères max).").optional(),
     color: z.string().regex(HEX_COLOR, "Couleur invalide.").optional(),
+    // null = détection automatique du fuseau.
+    timeZone: z
+      .string()
+      .refine(isValidTimeZone, "Fuseau horaire inconnu (choisis-en un dans la liste).")
+      .nullable()
+      .optional(),
   })
-  .refine((d) => d.name !== undefined || d.color !== undefined, "Rien à modifier.");
+  .refine((d) => d.name !== undefined || d.color !== undefined || d.timeZone !== undefined, "Rien à modifier.");
 
 export async function PATCH(req: Request, { params }: Ctx) {
   if (!isSameOrigin(req)) return fail("Requête refusée.", 403);
@@ -25,6 +32,7 @@ export async function PATCH(req: Request, { params }: Ctx) {
     if (!cal) return null;
     if (parsed.data.name !== undefined) cal.name = parsed.data.name;
     if (parsed.data.color !== undefined) cal.color = parsed.data.color.toLowerCase();
+    if (parsed.data.timeZone !== undefined) cal.timeZone = parsed.data.timeZone;
     return { ...cal };
   });
   if (!updated) return fail("Calendrier introuvable.", 404);

@@ -72,7 +72,7 @@ Tout se règle dans **`app/dashboard.config.ts`** :
 |---|---|
 | `title` | titre affiché en haut et dans l'onglet (ex. « Le QG de Nael ») |
 | `accentColor` | couleur d'accent unique, au format `#rrggbb` |
-| `timeZone` | fuseau horaire (par défaut `Asia/Kuala_Lumpur`) |
+| `timeZone` | fuseau d'affichage ; `null` (par défaut) = celui de ton ordinateur, ou un nom comme `"Asia/Kuala_Lumpur"` pour le forcer |
 | `locale` | format des dates (par défaut `fr-FR`) |
 
 Le thème clair/sombre suit le réglage du système ; le bouton en haut à droite alterne
@@ -97,7 +97,9 @@ Le calendrier de l'accueil affiche tes agendas Outlook, Google ou iCloud **en le
 - **Vues** : Jour (avec les 7 jours suivants), Semaine, Mois. Clic sur un jour → vue Jour.
 - **Rafraîchir** : les agendas sont gardés en mémoire 5 minutes ; le bouton ⟳ force une mise à jour immédiate.
 - **Erreurs** : si un agenda ne répond pas, un message indique lequel et pourquoi ; les autres s'affichent normalement.
-- Fuseau horaire : tout est affiché à l'heure de `Asia/Kuala_Lumpur` (réglable dans `dashboard.config.ts`), récurrences et exceptions comprises.
+- **Fuseau d'affichage** : celui de ton ordinateur (indiqué en bas du calendrier), sauf si `dashboard.config.ts` en force un.
+- **Fuseau d'un calendrier** : certains agendas (souvent scolaires) donnent des heures sans fuseau. L'app le devine automatiquement (réglage du calendrier, puis fuseau déclaré dans le fichier) et affiche sa déduction dans « Gérer les calendriers ». Si c'est faux, tape le bon fuseau dans « Fuseau horaire » (ex. `Europe/Paris`) ; « Automatique » revient à la détection.
+- **Regrouper les événements consécutifs** (activé par défaut) : trois cours identiques de 08:00 à 11:00 s'affichent en un seul bloc. Affichage seulement ; désactivable dans « Gérer les calendriers ».
 
 Les liens d'abonnement sont **secrets** (quiconque les possède peut lire ton agenda). Ils sont enregistrés uniquement dans `app/data/calendars.local.json`, ignoré par git, et ne sont jamais renvoyés au navigateur.
 
@@ -121,5 +123,5 @@ toute requête qui ne vient pas de `127.0.0.1`/`localhost` reçoit une erreur 40
 - Next.js (App Router) + TypeScript + Tailwind CSS. Versions figées exactement (pas de `^`).
 - Ajouter une dépendance : version publiée depuis **au moins 14 jours**, par exemple
   `npm install --before=AAAA-MM-JJ paquet@version` (la date = aujourd'hui moins 14 jours).
-- `npm run typecheck` : vérification des types. `npm run build` : compilation de production.
+- `npm run typecheck` : vérification des types. `npm test` : tests automatiques. `npm run build` : compilation de production.
 - Lire le contenu depuis un autre dossier (tests) : `CONTENT_DIR=/chemin npm run dev`.

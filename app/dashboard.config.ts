@@ -2,18 +2,28 @@
  * Configuration personnelle du dashboard.
  * C'est le seul fichier à modifier pour changer le titre, la couleur d'accent, etc.
  */
-const dashboardConfig = {
+interface DashboardConfig {
+  title: string;
+  accentColor: string;
+  timeZone: string | null;
+  locale: string;
+}
+
+const dashboardConfig: DashboardConfig = {
   /** Titre affiché dans l'en-tête et l'onglet du navigateur. */
   title: "Nael",
 
   /** Couleur d'accent unique (format hexadécimal #rrggbb). */
   accentColor: "#6366f1",
 
-  /** Fuseau horaire utilisé pour les dates et le calendrier. */
-  timeZone: "Asia/Kuala_Lumpur",
+  /**
+   * Fuseau horaire d'affichage (dates, calendrier).
+   * null = fuseau de l'ordinateur (recommandé). Pour en forcer un : ex. "Asia/Kuala_Lumpur".
+   */
+  timeZone: null,
 
   /** Langue / format des dates. */
   locale: "fr-FR",
-} as const;
+};
 
 export default dashboardConfig;

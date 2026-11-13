@@ -109,7 +109,8 @@ Séparation stricte :
 Règles :
 
 - Lancement local : `npm run dev` dans `app/`, documenté en français dans `app/README.md`. L'app écoute uniquement sur `127.0.0.1`.
-- Personnalisation (titre, couleur d'accent, fuseau `Asia/Kuala_Lumpur`, langue) : un seul fichier, `app/dashboard.config.ts`.
+- Personnalisation (titre, couleur d'accent, fuseau, langue) : un seul fichier, `app/dashboard.config.ts`.
+- **Fuseau d'affichage** : celui de l'ordinateur par défaut (`timeZone: null`). `dashboard.config.ts` PEUT forcer un fuseau précis (ex. `"Asia/Kuala_Lumpur"`). Ne jamais coder un fuseau en dur ailleurs : utiliser `displayTimeZone()` (`app/src/lib/display-tz.ts`).
 - Interface en français, responsive (utilisable sur téléphone), thème clair/sombre (système + bouton manuel), une seule couleur d'accent.
 - Navigation : `app/src/lib/navigation.ts`. Ajouter une page (ex. `/news`) = ajouter une ligne.
 - Accueil (`HOME_WIDGETS` dans `app/src/app/page.tsx`), dans cet ordre :
@@ -128,7 +129,12 @@ Règles :
 
 - Abonnements ICS ajoutés depuis l'interface (nom, couleur, lien) ; renommer, recolorer, supprimer depuis « Gérer les calendriers ».
 - Flux téléchargés **côté serveur** (`app/src/lib/ics.ts`), cache en mémoire de 5 minutes, bouton de rafraîchissement forcé.
-- Récurrences (RRULE, RDATE, EXDATE, RECURRENCE-ID, occurrences annulées) développées par `ical.js` ; fuseaux : VTIMEZONE du flux, sinon TZID IANA ou Windows (`app/src/lib/tz.ts`), sinon fuseau du dashboard.
+- Récurrences (RRULE, RDATE, EXDATE, RECURRENCE-ID, occurrences annulées) développées par `ical.js`. Heures avec TZID : VTIMEZONE du flux, sinon nom IANA ou Windows (`app/src/lib/tz.ts`).
+- **Heures « flottantes »** (ni TZID ni `Z`), dans cet ordre : (1) fuseau choisi pour ce calendrier dans « Gérer les calendriers » ; (2) `X-WR-TIMEZONE` du calendrier ; (3) l'unique `VTIMEZONE` du fichier, s'il y en a exactement un ; (4) sinon le fuseau d'affichage.
+- Chaque calendrier a un réglage optionnel « Fuseau horaire » (liste IANA avec recherche), « Automatique » par défaut.
+- **Regroupement d'affichage** : les événements consécutifs d'un même calendrier, de même titre et même lieu, l'un finissant quand l'autre commence, sont affichés en un seul bloc (ex. 08:00–11:00). Option activée par défaut, désactivable dans « Gérer les calendriers ». Les événements d'origine ne sont jamais modifiés.
+- Réglages du calendrier (abonnements, fuseaux, regroupement) : `app/data/calendars.local.json` (ignoré par git).
+- Tests : `npm test` dans `app/` (Vitest). Les fichiers ICS de test sont dans `app/test/fixtures/` (données fictives) ; tout cas réel problématique DOIT y être reproduit avec un test.
 - Un flux en échec affiche le nom du calendrier et la raison, sans bloquer les autres.
 - Lecture seule : pas de création ni de modification d'événements.
 

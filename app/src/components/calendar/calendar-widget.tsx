@@ -4,12 +4,21 @@ import { AlertTriangle, CalendarDays, ChevronLeft, ChevronRight, MapPin, Refresh
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   WEEKDAYS, bucketByDay, fmtDayNum, fmtLongDay, fmtShortDay, fmtWeekday, shift, timeLabel,
-  todayInTz, viewTitle, visibleRange, type View, type ViewEvent,
+  mergeAdjacent, todayInTz, viewTitle, visibleRange, type DisplayEvent, type View, type ViewEvent,
 } from "@/lib/calendar-view";
-import { CalendarManager, type PublicCalendar } from "./calendar-manager";
+import { CalendarManager, type PublicCalendar, type ZoneInfo } from "./calendar-manager";
 
 interface FeedError { calendarId: string; name: string; message: string; staleSince?: string }
-interface Payload { calendars: PublicCalendar[]; events: ViewEvent[]; errors: FeedError[] }
+interface Payload {
+  calendars: PublicCalendar[];
+  events: ViewEvent[];
+  errors: FeedError[];
+  /** Fuseau appliqué aux heures flottantes de chaque calendrier. */
+  zones: Record<string, ZoneInfo>;
+  /** Fuseau d'affichage (celui de l'ordinateur, sauf réglage contraire). */
+  displayTz: string;
+  options: { mergeAdjacent: boolean };
+}
 
 const VIEWS: { id: View; label: string }[] = [
   { id: "day", label: "Jour" },
@@ -28,6 +37,7 @@ export function CalendarWidget() {
   const [fatal, setFatal] = useState<string | null>(null);
   const [managerOpen, setManagerOpen] = useState(false);
   const requestId = useRef(0);
+  const displayTzRef = useRef<string | undefined>(undefined);
 
   // Vue mémorisée dans ce navigateur (confort uniquement).
   useEffect(() => {
@@ -49,7 +59,7 @@ export function CalendarWidget() {
 
   // La date du jour change à minuit (fuseau du dashboard).
   useEffect(() => {
-    const t = setInterval(() => setToday(todayInTz()), 60_000);
+    const t = setInterval(() => setToday(todayInTz(displayTzRef.current)), 60_000);
     return () => clearInterval(t);
   }, []);
 
@@ -68,6 +78,8 @@ export function CalendarWidget() {
         if (!res.ok) throw new Error(json.error ?? `Erreur ${res.status}`);
         setData(json);
         setFatal(null);
+        displayTzRef.current = json.displayTz;
+        setToday(todayInTz(json.displayTz));
       } catch (e) {
         if (id === requestId.current) setFatal(e instanceof Error ? e.message : String(e));
       } finally {
@@ -88,7 +100,11 @@ export function CalendarWidget() {
     const m = new Map(data?.calendars.map((c) => [c.id, c.color]));
     return (id: string) => m.get(id) ?? "var(--muted)";
   }, [data]);
-  const byDay = useMemo(() => bucketByDay(data?.events ?? []), [data]);
+  // Fusion des événements consécutifs : affichage seulement, les données restent intactes.
+  const byDay = useMemo(() => {
+    const events = data?.events ?? [];
+    return bucketByDay(data?.options.mergeAdjacent === false ? events : mergeAdjacent(events));
+  }, [data]);
 
   const noCalendars = data !== null && data.calendars.length === 0;
   const openDay = (d: string) => {
@@ -192,13 +208,14 @@ export function CalendarWidget() {
       {/* Pied : légende et gestion */}
       {!noCalendars && (
         <footer className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
-          <ul className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-muted">
+          <ul className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted">
             {data?.calendars.map((c) => (
               <li key={c.id} className="flex items-center gap-1.5">
                 <span className="size-2.5 rounded-full" style={{ background: c.color }} aria-hidden />
                 {c.name}
               </li>
             ))}
+            {data?.displayTz && <li className="opacity-80" title="Fuseau d'affichage">Heure : {data.displayTz.replace(/_/g, " ")}</li>}
           </ul>
           <button
             type="button"
@@ -214,6 +231,8 @@ export function CalendarWidget() {
         open={managerOpen}
         onClose={() => setManagerOpen(false)}
         calendars={data?.calendars ?? []}
+        zones={data?.zones ?? {}}
+        mergeAdjacent={data?.options.mergeAdjacent ?? true}
         onChanged={() => load()}
       />
     </section>
@@ -243,9 +262,12 @@ function IconButton({
   );
 }
 
-function EventRow({ ev, day, colorOf }: { ev: ViewEvent; day: string; colorOf: ColorOf }) {
+const mergedHint = (ev: DisplayEvent) =>
+  ev.mergedCount && ev.mergedCount > 1 ? `Regroupe ${ev.mergedCount} événements consécutifs` : undefined;
+
+function EventRow({ ev, day, colorOf }: { ev: DisplayEvent; day: string; colorOf: ColorOf }) {
   return (
-    <li className="flex gap-3 rounded-xl px-2 py-2 transition-colors hover:bg-surface-2">
+    <li className="flex gap-3 rounded-xl px-2 py-2 transition-colors hover:bg-surface-2" title={mergedHint(ev)}>
       <span className="mt-0.5 w-24 shrink-0 text-sm tabular-nums text-muted">{timeLabel(ev, day)}</span>
       <span className="w-1 shrink-0 self-stretch rounded-full" style={{ background: colorOf(ev.calendarId) }} aria-hidden />
       <span className="min-w-0">
@@ -262,7 +284,7 @@ function EventRow({ ev, day, colorOf }: { ev: ViewEvent; day: string; colorOf: C
 
 function DayView({
   day, days, byDay, colorOf, today,
-}: { day: string; days: string[]; byDay: Map<string, ViewEvent[]>; colorOf: ColorOf; today: string }) {
+}: { day: string; days: string[]; byDay: Map<string, DisplayEvent[]>; colorOf: ColorOf; today: string }) {
   const events = byDay.get(day) ?? [];
   const upcoming = days.slice(1).filter((d) => byDay.get(d)?.length);
   return (
@@ -301,14 +323,14 @@ function DayView({
   );
 }
 
-function Chip({ ev, day, colorOf, wrap }: { ev: ViewEvent; day: string; colorOf: ColorOf; wrap?: boolean }) {
+function Chip({ ev, day, colorOf, wrap }: { ev: DisplayEvent; day: string; colorOf: ColorOf; wrap?: boolean }) {
   const color = colorOf(ev.calendarId);
   const label = timeLabel(ev, day);
   return (
     <li
       className={`rounded-md px-1.5 py-0.5 text-xs leading-5 ${wrap ? "line-clamp-3 break-words" : "truncate"}`}
       style={{ background: `color-mix(in oklab, ${color} 16%, transparent)` }}
-      title={`${label} · ${ev.title}${ev.location ? ` · ${ev.location}` : ""}`}
+      title={`${label} · ${ev.title}${ev.location ? ` · ${ev.location}` : ""}${mergedHint(ev) ? ` (${mergedHint(ev)!.toLowerCase()})` : ""}`}
     >
       {!ev.allDay && label !== "Journée" && (
         <span className="mr-1 tabular-nums text-muted">{label.startsWith("→") ? "→" : label.slice(0, 5)}</span>
@@ -320,7 +342,7 @@ function Chip({ ev, day, colorOf, wrap }: { ev: ViewEvent; day: string; colorOf:
 
 function WeekView({
   days, byDay, colorOf, today, onOpenDay,
-}: { days: string[]; byDay: Map<string, ViewEvent[]>; colorOf: ColorOf; today: string; onOpenDay: (d: string) => void }) {
+}: { days: string[]; byDay: Map<string, DisplayEvent[]>; colorOf: ColorOf; today: string; onOpenDay: (d: string) => void }) {
   return (
     <ol className="grid gap-2 md:grid-cols-7">
       {days.map((d) => {
@@ -350,7 +372,7 @@ function WeekView({
 
 function MonthView({
   days, cursor, byDay, colorOf, today, onOpenDay,
-}: { days: string[]; cursor: string; byDay: Map<string, ViewEvent[]>; colorOf: ColorOf; today: string; onOpenDay: (d: string) => void }) {
+}: { days: string[]; cursor: string; byDay: Map<string, DisplayEvent[]>; colorOf: ColorOf; today: string; onOpenDay: (d: string) => void }) {
   const month = cursor.slice(0, 7);
   return (
     <div>

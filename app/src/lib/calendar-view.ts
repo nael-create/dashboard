@@ -4,6 +4,7 @@
  */
 import config from "@config";
 import { addDays } from "./tz";
+import { displayTimeZone } from "./display-tz";
 
 export type View = "day" | "week" | "month";
 
@@ -19,8 +20,8 @@ export interface ViewEvent {
 
 export { addDays };
 
-export function todayInTz(): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: config.timeZone }).format(new Date());
+export function todayInTz(tz = displayTimeZone()): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date());
 }
 
 /** Lundi = 0 … dimanche = 6. */
@@ -80,8 +81,8 @@ export function eventDays(ev: ViewEvent): string[] {
 }
 
 /** Regroupe les événements par jour ; journées entières en premier, puis par heure. */
-export function bucketByDay(events: ViewEvent[]): Map<string, ViewEvent[]> {
-  const map = new Map<string, ViewEvent[]>();
+export function bucketByDay<T extends ViewEvent>(events: T[]): Map<string, T[]> {
+  const map = new Map<string, T[]>();
   for (const ev of events) {
     for (const d of eventDays(ev)) {
       const list = map.get(d) ?? [];
@@ -133,3 +134,39 @@ export function viewTitle(view: View, cursor: string): string {
 }
 
 export const WEEKDAYS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
+
+/** Événement affiché ; `mergedCount` > 1 si plusieurs événements consécutifs ont été regroupés. */
+export interface DisplayEvent extends ViewEvent {
+  mergedCount?: number;
+}
+
+/**
+ * Regroupe, POUR L'AFFICHAGE SEULEMENT, les événements consécutifs d'un même calendrier ayant
+ * le même titre et le même lieu, quand l'un finit exactement quand le suivant commence
+ * (ex. 08:00–09:00 + 09:00–10:00 + 10:00–11:00 → 08:00–11:00).
+ * Les événements d'origine ne sont jamais modifiés (on renvoie des copies).
+ */
+export function mergeAdjacent(events: ViewEvent[]): DisplayEvent[] {
+  const groups = new Map<string, ViewEvent[]>();
+  for (const ev of events) {
+    const key = [ev.calendarId, ev.allDay ? "1" : "0", ev.title, ev.location ?? ""].join("\u0000");
+    const list = groups.get(key) ?? [];
+    list.push(ev);
+    groups.set(key, list);
+  }
+  const out: DisplayEvent[] = [];
+  for (const list of groups.values()) {
+    const sorted = [...list].sort((a, b) => a.start.localeCompare(b.start) || a.end.localeCompare(b.end));
+    let current = null as DisplayEvent | null;
+    for (const ev of sorted) {
+      if (current && current.end === ev.start && ev.end > ev.start) {
+        current = { ...current, end: ev.end > current.end ? ev.end : current.end, mergedCount: (current.mergedCount ?? 1) + 1 };
+        out[out.length - 1] = current;
+      } else {
+        current = { ...ev };
+        out.push(current);
+      }
+    }
+  }
+  return out.sort((a, b) => a.start.localeCompare(b.start) || a.title.localeCompare(b.title, "fr"));
+}

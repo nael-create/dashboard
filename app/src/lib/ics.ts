@@ -1,13 +1,15 @@
 /**
  * Téléchargement (côté serveur), cache en mémoire et développement des flux ICS.
  * - Récurrences (RRULE, RDATE, EXDATE) et occurrences modifiées (RECURRENCE-ID) via ical.js.
- * - Fuseaux : VTIMEZONE du flux, sinon TZID IANA / Windows, sinon fuseau du dashboard.
+ * - Fuseaux : VTIMEZONE du flux, sinon TZID IANA / Windows.
+ * - Heures « flottantes » (ni TZID ni Z) : fuseau choisi pour le calendrier, sinon X-WR-TIMEZONE,
+ *   sinon l'unique VTIMEZONE du fichier, sinon le fuseau d'affichage.
  * - Rien n'est écrit sur disque : le cache vit uniquement en mémoire.
  */
 import ICAL from "ical.js";
-import config from "@config";
 import type { StoredCalendar } from "./calendar-store";
-import { instantFromWallTime, localStamp, resolveTimeZone } from "./tz";
+import { displayTimeZone } from "./display-tz";
+import { instantFromWallTime, isValidTimeZone, localStamp, resolveTimeZone } from "./tz";
 
 const CACHE_TTL_MS = 5 * 60 * 1000;
 const FETCH_TIMEOUT_MS = 15_000;
@@ -116,18 +118,64 @@ export async function probeFeed(url: string): Promise<{ ok: true; eventCount: nu
 
 type Time = ICAL.Time;
 
+/** D'où vient le fuseau appliqué aux heures flottantes d'un calendrier. */
+export type ZoneSource = "calendar" | "x-wr-timezone" | "vtimezone" | "display";
+
+export interface FloatingZone {
+  source: ZoneSource;
+  /** Nom IANA (ou TZID du fichier si non reconnu). */
+  name: string;
+  /** Définition VTIMEZONE du fichier, utilisée seulement si son TZID n'est pas un fuseau connu. */
+  ical?: ICAL.Timezone;
+}
+
+/**
+ * Fuseau des heures flottantes, dans cet ordre :
+ * 1. fuseau choisi pour ce calendrier dans l'interface ;
+ * 2. X-WR-TIMEZONE du calendrier ;
+ * 3. l'unique VTIMEZONE déclaré dans le fichier (s'il y en a exactement un) ;
+ * 4. sinon, le fuseau d'affichage.
+ */
+export function detectFloatingZone(root: ICAL.Component, calendarTz: string | null | undefined, displayTz: string): FloatingZone {
+  if (calendarTz && isValidTimeZone(calendarTz)) return { source: "calendar", name: calendarTz };
+
+  const xwr = root.getFirstPropertyValue("x-wr-timezone");
+  if (xwr) {
+    const resolved = resolveTimeZone(String(xwr));
+    if (resolved) return { source: "x-wr-timezone", name: resolved };
+  }
+
+  const vtimezones = root.getAllSubcomponents("vtimezone");
+  if (vtimezones.length === 1) {
+    const tzid = String(vtimezones[0].getFirstPropertyValue("tzid") ?? "");
+    const resolved = resolveTimeZone(tzid);
+    if (resolved) return { source: "vtimezone", name: resolved };
+    if (tzid) return { source: "vtimezone", name: tzid, ical: new ICAL.Timezone({ component: vtimezones[0], tzid }) };
+  }
+
+  return { source: "display", name: displayTz };
+}
+
+function wallOf(t: Time) {
+  return { year: t.year, month: t.month, day: t.day, hour: t.hour, minute: t.minute, second: t.second };
+}
+
 /** Instant (ms) d'une date-heure ICS. `tzid` = paramètre TZID de la propriété d'origine. */
-function toMs(t: Time, tzid: string | null): number {
+function toMs(t: Time, tzid: string | null, floating: FloatingZone): number {
   const zone = t.zone;
   if (zone === ICAL.Timezone.utcTimezone) return t.toUnixTime() * 1000;
   // Fuseau défini par un VTIMEZONE dans le flux : ical.js sait calculer le décalage.
   if (zone && zone !== ICAL.Timezone.localTimezone && zone.component) return t.toUnixTime() * 1000;
-  // Sinon : TZID connu (IANA ou Windows) ou heure « flottante » → fuseau du dashboard.
-  const tz = resolveTimeZone(tzid) ?? config.timeZone;
-  return instantFromWallTime(
-    { year: t.year, month: t.month, day: t.day, hour: t.hour, minute: t.minute, second: t.second },
-    tz,
-  );
+  // TZID sans définition dans le fichier : nom IANA ou Windows.
+  const named = resolveTimeZone(tzid);
+  if (named) return instantFromWallTime(wallOf(t), named);
+  // Heure flottante (ou TZID inconnu).
+  if (floating.ical) {
+    const c = t.clone();
+    c.zone = floating.ical;
+    return c.toUnixTime() * 1000;
+  }
+  return instantFromWallTime(wallOf(t), floating.name);
 }
 
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -143,11 +191,22 @@ function tzidOf(comp: ICAL.Component, prop: "dtstart" | "dtend"): string | null 
 /* Développement des événements                                         */
 /* ------------------------------------------------------------------ */
 
+export interface ExpandOptions {
+  /** Fuseau d'affichage (celui de l'ordinateur par défaut). */
+  displayTz: string;
+  /** Fuseau choisi pour ce calendrier dans l'interface (heures flottantes uniquement). */
+  calendarTz?: string | null;
+}
+
 /**
- * Événements qui chevauchent [rangeStart, rangeEnd) (dates YYYY-MM-DD, fuseau du dashboard).
+ * Événements qui chevauchent [rangeStart, rangeEnd) (dates YYYY-MM-DD dans le fuseau d'affichage).
  */
-export function expandFeed(text: string, calendarId: string, rangeStart: string, rangeEnd: string): CalEvent[] {
+export function expandFeed(
+  text: string, calendarId: string, rangeStart: string, rangeEnd: string, opts: ExpandOptions,
+): { events: CalEvent[]; floatingZone: FloatingZone } {
+  const { displayTz } = opts;
   const root = new ICAL.Component(ICAL.parse(text));
+  const floating = detectFloatingZone(root, opts.calendarTz, displayTz);
   const vevents = root.getAllSubcomponents("vevent");
 
   // Regroupe occurrences modifiées (RECURRENCE-ID) et événements principaux par UID.
@@ -169,8 +228,8 @@ export function expandFeed(text: string, calendarId: string, rangeStart: string,
   const rangeStartStamp = `${rangeStart}T00:00`;
   const rangeEndStamp = `${rangeEnd}T00:00`;
   // Bornes en instants, élargies d'une journée pour couvrir tous les fuseaux d'origine.
-  const startMs = instantFromWallTime(wall(rangeStart), config.timeZone) - 86_400_000;
-  const endMs = instantFromWallTime(wall(rangeEnd), config.timeZone) + 86_400_000;
+  const startMs = instantFromWallTime(wall(rangeStart), displayTz) - 86_400_000;
+  const endMs = instantFromWallTime(wall(rangeEnd), displayTz) + 86_400_000;
 
   const out: CalEvent[] = [];
 
@@ -189,10 +248,10 @@ export function expandFeed(text: string, calendarId: string, rangeStart: string,
       }
       return;
     }
-    const sMs = toMs(start, tzidOf(comp, "dtstart"));
-    const eMs = end ? toMs(end, tzidOf(comp, "dtend") ?? tzidOf(comp, "dtstart")) : sMs;
-    const s = localStamp(sMs, config.timeZone);
-    const e = localStamp(Math.max(eMs, sMs), config.timeZone);
+    const sMs = toMs(start, tzidOf(comp, "dtstart"), floating);
+    const eMs = end ? toMs(end, tzidOf(comp, "dtend") ?? tzidOf(comp, "dtstart"), floating) : sMs;
+    const s = localStamp(sMs, displayTz);
+    const e = localStamp(Math.max(eMs, sMs), displayTz);
     const overlaps = s < rangeEndStamp && (e > rangeStartStamp || (e === s && s >= rangeStartStamp));
     if (overlaps) out.push({ id: `${calendarId}:${key}`, calendarId, title, allDay: false, start: s, end: e, location });
   };
@@ -208,17 +267,20 @@ export function expandFeed(text: string, calendarId: string, rangeStart: string,
     let next: Time | null;
     let n = 0;
     while ((next = it.next()) && n++ < MAX_ITERATIONS) {
-      const occMs = next.isDate ? Date.parse(`${dateOnly(next)}T00:00:00Z`) : toMs(next, startTzid);
+      const occMs = next.isDate ? Date.parse(`${dateOnly(next)}T00:00:00Z`) : toMs(next, startTzid, floating);
       if (occMs > endMs) break;
       const details = ev.getOccurrenceDetails(next);
       const endOcc = details.endDate;
-      const endOccMs = endOcc.isDate ? Date.parse(`${dateOnly(endOcc)}T00:00:00Z`) : toMs(endOcc, startTzid);
+      const endOccMs = endOcc.isDate ? Date.parse(`${dateOnly(endOcc)}T00:00:00Z`) : toMs(endOcc, startTzid, floating);
       if (endOccMs < startMs && occMs < startMs) continue;
       push(details.item, details.startDate, endOcc, `${uid}@${next.toString()}`);
     }
   }
 
-  return out.sort((a, b) => a.start.localeCompare(b.start) || a.title.localeCompare(b.title, "fr"));
+  return {
+    events: out.sort((a, b) => a.start.localeCompare(b.start) || a.title.localeCompare(b.title, "fr")),
+    floatingZone: floating,
+  };
 }
 
 function wall(iso: string) {
@@ -235,17 +297,23 @@ function addOneDay(iso: string) {
 /* Point d'entrée                                                       */
 /* ------------------------------------------------------------------ */
 
+export interface ZoneInfo { source: ZoneSource; name: string }
+
 export async function loadEvents(
   calendars: StoredCalendar[], rangeStart: string, rangeEnd: string, force = false,
-): Promise<{ events: CalEvent[]; errors: FeedError[] }> {
+): Promise<{ events: CalEvent[]; errors: FeedError[]; zones: Record<string, ZoneInfo>; displayTz: string }> {
+  const displayTz = displayTimeZone();
   const results = await Promise.all(
     calendars.map(async (cal) => {
       const { text, stale, error } = await getFeedText(cal, force);
       const errors: FeedError[] = [];
       let events: CalEvent[] = [];
+      let zone: ZoneInfo | null = null;
       if (text) {
         try {
-          events = expandFeed(text, cal.id, rangeStart, rangeEnd);
+          const r = expandFeed(text, cal.id, rangeStart, rangeEnd, { displayTz, calendarTz: cal.timeZone });
+          events = r.events;
+          zone = { source: r.floatingZone.source, name: r.floatingZone.name };
         } catch (e) {
           errors.push({
             calendarId: cal.id, name: cal.name,
@@ -256,14 +324,16 @@ export async function loadEvents(
       if (error) {
         errors.push({
           calendarId: cal.id, name: cal.name, message: error,
-          staleSince: stale ? localStamp(stale.fetchedAt, config.timeZone).slice(11) : undefined,
+          staleSince: stale ? localStamp(stale.fetchedAt, displayTz).slice(11) : undefined,
         });
       }
-      return { events, errors };
+      return { id: cal.id, events, errors, zone };
     }),
   );
   return {
     events: results.flatMap((r) => r.events).sort((a, b) => a.start.localeCompare(b.start)),
     errors: results.flatMap((r) => r.errors),
+    zones: Object.fromEntries(results.filter((r) => r.zone).map((r) => [r.id, r.zone!])),
+    displayTz,
   };
 }

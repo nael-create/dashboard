@@ -1,9 +1,29 @@
 "use client";
 
-import { Check, Lock, Plus, Trash2, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { Check, Globe, Lock, Plus, Trash2, X } from "lucide-react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 
-export interface PublicCalendar { id: string; name: string; color: string; host: string }
+export interface PublicCalendar { id: string; name: string; color: string; host: string; timeZone: string | null }
+export interface ZoneInfo { source: "calendar" | "x-wr-timezone" | "vtimezone" | "display"; name: string }
+
+const SOURCE_LABELS: Record<ZoneInfo["source"], string> = {
+  calendar: "choisi ici",
+  "x-wr-timezone": "indiqué par le calendrier",
+  vtimezone: "déclaré dans le fichier",
+  display: "fuseau de l'ordinateur",
+};
+
+/** Liste des fuseaux IANA connus du navigateur (pour la recherche). */
+function useTimeZones(): string[] {
+  return useMemo(() => {
+    try {
+      const list = (Intl as unknown as { supportedValuesOf?: (k: string) => string[] }).supportedValuesOf?.("timeZone") ?? [];
+      return list.includes("UTC") ? list : ["UTC", ...list];
+    } catch {
+      return ["UTC"];
+    }
+  }, []);
+}
 
 /** Couleurs proposées par défaut (chaque calendrier a la sienne). */
 const PRESETS = ["#6366f1", "#0ea5e9", "#10b981", "#f59e0b", "#f43f5e", "#8b5cf6", "#14b8a6", "#f97316"];
@@ -16,9 +36,14 @@ async function api(url: string, init: RequestInit) {
 }
 
 export function CalendarManager({
-  open, onClose, calendars, onChanged,
-}: { open: boolean; onClose: () => void; calendars: PublicCalendar[]; onChanged: () => void }) {
+  open, onClose, calendars, zones, mergeAdjacent, onChanged,
+}: {
+  open: boolean; onClose: () => void; calendars: PublicCalendar[]; zones: Record<string, ZoneInfo>;
+  mergeAdjacent: boolean; onChanged: () => void;
+}) {
   const ref = useRef<HTMLDialogElement>(null);
+  const timeZones = useTimeZones();
+  const listId = useId();
 
   useEffect(() => {
     const d = ref.current;
@@ -43,9 +68,17 @@ export function CalendarManager({
         </header>
 
         {calendars.length > 0 && (
-          <ul className="mb-6 space-y-2">
-            {calendars.map((c) => <CalendarRow key={c.id} cal={c} onChanged={onChanged} />)}
-          </ul>
+          <>
+            <datalist id={listId}>
+              {timeZones.map((z) => <option key={z} value={z} />)}
+            </datalist>
+            <ul className="mb-4 space-y-2">
+              {calendars.map((c) => (
+                <CalendarRow key={c.id} cal={c} zone={zones[c.id]} listId={listId} timeZones={timeZones} onChanged={onChanged} />
+              ))}
+            </ul>
+            <MergeToggle value={mergeAdjacent} onChanged={onChanged} />
+          </>
         )}
 
         {/* Recréé à chaque ouverture : la couleur proposée est une couleur encore libre. */}
@@ -80,20 +113,116 @@ function ColorPicker({ value, onChange, label }: { value: string; onChange: (c: 
   );
 }
 
-function CalendarRow({ cal, onChanged }: { cal: PublicCalendar; onChanged: () => void }) {
+function MergeToggle({ value, onChanged }: { value: boolean; onChanged: () => void }) {
+  const [on, setOn] = useState(value);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => setOn(value), [value]);
+  const toggle = async () => {
+    const next = !on;
+    setOn(next);
+    setError(null);
+    try {
+      await api("/api/calendar-options", { method: "PATCH", body: JSON.stringify({ mergeAdjacent: next }) });
+      onChanged();
+    } catch (e) {
+      setOn(!next);
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  };
+  return (
+    <div className="mb-6 rounded-xl border border-border p-3">
+      <label className="flex cursor-pointer items-start justify-between gap-4">
+        <span>
+          <span className="block text-sm font-medium">Regrouper les événements consécutifs</span>
+          <span className="mt-0.5 block text-xs text-muted">
+            Même calendrier, même titre et même lieu, l&apos;un finissant quand l&apos;autre commence (ex. 08:00–11:00).
+            Affichage seulement : les événements d&apos;origine ne changent pas.
+          </span>
+        </span>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={on}
+          onClick={toggle}
+          className={`relative mt-0.5 h-6 w-10 shrink-0 rounded-full transition-colors ${on ? "bg-accent" : "bg-border"}`}
+        >
+          <span className={`absolute top-0.5 size-5 rounded-full bg-white shadow transition-all ${on ? "left-[18px]" : "left-0.5"}`} />
+        </button>
+      </label>
+      {error && <p className="mt-2 text-sm text-rose-600">{error}</p>}
+    </div>
+  );
+}
+
+function TimeZoneField({
+  cal, zone, listId, timeZones, onSave,
+}: { cal: PublicCalendar; zone?: ZoneInfo; listId: string; timeZones: string[]; onSave: (tz: string | null) => Promise<boolean> }) {
+  const [value, setValue] = useState(cal.timeZone ?? "");
+  const [invalid, setInvalid] = useState(false);
+  useEffect(() => setValue(cal.timeZone ?? ""), [cal.timeZone]);
+
+  const commit = async () => {
+    const v = value.trim();
+    if ((v || null) === cal.timeZone) return setInvalid(false);
+    if (v && !timeZones.includes(v)) return setInvalid(true);
+    setInvalid(false);
+    if (!(await onSave(v || null))) setValue(cal.timeZone ?? "");
+  };
+
+  const auto = zone && zone.source !== "calendar" ? `${zone.name.replace(/_/g, " ")} (${SOURCE_LABELS[zone.source]})` : null;
+
+  return (
+    <div className="mt-2 pl-5">
+      <label className="flex flex-wrap items-center gap-2 text-sm">
+        <span className="flex items-center gap-1 text-muted"><Globe className="size-3.5" aria-hidden /> Fuseau horaire</span>
+        <input
+          value={value}
+          list={listId}
+          onChange={(e) => { setValue(e.target.value); setInvalid(false); }}
+          onBlur={commit}
+          onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
+          placeholder="Automatique — tape pour chercher (ex. Paris)"
+          spellCheck={false}
+          autoComplete="off"
+          className={`min-w-0 flex-1 rounded-md border bg-bg px-2 py-1 text-sm outline-none transition-colors focus:border-accent ${invalid ? "border-rose-500" : "border-border"}`}
+        />
+        {value && (
+          <button type="button" onClick={() => { setValue(""); onSave(null); }} className="text-xs text-muted underline-offset-2 hover:text-text hover:underline">
+            Automatique
+          </button>
+        )}
+      </label>
+      <p className="mt-1 text-xs text-muted">
+        {invalid
+          ? "Fuseau inconnu : choisis-en un dans la liste (ex. Europe/Paris)."
+          : value
+            ? "Appliqué aux heures sans fuseau de ce calendrier."
+            : auto
+              ? `Automatique : ${auto}.`
+              : "Automatique."}
+      </p>
+    </div>
+  );
+}
+
+function CalendarRow({
+  cal, zone, listId, timeZones, onChanged,
+}: { cal: PublicCalendar; zone?: ZoneInfo; listId: string; timeZones: string[]; onChanged: () => void }) {
   const [name, setName] = useState(cal.name);
   const [color, setColor] = useState(cal.color);
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const save = async (patch: { name?: string; color?: string }) => {
+  const save = async (patch: { name?: string; color?: string; timeZone?: string | null }) => {
     setError(null);
     try {
       await api(`/api/calendars/${cal.id}`, { method: "PATCH", body: JSON.stringify(patch) });
       onChanged();
+      return true;
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
+      return false;
     }
   };
 
@@ -136,6 +265,7 @@ function CalendarRow({ cal, onChanged }: { cal: PublicCalendar; onChanged: () =>
         <ColorPicker value={color} label={`Couleur de « ${cal.name} »`} onChange={(c) => { setColor(c); save({ color: c }); }} />
         <span className="text-xs text-muted">{cal.host}</span>
       </div>
+      <TimeZoneField cal={cal} zone={zone} listId={listId} timeZones={timeZones} onSave={(tz) => save({ timeZone: tz })} />
       {error && <p className="mt-2 pl-5 text-sm text-rose-600">{error}</p>}
     </li>
   );

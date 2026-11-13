@@ -1,14 +1,15 @@
 import config from "@config";
+import { displayTimeZone } from "./display-tz";
 
 /** Date du jour au format YYYY-MM-DD dans le fuseau configuré. */
 export function todayISO(now = new Date()): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: config.timeZone }).format(now);
+  return new Intl.DateTimeFormat("en-CA", { timeZone: displayTimeZone() }).format(now);
 }
 
 /** « vendredi 13 novembre » dans le fuseau configuré. */
 export function formatLongToday(now = new Date()): string {
   const s = new Intl.DateTimeFormat(config.locale, {
-    timeZone: config.timeZone, weekday: "long", day: "numeric", month: "long",
+    timeZone: displayTimeZone(), weekday: "long", day: "numeric", month: "long",
   }).format(now);
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
