@@ -21,6 +21,7 @@ export interface NotionItem {
   term: string;
   tags: string[];
   added: string | null;
+  highlight?: string | null;
   definition: string;
   example: string;
   complete: boolean;
@@ -129,6 +130,9 @@ function GlossaryCard({ n, renderStar, letter }: { n: NotionItem; renderStar?: (
       <div className="md mt-1.5 text-sm"><ReactMarkdown remarkPlugins={[remarkGfm]} skipHtml>{n.definition}</ReactMarkdown></div>
       {n.example && <p className="mt-2 border-l border-text/60 pl-2 text-sm italic text-muted">{n.example}</p>}
       {n.tags.length > 0 && <p className="label mt-3 text-muted">{n.tags.map((t) => `#${t}`).join(" ")}</p>}
+      {n.highlight && (
+        <a href={`/surlignages#${n.highlight}`} className="label link-underline mt-3 inline-block text-muted hover:text-text print:hidden">↳ Voir le surlignage</a>
+      )}
     </article>
   );
 }

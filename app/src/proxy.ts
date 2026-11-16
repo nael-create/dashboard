@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { decideAccess } from "@/lib/remote-access";
+import { needsNewsletterCsp, newsletterCsp } from "@/lib/csp";
 
 /**
  * Garde-fou d'accès (voir src/lib/remote-access.ts) :
@@ -10,7 +11,21 @@ import { decideAccess } from "@/lib/remote-access";
  */
 export function proxy(request: NextRequest) {
   const decision = decideAccess(request.headers, process.env.DASHBOARD_BASIC_AUTH);
-  if (decision.allow) return NextResponse.next();
+  if (decision.allow) {
+    if (!needsNewsletterCsp(request.nextUrl.pathname)) return NextResponse.next();
+    // Lecture d'une newsletter : CSP stricte avec nonce (Next.js l'applique à ses propres scripts).
+    const nonce = btoa(crypto.randomUUID());
+    const csp = newsletterCsp(nonce, {
+      images: request.nextUrl.searchParams.get("images") === "1",
+      dev: process.env.NODE_ENV !== "production",
+    });
+    const headers = new Headers(request.headers);
+    headers.set("x-nonce", nonce);
+    headers.set("Content-Security-Policy", csp);
+    const res = NextResponse.next({ request: { headers } });
+    res.headers.set("Content-Security-Policy", csp);
+    return res;
+  }
   return new NextResponse(page(decision.status, decision.message), {
     status: decision.status,
     headers: {

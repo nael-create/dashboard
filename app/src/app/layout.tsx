@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import type { CSSProperties, ReactNode } from "react";
 import config from "@config";
+import { headers } from "next/headers";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { SiteHeader } from "@/components/nav";
@@ -27,11 +28,13 @@ export const viewport: Viewport = {
   ],
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  // Nonce de la CSP (pages de lecture des newsletters) : le petit script du thème doit le porter.
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
     <html lang="fr" suppressHydrationWarning style={{ "--accent": config.accentColor } as CSSProperties}>
       <body className="min-h-dvh font-sans">
-        <ThemeProvider>
+        <ThemeProvider nonce={nonce}>
           <FavoritesProvider>
           <SiteHeader
             title={config.title}

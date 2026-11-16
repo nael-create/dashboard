@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Plus, X } from "lucide-react";
+import { Check, Highlighter, Plus, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { apiJson } from "@/lib/client-api";
 import { EVENTS } from "@/lib/shortcuts";
@@ -9,12 +9,23 @@ import { btnPrimary, field, iconBtn } from "@/components/ui/forms";
 /**
  * Ajout rapide d'une notion, depuis n'importe quelle page : bouton « + » ou touche N.
  * Terme obligatoire, définition et tags facultatifs ; Entrée enregistre, Échap ferme.
+ * Depuis un surlignage (« Créer une notion ») : définition = passage, contexte = objet et expéditeur,
+ * terme vide à remplir ; la notion garde le lien vers le surlignage.
  */
+export interface NewNotionDetail {
+  term?: string;
+  definition?: string;
+  example?: string;
+  highlight?: string;
+}
+
 export function QuickAddNotion() {
   const [open, setOpen] = useState(false);
   const [term, setTerm] = useState("");
   const [definition, setDefinition] = useState("");
   const [tags, setTags] = useState("");
+  const [example, setExample] = useState("");
+  const [highlight, setHighlight] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const termRef = useRef<HTMLInputElement>(null);
@@ -22,8 +33,14 @@ export function QuickAddNotion() {
 
   useEffect(() => {
     const show = (e: Event) => {
-      const term = (e as CustomEvent<{ term?: string }>).detail?.term;
-      if (term) setTerm(term);
+      const d = (e as CustomEvent<NewNotionDetail>).detail ?? {};
+      if (d.highlight) {
+        // Depuis un surlignage : le terme reste à écrire (obligatoire).
+        setTerm("");
+        setDefinition(d.definition ?? "");
+        setExample(d.example ?? "");
+        setHighlight(d.highlight);
+      } else if (d.term) setTerm(d.term);
       setOpen(true);
       setMsg(null);
       termRef.current?.focus(); // si déjà ouvert ; sinon autoFocus à l'ouverture
@@ -50,11 +67,15 @@ export function QuickAddNotion() {
         term,
         definition,
         tags: tags.split(",").map((t) => t.trim().replace(/^#/, "")).filter(Boolean),
+        example,
+        highlight,
       });
       setMsg({ ok: true, text: definition.trim() ? `« ${term.trim()} » ajoutée.` : `« ${term.trim()} » ajoutée (à compléter).` });
       setTerm("");
       setDefinition("");
       setTags("");
+      setExample("");
+      setHighlight(null);
       termRef.current?.focus();
     } catch (err) {
       setMsg({ ok: false, text: err instanceof Error ? err.message : String(err) });
@@ -67,7 +88,12 @@ export function QuickAddNotion() {
     <div className="relative" ref={panelRef}>
       <button
         type="button"
-        onClick={() => (open ? setOpen(false) : window.dispatchEvent(new Event(EVENTS.newNotion)))}
+        onClick={() => {
+          if (open) return setOpen(false);
+          setHighlight(null);
+          setExample("");
+          window.dispatchEvent(new Event(EVENTS.newNotion));
+        }}
         aria-label="Nouvelle notion (N)"
         title="Nouvelle notion (N)"
         aria-expanded={open}
@@ -87,8 +113,19 @@ export function QuickAddNotion() {
             <button type="button" onClick={() => setOpen(false)} aria-label="Fermer" className={iconBtn}><X className="size-4" /></button>
           </div>
           <form onSubmit={save} className="space-y-2">
-            <input ref={termRef} autoFocus value={term} onChange={(e) => setTerm(e.target.value)} required maxLength={120} placeholder="Terme" aria-label="Terme" className={`${field} font-medium`} />
-            <input value={definition} onChange={(e) => setDefinition(e.target.value)} placeholder="Définition (facultatif)" aria-label="Définition" className={field} />
+            {highlight && (
+              <p className="label flex items-center gap-1.5 text-muted"><Highlighter className="size-3.5" aria-hidden /> Depuis un surlignage · écris le mot</p>
+            )}
+            <input ref={termRef} autoFocus value={term} onChange={(e) => setTerm(e.target.value)} required maxLength={120} placeholder={highlight ? "Terme (obligatoire)" : "Terme"} aria-label="Terme" className={`${field} font-medium`} />
+            {highlight || definition.length > 80 ? (
+              <textarea value={definition} onChange={(e) => setDefinition(e.target.value)} rows={4} placeholder="Définition (facultatif)" aria-label="Définition" className={`${field} resize-y text-sm`}
+                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); (e.currentTarget.form as HTMLFormElement).requestSubmit(); } }} />
+            ) : (
+              <input value={definition} onChange={(e) => setDefinition(e.target.value)} placeholder="Définition (facultatif)" aria-label="Définition" className={field} />
+            )}
+            {(highlight || example) && (
+              <input value={example} onChange={(e) => setExample(e.target.value)} maxLength={300} placeholder="Contexte (facultatif)" aria-label="Exemple ou contexte" className={`${field} text-sm`} />
+            )}
             <input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="Tags, séparés par des virgules (facultatif)" aria-label="Tags" className={field} />
             <div className="flex items-center justify-between gap-2 pt-1">
               <span className="text-xs text-muted">Entrée pour enregistrer · Échap pour fermer</span>

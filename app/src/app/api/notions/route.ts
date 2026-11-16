@@ -21,6 +21,7 @@ const schema = z.object({
   definition: notionFields.definition.default(""),
   example: notionFields.example.default(""),
   tags: notionFields.tags.default([]),
+  highlight: z.string().regex(/^hl-\d{8}-\d+$/).nullable().optional(),
 });
 
 export async function POST(req: Request) {

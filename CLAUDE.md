@@ -29,6 +29,7 @@ NEWS.md                 # Sources d'actus RSS et disposition des widgets (voir s
 NOTIONS.md              # Glossaire à mémoriser (voir section 12)
 FAVORIS.md              # Favoris (voir section 15)
 AGENDA.md               # Événements personnels, calendrier « Perso » (voir section 18)
+SURLIGNAGES.md          # Passages surlignés dans les newsletters (voir section 19)
 .gitignore              # Secrets et fichiers générés
 Lancer le dashboard.command  # Lanceur macOS en double-clic (doit rester exécutable)
 app/                    # Application web (code uniquement, voir section 9)
@@ -122,6 +123,7 @@ Séparation stricte :
   | `reviews/YYYY-Www.md` | 11 | revue générée depuis `reviews/_template.md` (ou sections mises à jour si elle existe déjà) |
   | `AGENDA.md` | 18 | événements « Perso » (création, modification, suppression avec confirmation), nom et couleur du calendrier |
   | `FAVORIS.md` | 10 | favoris (ajout / retrait par l'étoile, note personnelle, retrait d'un élément supprimé) |
+  | `SURLIGNAGES.md` | 19 | surlignages (ajout depuis la lecture d'une newsletter, couleur, note, suppression avec confirmation) |
   | `projects/*/README.md`, `areas/*/README.md` | 9 | frontmatter, sections, actions, journal ; création depuis `_template` |
   | `archive/` | 9 | déplacement d'un projet passé à `done` / `dropped` (après confirmation) |
   | `DASHBOARD.md` | 9 | régénéré entièrement après chaque modification de projet / domaine (et de revue ou d'inbox) |
@@ -136,7 +138,7 @@ Règles :
 - **Fuseau d'affichage** : celui de l'ordinateur par défaut (`timeZone: null`). `dashboard.config.ts` PEUT forcer un fuseau précis (ex. `"Asia/Kuala_Lumpur"`). Ne jamais coder un fuseau en dur ailleurs : utiliser `displayTimeZone()` (`app/src/lib/display-tz.ts`).
 - Interface en français, responsive (utilisable sur téléphone), thème clair/sombre (système + bouton manuel), une seule couleur d'accent.
 - **Design** : système éditorial décrit dans `app/previews/redesign/BRIEF.md` (fond grège / noir chaud, police libre Inter Tight auto-hébergée, titres en minuscules très grands, petites capitales pour les étiquettes, fils fins, aucun arrondi sur cartes et images, une seule couleur d'accent). Jetons de couleur et utilitaires (`display`, `section-title`, `title-md`, `label`, `link-underline`, `rise`) dans `app/src/app/globals.css`. Mouvement discret, désactivé si `prefers-reduced-motion`. Contraste au moins AA dans les deux modes, focus visible partout.
-- **En-tête** (`app/src/components/nav.tsx`, liste `HEADER_ITEMS`) : nom, navigation complète (Accueil, Projets, Notions, Mémo, Newsletters, News, Favoris, Revue), heure locale, puis Sauvegarder, loupe (palette), « + » (notion) et thème. Sur téléphone : bouton « Menu » ouvrant un menu plein écran numéroté. La palette utilise `app/src/lib/navigation.ts` pour ses « Aller à … ».
+- **En-tête** (`app/src/components/nav.tsx`, liste `HEADER_ITEMS`) : nom, navigation complète (Accueil, Projets, Notions, Mémo, Newsletters, Surlignages, News, Favoris, Revue), heure locale, puis Sauvegarder, loupe (palette), « + » (notion) et thème. Sur téléphone : bouton « Menu » ouvrant un menu plein écran numéroté. La palette utilise `app/src/lib/navigation.ts` pour ses « Aller à … ».
 - Raccourcis clavier : `app/src/components/shortcuts.tsx`. Les raccourcis à modificateur (`⌘K` / `Ctrl+K`) DOIVENT fonctionner partout, y compris pendant la saisie ; les raccourcis à une touche (`N`, `?`) ne s'activent JAMAIS pendant la saisie dans un champ.
 - **Accueil** (`app/src/app/page.tsx`), de haut en bas — cet ordre est imposé :
   1. **En-tête** ;
@@ -171,7 +173,11 @@ Règles :
 - Liens d'abonnement aux calendriers (secrets) : `app/data/calendars.local.json` (ignoré par git). Ne JAMAIS les versionner.
 - Outlook : lecture seule, permission Microsoft Graph `Mail.Read` uniquement (plus les permissions de connexion `openid`, `profile`, `offline_access`), et seulement le dossier configuré (`newslettersFolder` dans `dashboard.config.ts` : `"inbox"` = Boîte de réception, l'adresse du propriétaire étant dédiée aux newsletters ; sinon le nom d'un dossier). Les newsletters ne sont JAMAIS enregistrées dans le dépôt (mémoire seulement, quelques minutes).
 - Application Microsoft « publique » (PKCE, aucun secret client) ; `MS_CLIENT_ID` et `MS_TENANT` dans `app/.env.local` ; URI de redirection `http://localhost:3000/api/outlook/callback`. Jetons : `app/data/msal-cache.local.json` (ignoré par git, droits 0600), supprimés par « Se déconnecter ».
-- HTML des e-mails : nettoyé par `sanitize-html` puis affiché dans une iframe `sandbox` **sans `allow-scripts`** (seulement `allow-same-origin` pour mesurer la hauteur et reprendre la police de l'app, et `allow-popups` pour les liens) avec une CSP stricte (`app/src/lib/email-document.ts`) ; images distantes bloquées par défaut (« Images »). Deux affichages : « Lecture » (par défaut, typographie et couleurs du dashboard, colonne de lecture) et « Original » (mise en page de l'expéditeur sur fond blanc).
+- HTML des e-mails, deux affichages :
+  - **« Lecture »** (par défaut, surlignable) : rendu **dans la page** de l'app après un nettoyage **strict** (`sanitizeForReading` dans `app/src/lib/outlook.ts` : liste blanche courte de balises de texte, liens http(s)/mailto/tel ouverts à part, tableaux, images seulement si « Images » ; **aucun** attribut style, class, id ou name ; aucun script, formulaire, cadre, SVG, objet, méta, lien de feuille de style), **plus** une CSP à nonce sur `/newsletters/<id>` (`app/src/lib/csp.ts`, posée par `app/src/proxy.ts` : seuls les scripts de l'app portant le nonce s'exécutent, `script-src-attr 'none'`, images distantes seulement si « Images »). Tests : `app/test/reading-security.test.ts`. Toute modification de ce nettoyage DOIT garder ces tests verts et en ajouter pour tout nouveau cas.
+  - **« Original »** (mise en page de l'expéditeur sur fond blanc) : iframe `sandbox` **sans `allow-scripts`** (seulement `allow-same-origin` pour mesurer la hauteur et reprendre la police, `allow-popups` pour les liens), CSP stricte propre (`app/src/lib/email-document.ts`).
+  - Images distantes bloquées par défaut (« Images »).
+- **Exception étroite et voulue** à « le corps d'un e-mail n'est jamais écrit dans le dépôt » : les passages que le propriétaire **surligne lui-même** (section 19), 1 000 caractères au plus chacun, jamais l'e-mail entier.
 - **Avant chaque commit**, vérifier qu'aucun secret, jeton ou lien de calendrier n'est indexé : `git status`, `git diff --cached --name-only` (aucun `.env*` réel ni `*.local.json`) et une recherche dans `git diff --cached` de motifs comme `webcal:`, `.ics`, `client_secret`, `token`, `password`.
 
 ## 10. MEMO.md — choses à retenir
@@ -237,6 +243,7 @@ Définition (une ou plusieurs lignes).
 - Leitner : intervalles 1, 2, 5, 14, 30, 90 jours (boîtes 1 à 6). « Je savais » : boîte suivante ; « À revoir » : boîte 1, à revoir demain. Une nouvelle notion est due le lendemain de son ajout. « Apprise » = boîte 4 ou plus. Réviser n'est jamais obligatoire.
 - Accueil : « À retenir aujourd'hui » propose `notionsPerDay` notions (dashboard.config.ts, 3 par défaut) ; « Encore » en propose d'autres.
 - **Onglet « Travailler »** (`/notions?onglet=travailler`, `app/src/components/notions/practice.tsx`, logique pure `app/src/lib/practice.ts`) : entraînement façon Quizlet, définition devant et mot derrière. Modes Cartes (retourner, « Je sais » / « À revoir », ← → Espace, glisser sur téléphone, annuler), QCM (4 mots, touches 1–4) et Écrire (accents et majuscules ignorés, une faute de frappe tolérée sur les mots longs, « J'avais bon »). Paquets : à revoir aujourd'hui, pas encore apprises, toutes ; mélange ; écran de fin avec « Revoir les ratées ». Mémoire : « À revoir » toujours enregistré ; « Je sais » seulement si la carte était due (pas d'avance gratuite). L'accueil (« À retenir aujourd'hui ») utilise la même carte, avec flèches et lien « Travailler ».
+- Notion créée depuis un surlignage : ligne `highlight: hl-YYYYMMDD-n` après `added:` (lien vers le surlignage, conservé aux modifications ; « ↳ Voir le surlignage » dans le glossaire).
 - Face visible des cartes : `notionsFront` (dashboard.config.ts) — `"definition"` (réglage du propriétaire : la définition d'abord, il faut retrouver le mot) ou `"term"`. Une définition ne DEVRAIT pas contenir le mot à trouver.
 - Ajout rapide : bouton « + » de l'en-tête ou touche `N`. Import en masse « terme : définition » avec aperçu et doublons signalés (page `/notions`, onglet « Gérer »).
 - Pas de secrets dans NOTIONS.md (même contrôle que le mémo).
@@ -268,14 +275,14 @@ Définition (une ou plusieurs lignes).
 ```markdown
 ## 2026-11-13 — Titre
 id: fav-20261113-1
-type: article                # article | newsletter | notion | memo | project
-ref: https://…               # lien, ou référence interne : notion:<id>, memo:<id>, project:<dossier>
+type: article                # article | newsletter | notion | memo | project | highlight
+ref: https://…               # lien, ou référence interne : notion:<id>, memo:<id>, project:<dossier>, highlight:<id>
 source: FT World
 published: 2026-11-12        # facultatif
 note: Note personnelle courte  # facultatif
 ```
 
-- Étoile sur les articles (widgets et listes), newsletters (liste et lecture), notions, mémos et projets ; page `/favoris` (filtre par type, recherche, note). Pas de widget de favoris sur l'accueil.
+- Étoile sur les articles (widgets et listes), newsletters (liste et lecture), notions, mémos, projets et surlignages ; page `/favoris` (filtre par type, recherche, note). Pas de widget de favoris sur l'accueil.
 - **Articles : titre, URL, source, date uniquement. Newsletters : objet, expéditeur, date et lien Outlook web uniquement. Jamais le texte d'un article ni le corps d'un e-mail.**
 - Références internes vérifiées à l'affichage : cible disparue → « Élément supprimé » avec bouton de retrait ; projet archivé → « Archivé ».
 - L'étoile ajoute / retire un bloc sur le contenu du moment (rien d'autre n'est réécrit) ; la note suit la règle « fichier inchangé depuis la lecture ».
@@ -293,7 +300,7 @@ note: Note personnelle courte  # facultatif
 ## 17. Palette de commandes et raccourcis
 
 - `⌘K` / `Ctrl+K` (ou la loupe de l'en-tête) ouvre la palette, **même pendant la saisie dans un champ** ; `Échap` la ferme. `N` : nouvelle notion. `?` : aide des raccourcis. **Les raccourcis à une touche ne s'activent jamais pendant la saisie** (ni quand une fenêtre est déjà ouverte).
-- Recherche approximative sans dépendance (`app/src/lib/fuzzy.ts`, insensible aux accents) sur : projets, domaines, mémos, notions, éléments de l'inbox, favoris, newsletters (objet et expéditeur seulement, liste déjà en mémoire) et titres d'actus déjà en cache. Index : `GET /api/search-index` (aucun appel réseau).
+- Recherche approximative sans dépendance (`app/src/lib/fuzzy.ts`, insensible aux accents) sur : projets, domaines, mémos, notions, surlignages (passage, note, objet, expéditeur), éléments de l'inbox, favoris, newsletters (objet et expéditeur seulement, liste déjà en mémoire) et titres d'actus déjà en cache. Index : `GET /api/search-index` (aucun appel réseau).
 - Actions : « Ajouter à l'inbox : … », « Nouvelle notion », « Nouveau mémo », « Nouveau projet » (reprennent le texte tapé), « Aller à … » pour chaque page, « Sauvegarder », « Changer de thème », « Faire la revue ».
 - Un texte qui ne correspond à rien propose « Ajouter à l'inbox » comme action par défaut (Entrée) : capture en un raccourci et une touche.
 
@@ -323,3 +330,29 @@ Note libre (facultative).
 - Inclus dans le regroupement d'affichage, le fuseau, la palette (groupe « Agenda perso », ouvre `/?jour=YYYY-MM-DD`) et le bouton « Sauvegarder » (fichier `.md` racine). Bloc illisible (ex. sans fuseau) : ignoré sans erreur. Pas de secrets.
 - Code : `app/src/lib/agenda.ts`, routes `app/src/app/api/agenda/`, fenêtre `app/src/components/calendar/event-dialog.tsx`, tests `app/test/agenda.test.ts`.
 - Écrire dans Outlook ou Google est hors périmètre (voir `app/README.md` pour une piste future).
+
+## 19. SURLIGNAGES.md — surlignages des newsletters
+
+```markdown
+## 2026-11-16 — Objet de la newsletter
+id: hl-20261116-1
+color: yellow                      # yellow | green | blue | pink
+from: Aktionnaire <team@aktionnaire.com>
+received: 2026-11-13T12:35:00Z     # date de la newsletter (Outlook)
+link: https://outlook.live.com/…   # lien Outlook web
+prefix: texte juste avant          # ancrage par citation (≈ 32 caractères)
+suffix: texte juste après
+
+> Le passage surligné (une ligne, 1 000 caractères au plus).
+
+Note libre (facultative, plusieurs lignes possibles).
+```
+
+- **Exception documentée** (section 9, Secrets) : seuls les passages surlignés par le propriétaire, plafonnés à 1 000 caractères, jamais l'e-mail entier ni d'autre partie du corps.
+- Écriture : `app/src/lib/highlights.ts` (règle « fichier inchangé depuis la lecture », plus récent en haut), routes `app/src/app/api/highlights/`. Contrôle des secrets à l'écriture (passage, note, préfixe, suffixe, objet, expéditeur) avec **le même contrôle que « Sauvegarder »** (`lineSecretReason`, `app/src/lib/secrets.ts`) : un code, mot de passe, numéro de carte, IBAN ou jeton est refusé avec un message en français. Inclus dans « Sauvegarder » (fichier `.md` racine).
+- Ancrage (`app/src/lib/anchoring.ts`) : passage + préfixe + suffixe, recherche aux espaces normalisés, occurrence choisie par le contexte. Un surlignage qu'on ne retrouve plus reste dans `/surlignages`, marqué « introuvable dans le mail », sans erreur ; cet état est local (`app/data/highlights-status.local.json`, ignoré par git).
+- Lecture (`/newsletters/<id>`, mode « Lecture » seulement, `app/src/components/newsletters/newsletter-reader.tsx`) : sélection à la souris ou par appui long (tactile) → barre flottante (4 couleurs, « Ajouter une note », « Créer une notion ») ; clic sur un surlignage → couleur, note, « Créer une notion », retrait avec confirmation. `?surlignage=<id>` fait défiler jusqu'au passage.
+- « Créer une notion » : ajout rapide pré-rempli (définition = passage, contexte = objet — expéditeur, terme vide obligatoire) ; la notion garde `highlight: <id>`.
+- Page `/surlignages` (`app/src/components/highlights/highlights-board.tsx`) : chronologique (plus récent d'abord) ou par newsletter ; filtres couleur et expéditeur ; recherche instantanée (passage, note, objet, expéditeur) ; par surlignage : « Ouvrir dans la newsletter » (`/surlignages/ouvrir/<id>` : la lecture défilée jusqu'au passage, sinon le lien Outlook web), note, couleur, suppression avec confirmation, étoile (favori `highlight:<id>`), « Créer une notion ». Pas de widget sur l'accueil. Inclus dans la palette.
+- Tests : `app/test/highlights.test.ts`, `app/test/anchoring.test.ts`, `app/test/reading-security.test.ts`.
+

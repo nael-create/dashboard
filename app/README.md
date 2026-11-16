@@ -353,6 +353,16 @@ Comment le vérifier, sans risque :
 | « Ce type de compte n'est pas accepté » | Étape 2.4 (multilocataire + comptes personnels) et `MS_TENANT`. |
 | « Aucun dossier Newsletters trouvé » | Étape 1 : le dossier doit s'appeler exactement comme `newslettersFolder` dans `dashboard.config.ts`. |
 
+## Surlignages (dans les newsletters)
+
+- Ouvre une newsletter (affichage **Lecture**), **sélectionne un passage** à la souris (sur téléphone : appui long, puis ajuste la sélection). Une petite barre apparaît : **4 couleurs**, **Ajouter une note**, **Créer une notion**.
+- **Clique sur un passage surligné** pour changer sa couleur, écrire ou modifier sa note, en faire une notion ou le retirer.
+- **Créer une notion** ouvre l'ajout rapide avec le passage comme définition et la newsletter comme contexte : écris juste le mot. La notion garde un lien vers le surlignage.
+- La page **Surlignages** (menu) liste tout, du plus récent au plus ancien, ou **par newsletter** ; filtres par couleur et par expéditeur, recherche instantanée ; « Ouvrir dans la newsletter » te ramène au passage (ou ouvre Outlook si la newsletter n'existe plus). Étoile pour les mettre en favoris.
+- Stockage : `SURLIGNAGES.md` (envoyé sur GitHub avec « Sauvegarder »). **Seuls les passages que tu surlignes** y sont écrits, 1 000 caractères au plus chacun, jamais l'e-mail entier. Un passage contenant un mot de passe, un code ou un numéro de carte est refusé.
+- Si une newsletter change et qu'un passage n'y est plus, il reste dans Surlignages, marqué « introuvable dans le mail ».
+- Sécurité : en mode Lecture, l'e-mail est affiché dans la page après un nettoyage strict (aucun script, style, formulaire ni cadre) et la page interdit tout script qui ne vient pas de l'app. Le mode **Original** reste dans un cadre isolé sans script (on ne peut pas y surligner).
+
 ## Fichiers secrets (jamais versionnés)
 
 | Fichier | Contenu |
