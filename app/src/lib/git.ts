@@ -37,6 +37,19 @@ export async function readPushCheck(): Promise<PushCheck> {
   }
 }
 
+/** Résultat de la dernière mise à jour tentée par le lanceur (app/data/update-status.local.json). */
+export type UpdateStatus = { result: "ok" | "blocked" | "network" | "auth" | "other"; message: string; checkedAt: string } | null;
+export async function readUpdateStatus(): Promise<UpdateStatus> {
+  try {
+    const file = path.join(/*turbopackIgnore: true*/ process.env.DASHBOARD_DATA_DIR ?? path.join(/*turbopackIgnore: true*/ process.cwd(), "data"), "update-status.local.json");
+    const raw = JSON.parse(await fs.readFile(/*turbopackIgnore: true*/ file, "utf8"));
+    if (!["ok", "blocked", "network", "auth", "other"].includes(raw.result)) return null;
+    return { result: raw.result, message: String(raw.message ?? "").slice(0, 300), checkedAt: String(raw.checkedAt ?? "") };
+  } catch {
+    return null;
+  }
+}
+
 async function writePushCheck(result: NonNullable<PushCheck>["result"]) {
   try {
     const file = pushCheckFile();
