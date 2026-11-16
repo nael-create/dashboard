@@ -15,7 +15,7 @@ import { execFile } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { CONTENT_DIR } from "./content";
-import { detectSensitive } from "./secrets";
+import { lineSecretReason } from "./secrets";
 
 const CONTENT_PATHSPECS = [":(glob)*.md", "projects", "areas", "reviews", "archive"] as const;
 const repo = () => CONTENT_DIR;
@@ -167,15 +167,6 @@ export async function saveStatus(): Promise<SaveStatus> {
 /* Contrôle des secrets (lignes ajoutées)                              */
 /* ------------------------------------------------------------------ */
 
-const SECRET_PATTERNS: [RegExp, string][] = [
-  [/webcals?:\/\//i, "lien d'abonnement de calendrier (webcal)"],
-  [/https?:\/\/\S+\.ics\b/i, "lien d'abonnement de calendrier (.ics)"],
-  [/client_secret|refresh_token|access_token|id_token/i, "jeton ou secret d'application"],
-  [/-----BEGIN [A-Z ]*PRIVATE KEY-----/, "clé privée"],
-  [/\b(?:gh[pousr]_[A-Za-z0-9]{30,}|xox[abp]-[A-Za-z0-9-]{20,}|sk-[A-Za-z0-9]{30,}|AKIA[0-9A-Z]{16})\b/, "clé d'API"],
-  [/https?:\/\/[^\s)]*[?&](?:token|key|apikey|api_key|secret|sig|signature|auth)=[^\s&)]{8,}/i, "lien contenant une clé personnelle"],
-  [/myft\/[a-z0-9-]{20,}/i, "flux myFT personnel"],
-];
 
 /** Lignes ajoutées suspectes, par fichier. */
 export function findSecrets(diff: string): { file: string; reason: string }[] {
@@ -188,9 +179,7 @@ export function findSecrets(diff: string): { file: string; reason: string }[] {
     }
     if (!line.startsWith("+") || line.startsWith("+++")) continue;
     const added = line.slice(1);
-    const hit = SECRET_PATTERNS.find(([re]) => re.test(added));
-    // Les liens d'articles (souvent longs) sont retirés avant le contrôle générique.
-    const reason = hit?.[1] ?? detectSensitive(added.replace(/https?:\/\/\S+/g, ""));
+    const reason = lineSecretReason(added);
     if (reason && !found.some((f) => f.file === file && f.reason === reason)) found.push({ file, reason });
   }
   return found;

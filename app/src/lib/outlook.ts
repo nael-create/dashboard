@@ -40,7 +40,7 @@ export function outlookSettings() {
 
 /** Erreur à afficher telle quelle (en français). */
 export class OutlookError extends Error {
-  constructor(message: string, public kind: "not-configured" | "not-connected" | "folder-missing" | "other" = "other") {
+  constructor(message: string, public kind: "not-configured" | "not-connected" | "folder-missing" | "not-found" | "other" = "other") {
     super(message);
   }
 }
@@ -181,7 +181,7 @@ async function graph<T>(pathAndQuery: string): Promise<T> {
   });
   if (res.status === 401) throw new OutlookError("Outlook a refusé l'accès : reconnecte-toi.", "not-connected");
   if (res.status === 403) throw new OutlookError("Accès refusé par Outlook : la permission Mail.Read n'a pas été accordée.");
-  if (res.status === 404) throw new OutlookError("Message introuvable dans le dossier Newsletters.");
+  if (res.status === 404) throw new OutlookError("Message introuvable dans le dossier Newsletters.", "not-found");
   if (!res.ok) throw new OutlookError(`Erreur Outlook (HTTP ${res.status}). Réessaie dans un instant.`);
   return res.json() as Promise<T>;
 }
@@ -257,15 +257,36 @@ export async function listNewsletters(force = false): Promise<NewsletterSummary[
   return items;
 }
 
+/**
+ * Retrouve l'identifiant d'une newsletter à partir d'un surlignage : même lien Outlook web, sinon même
+ * objet et même date de réception (liste récente, puis recherche par date de réception). null si absente.
+ */
+export async function findNewsletterId(ref: { link: string; subject: string; received: string }): Promise<string | null> {
+  const same = (m: { webLink?: string; subject?: string }) =>
+    (!!ref.link && m.webLink === ref.link) || (m.subject ?? "").trim() === ref.subject.trim();
+  const recent = (await listNewsletters()).find((m) => (ref.link && m.webLink === ref.link) || (m.received === ref.received && same(m)));
+  if (recent) return recent.id;
+  if (!/^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/.test(ref.received)) return null;
+  const fid = await folderId();
+  const data = await graph<{ value: GraphMessage[] }>(
+    `/me/mailFolders/${encodeURIComponent(fid)}/messages?$filter=${encodeURIComponent(`receivedDateTime eq ${ref.received}`)}&$select=id,subject,webLink,receivedDateTime&$top=10`,
+  );
+  const hit = data.value.find(same) ?? (data.value.length === 1 ? data.value[0] : undefined);
+  return hit?.id ?? null;
+}
+
 /** Dernière liste connue sans appel réseau (pour la recherche). */
 export const cachedNewsletters = (): NewsletterSummary[] => g.__outlookList?.items ?? [];
 
 export interface Newsletter extends NewsletterSummary {
+  /** HTML nettoyé pour le cadre isolé (affichage « Original »). */
   html: string;
+  /** HTML nettoyé, strict, pour le mode « Lecture » rendu dans la page (surlignable). */
+  reading: string;
 }
 
 /** Un message du dossier Newsletters, avec son HTML NETTOYÉ. Refuse tout message d'un autre dossier. */
-export async function getNewsletter(id: string): Promise<Newsletter> {
+export async function getNewsletter(id: string, opts: { images?: boolean } = {}): Promise<Newsletter> {
   if (!/^[A-Za-z0-9_=+\-/]{10,400}$/.test(id)) throw new OutlookError("Identifiant de message invalide.");
   const fid = await folderId();
   const m = await graph<GraphMessage>(
@@ -273,11 +294,55 @@ export async function getNewsletter(id: string): Promise<Newsletter> {
   );
   if (m.parentFolderId && m.parentFolderId !== fid) throw new OutlookError("Ce message n'est pas dans le dossier Newsletters.");
   const raw = m.body?.content ?? "";
-  const html = m.body?.contentType === "text" ? `<pre style="white-space:pre-wrap;font:inherit">${escapeHtml(raw)}</pre>` : sanitizeEmail(raw);
-  return { ...summarize(m), html };
+  const isText = m.body?.contentType === "text";
+  const html = isText ? `<pre style="white-space:pre-wrap;font:inherit">${escapeHtml(raw)}</pre>` : sanitizeEmail(raw);
+  const reading = isText ? textToParagraphs(raw) : sanitizeForReading(raw, { images: !!opts.images });
+  return { ...summarize(m), html, reading };
 }
 
 const escapeHtml = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+
+/** E-mail en texte brut → paragraphes HTML échappés. */
+const textToParagraphs = (raw: string) =>
+  raw.replace(/\r\n/g, "\n").split(/\n{2,}/).map((p) => p.trim()).filter(Boolean)
+    .map((p) => `<p>${escapeHtml(p).replace(/\n/g, "<br>")}</p>`).join("");
+
+/**
+ * Nettoyage STRICT pour le mode « Lecture », affiché directement dans la page de l'app (et non dans un
+ * cadre isolé) afin de pouvoir surligner. Liste blanche courte : texte, titres, listes, liens, tableaux
+ * et (si autorisées) images. AUCUN attribut style, class, id ou name (pas de CSS d'e-mail, pas de
+ * « DOM clobbering »), aucun script, formulaire, cadre, SVG, objet, méta ou lien de feuille de style ;
+ * liens limités à http(s), mailto et tel. Deuxième barrière : la CSP à nonce de la page (src/lib/csp.ts).
+ */
+export function sanitizeForReading(html: string, opts: { images: boolean }): string {
+  return sanitizeHtml(html, {
+    allowedTags: [
+      "p", "br", "div", "span", "a", "b", "strong", "i", "em", "u", "s", "sup", "sub", "small", "blockquote",
+      "ul", "ol", "li", "h1", "h2", "h3", "h4", "h5", "h6", "table", "thead", "tbody", "tfoot", "tr", "td", "th",
+      "caption", "hr", "pre", "code", "center", "font",
+      ...(opts.images ? ["img"] : []),
+    ],
+    allowedAttributes: {
+      a: ["href", "target", "rel"], // target / rel imposés ci-dessous (nouvel onglet, sans référent)
+      img: ["src", "alt", "width", "height"],
+      td: ["colspan", "rowspan"],
+      th: ["colspan", "rowspan"],
+    },
+    // Contenu jeté avec la balise (jamais affiché comme du texte).
+    nonTextTags: ["script", "style", "textarea", "option", "noscript", "title", "head", "template", "svg", "math", "xml", "iframe", "object"],
+    allowedSchemes: ["http", "https", "mailto", "tel"],
+    allowedSchemesByTag: { img: ["https", "http"] },
+    allowProtocolRelative: false,
+    transformTags: {
+      a: (tagName, attribs) => ({ tagName, attribs: { ...attribs, target: "_blank", rel: "noopener noreferrer nofollow" } }),
+      font: "span",
+      center: "div",
+    },
+    exclusiveFilter: (frame) =>
+      // Pixels de suivi et images minuscules : jamais utiles à la lecture.
+      frame.tag === "img" && (Number(frame.attribs.width) <= 2 || Number(frame.attribs.height) <= 2) && !!(frame.attribs.width || frame.attribs.height),
+  });
+}
 
 /**
  * Nettoyage du HTML d'un e-mail : supprime scripts, formulaires, iframes, objets, gestionnaires

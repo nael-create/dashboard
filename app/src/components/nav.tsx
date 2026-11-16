@@ -13,6 +13,7 @@ export const HEADER_ITEMS: { href: string; label: string }[] = [
   { href: "/notions", label: "Notions" },
   { href: "/memo", label: "Mémo" },
   { href: "/newsletters", label: "Newsletters" },
+  { href: "/surlignages", label: "Surlignages" },
   { href: "/news", label: "News" },
   { href: "/favoris", label: "Favoris" },
   { href: "/revue", label: "Revue" },
@@ -75,7 +76,7 @@ export function SiteHeader({ title, actions, mobileExtras }: { title: string; ac
 
         {/* Navigation (grands écrans) */}
         <nav aria-label="Navigation principale" className="hidden lg:col-span-4 lg:block">
-          <ul className="grid grid-flow-col grid-cols-2 grid-rows-4 gap-x-6">
+          <ul className="grid grid-flow-col grid-cols-2 grid-rows-5 gap-x-6">
             {HEADER_ITEMS.map(({ href, label }) => {
               const active = isActive(pathname, href);
               return (

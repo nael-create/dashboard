@@ -35,6 +35,8 @@ export interface Notion {
   term: string;
   tags: string[];
   added: string | null;
+  /** Surlignage d'origine (« Créer une notion » depuis une newsletter), ex. hl-20261116-1. */
+  highlight: string | null;
   definition: string;
   example: string;
   start: number;
@@ -67,11 +69,14 @@ export function parseNotions(text: string): Notion[] {
     const term = lines[start].replace(/^##\s+/, "").trim();
     let tags: string[] = [];
     let added: string | null = null;
+    let highlight: string | null = null;
     let i = start + 1;
     for (; i < end; i++) {
-      const m = lines[i].match(/^(tags|added)\s*:\s*(.*)$/i);
+      const m = lines[i].match(/^(tags|added|highlight)\s*:\s*(.*)$/i);
       if (!m) break;
-      if (m[1].toLowerCase() === "tags") tags = splitTags(m[2]);
+      const key = m[1].toLowerCase();
+      if (key === "tags") tags = splitTags(m[2]);
+      else if (key === "highlight") highlight = /^hl-\d{8}-\d+$/.test(m[2].trim()) ? m[2].trim() : null;
       else if (/^\d{4}-\d{2}-\d{2}$/.test(m[2].trim())) added = m[2].trim();
     }
     const def: string[] = [];
@@ -90,7 +95,7 @@ export function parseNotions(text: string): Notion[] {
     let id = base;
     for (let n = 2; seen.has(id); n++) id = `${base}-${n}`;
     seen.add(id);
-    return { id, term, tags, added, definition: trim(def), example: trim(ex), start, end };
+    return { id, term, tags, added, highlight, definition: trim(def), example: trim(ex), start, end };
   });
 }
 
@@ -194,6 +199,7 @@ export interface NotionInput {
   definition?: string;
   example?: string;
   tags?: string[];
+  highlight?: string | null;
 }
 
 function check(input: Partial<NotionInput>) {
@@ -205,10 +211,11 @@ function check(input: Partial<NotionInput>) {
   if (reason) throw new UserError(`Non enregistré : ${reason}. NOTIONS.md est publié sur GitHub.`);
 }
 
-function serialize(n: { term: string; tags: string[]; added: string | null; definition: string; example: string }): string[] {
+function serialize(n: { term: string; tags: string[]; added: string | null; definition: string; example: string; highlight?: string | null }): string[] {
   const out = [`## ${n.term.trim()}`];
   if (n.tags.length) out.push(`tags: ${n.tags.join(", ")}`);
   if (n.added) out.push(`added: ${n.added}`);
+  if (n.highlight) out.push(`highlight: ${n.highlight}`);
   const def = n.definition.replace(/\r\n/g, "\n").trim();
   const ex = n.example.replace(/\r\n/g, "\n").trim();
   if (def) out.push("", ...def.split("\n"));
@@ -234,7 +241,7 @@ export async function addNotion(input: NotionInput, today: string, version?: str
   check(input);
   return updateFile(NOTIONS_FILE, version, (text, exists) => {
     if (parseNotions(text).some((n) => sameTerm(n.term, input.term))) throw new UserError(`« ${input.term.trim()} » existe déjà.`, 409);
-    const block = serialize({ term: input.term, tags: input.tags ?? [], added: today, definition: input.definition ?? "", example: input.example ?? "" });
+    const block = serialize({ term: input.term, tags: input.tags ?? [], added: today, definition: input.definition ?? "", example: input.example ?? "", highlight: input.highlight ?? null });
     return { text: appendBlocks(text, exists, [block]) };
   });
 }
@@ -264,7 +271,7 @@ export async function updateNotion(version: string, id: string, patch: Partial<N
     const term = patch.term?.trim() ?? n.term;
     if (all.some((x) => x.id !== id && sameTerm(x.term, term))) throw new UserError(`« ${term} » existe déjà.`, 409);
     const block = serialize({
-      term, tags: patch.tags ?? n.tags, added: n.added,
+      term, tags: patch.tags ?? n.tags, added: n.added, highlight: n.highlight,
       definition: patch.definition ?? n.definition, example: patch.example ?? n.example,
     });
     lines.splice(n.start, n.end - n.start, ...block);

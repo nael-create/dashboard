@@ -3,7 +3,7 @@
 import {
   ArrowRight, CalendarCheck, CalendarDays, CornerDownLeft, FolderKanban, GraduationCap, Inbox, Layers, Mail, Newspaper,
   Palette, Plus, Save, Search, Star, StickyNote, type LucideIcon,
-  Download,
+  Download, Highlighter,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
@@ -17,7 +17,7 @@ import { UPDATE_EVENT } from "./update-button";
 
 export const OPEN_PALETTE = "dashboard:open-palette";
 
-type ItemType = "project" | "area" | "memo" | "notion" | "inbox" | "favorite" | "newsletter" | "news" | "event";
+type ItemType = "project" | "area" | "memo" | "notion" | "inbox" | "favorite" | "newsletter" | "news" | "event" | "highlight";
 interface SearchItem { type: ItemType; id: string; title: string; subtitle?: string; href: string; external?: boolean }
 
 interface Row {
@@ -38,6 +38,7 @@ const GROUPS: { type: ItemType; label: string; icon: LucideIcon }[] = [
   { type: "inbox", label: "Inbox", icon: Inbox },
   { type: "favorite", label: "Favoris", icon: Star },
   { type: "newsletter", label: "Newsletters", icon: Mail },
+  { type: "highlight", label: "Surlignages", icon: Highlighter },
   { type: "news", label: "Actus", icon: Newspaper },
 ];
 const PER_GROUP = 5;

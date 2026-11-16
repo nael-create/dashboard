@@ -36,3 +36,24 @@ export function detectSensitive(text: string): string | null {
   if (/-----BEGIN [A-Z ]*PRIVATE KEY-----/.test(text)) return "cela ressemble à une clé privée";
   return null;
 }
+
+/** Motifs de secrets techniques (liens d'abonnement, jetons, clés d'API, liens à clé personnelle). */
+export const SECRET_PATTERNS: [RegExp, string][] = [
+  [/webcals?:\/\//i, "lien d'abonnement de calendrier (webcal)"],
+  [/https?:\/\/\S+\.ics\b/i, "lien d'abonnement de calendrier (.ics)"],
+  [/client_secret|refresh_token|access_token|id_token/i, "jeton ou secret d'application"],
+  [/-----BEGIN [A-Z ]*PRIVATE KEY-----/, "clé privée"],
+  [/\b(?:gh[pousr]_[A-Za-z0-9]{30,}|xox[abp]-[A-Za-z0-9-]{20,}|sk-[A-Za-z0-9]{30,}|AKIA[0-9A-Z]{16})\b/, "clé d'API"],
+  [/https?:\/\/[^\s)]*[?&](?:token|key|apikey|api_key|secret|sig|signature|auth)=[^\s&)]{8,}/i, "lien contenant une clé personnelle"],
+  [/myft\/[a-z0-9-]{20,}/i, "flux myFT personnel"],
+];
+
+/**
+ * Contrôle d'une ligne destinée à un fichier versionné : motifs techniques, puis contrôle générique
+ * (les liens, souvent longs, sont retirés avant ce dernier). Utilisé par « Sauvegarder » et à l'écriture
+ * des surlignages. Renvoie une raison en français, ou null.
+ */
+export function lineSecretReason(line: string): string | null {
+  const hit = SECRET_PATTERNS.find(([re]) => re.test(line));
+  return hit?.[1] ?? detectSensitive(line.replace(/https?:\/\/\S+/g, ""));
+}

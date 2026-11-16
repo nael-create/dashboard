@@ -1,6 +1,6 @@
 "use client";
 
-import { Archive, ExternalLink, FolderKanban, GraduationCap, Mail, Newspaper, Pencil, Search, StickyNote, Trash2 } from "lucide-react";
+import { Archive, ExternalLink, FolderKanban, GraduationCap, Highlighter, Mail, Newspaper, Pencil, Search, StickyNote, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiJson, isConflict } from "@/lib/client-api";
@@ -10,7 +10,7 @@ import { btnGhost, btnPrimary, chip, field, iconBtn } from "@/components/ui/form
 import { Notice } from "@/components/ui/notice";
 import { FAVORITES_CHANGED, StarButton } from "./favorites-context";
 
-type FavType = "article" | "newsletter" | "notion" | "memo" | "project";
+type FavType = "article" | "newsletter" | "notion" | "memo" | "project" | "highlight";
 interface Fav {
   id: string; added: string; title: string; type: FavType; ref: string; source: string;
   published: string | null; note: string; href: string | null; external: boolean; missing: boolean; archived: boolean;
@@ -22,6 +22,7 @@ const TYPES: { id: FavType; label: string; icon: typeof Newspaper }[] = [
   { id: "notion", label: "Notions", icon: GraduationCap },
   { id: "memo", label: "Mémos", icon: StickyNote },
   { id: "project", label: "Projets", icon: FolderKanban },
+  { id: "highlight", label: "Surlignages", icon: Highlighter },
 ];
 
 export function FavoritesBoard() {

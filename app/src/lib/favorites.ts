@@ -3,8 +3,8 @@
  *
  *   ## 2026-11-13 — Titre
  *   id: fav-20261113-1
- *   type: article            ← article | newsletter | notion | memo | project
- *   ref: https://…           ← lien (article, newsletter) ou référence interne (notion:…, memo:…, project:…)
+ *   type: article            ← article | newsletter | notion | memo | project | highlight
+ *   ref: https://…           ← lien (article, newsletter) ou référence interne (notion:…, memo:…, project:…, highlight:…)
  *   source: FT World
  *   published: 2026-11-12    ← date de l'article / de la newsletter (facultatif)
  *   note: Ma note courte     ← facultatif
@@ -18,10 +18,11 @@ import { CONTENT_DIR, isValidSlug } from "./content";
 import { joinLines, readVersioned, splitLines, updateFile } from "./content-file";
 import { readMemo } from "./memo";
 import { readNotions } from "./notions";
+import { readHighlights } from "./highlights";
 import { detectSensitive } from "./secrets";
 
 export const FAVORITES_FILE = "FAVORIS.md";
-export const FAVORITE_TYPES = ["article", "newsletter", "notion", "memo", "project"] as const;
+export const FAVORITE_TYPES = ["article", "newsletter", "notion", "memo", "project", "highlight"] as const;
 export type FavoriteType = (typeof FAVORITE_TYPES)[number];
 
 export interface Favorite {
@@ -184,7 +185,8 @@ const dirExists = (rel: string) =>
   fs.stat(/*turbopackIgnore: true*/ path.join(CONTENT_DIR, rel)).then((s) => s.isDirectory(), () => false);
 
 export async function resolveFavorites(): Promise<{ favorites: ResolvedFavorite[]; version: string }> {
-  const [{ favorites, version }, { notions }, { entries }] = await Promise.all([readFavorites(), readNotions(), readMemo()]);
+  const [{ favorites, version }, { notions }, { entries }, { highlights }] = await Promise.all([readFavorites(), readNotions(), readMemo(), readHighlights()]);
+  const highlightIds = new Set(highlights.map((h) => h.id));
   const notionIds = new Set(notions.filter((n) => n.definition.trim()).map((n) => n.id));
   const allNotionIds = new Set(notions.map((n) => n.id));
   const memoIds = new Set(entries.map((e) => e.id ?? e.key));
@@ -199,6 +201,8 @@ export async function resolveFavorites(): Promise<{ favorites: ResolvedFavorite[
       external = true;
     } else if (f.type === "notion" && allNotionIds.has(target)) {
       href = notionIds.has(target) ? `/notions#notion-${target}` : `/notions?onglet=gerer`;
+    } else if (f.type === "highlight" && highlightIds.has(target)) {
+      href = `/surlignages#${target}`;
     } else if (f.type === "memo" && memoIds.has(target)) {
       href = `/memo#memo-${target}`;
     } else if (f.type === "project" && isValidSlug(target)) {

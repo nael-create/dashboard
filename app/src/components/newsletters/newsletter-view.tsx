@@ -5,11 +5,15 @@ import type { EmailView } from "@/lib/email-document";
 import type { Newsletter } from "@/lib/outlook";
 import { formatDateTime } from "@/lib/relative-time";
 import { StarButton } from "@/components/favorites/favorites-context";
+import { NewsletterReader, type ReaderHighlight } from "@/components/newsletters/newsletter-reader";
 
 const toggle = "label inline-flex items-center gap-1.5 py-1 transition-colors";
 
 /** Lecture d'une newsletter : en-tête éditorial, réglages (lecture / original, images), contenu isolé. */
-export function NewsletterView({ msg, id, images, view }: { msg: Newsletter; id: string; images: boolean; view: EmailView }) {
+export function NewsletterView({ msg, id, images, view, highlights, version, focus }: {
+  msg: Newsletter; id: string; images: boolean; view: EmailView;
+  highlights: ReaderHighlight[]; version: string; focus?: string;
+}) {
   const self = `/newsletters/${encodeURIComponent(id)}`;
   const href = (v: EmailView, img: boolean) => {
     const q = new URLSearchParams();
@@ -66,11 +70,26 @@ export function NewsletterView({ msg, id, images, view }: { msg: Newsletter; id:
               )}
             </div>
             {!images && <p className="hidden max-w-[24ch] text-xs leading-relaxed text-muted lg:block">Images distantes bloquées : elles servent souvent à pister la lecture.</p>}
+            {view === "lecture" && <p className="hidden max-w-[24ch] text-xs leading-relaxed text-muted lg:block">Sélectionne un passage pour le surligner (appui long sur écran tactile).</p>}
           </aside>
 
           <div className={`min-w-0 lg:col-span-9 ${view === "original" ? "border border-border" : ""}`}>
             {/* Cadre isolé : aucun script, aucun accès aux données de l'app, chargements externes bloqués par CSP. */}
-            <EmailFrame html={msg.html} images={images} view={view} title="Contenu de la newsletter" />
+            {view === "lecture" ? (
+              <NewsletterReader
+                key={`${id}-${images}`}
+                html={msg.reading}
+                message={{ subject: msg.subject, from: msg.fromAddress && msg.fromAddress !== msg.from ? `${msg.from} <${msg.fromAddress}>` : msg.from, received: msg.received, link: msg.webLink }}
+                initialHighlights={highlights}
+                initialVersion={version}
+                focusId={focus}
+              />
+            ) : (
+              <>
+                <p className="label border-b border-border bg-bg px-3 py-2 text-muted">Mise en page de l&apos;expéditeur · pour surligner, passe en « Lecture ».</p>
+                <EmailFrame html={msg.html} images={images} view={view} title="Contenu de la newsletter" />
+              </>
+            )}
           </div>
       </div>
     </article>

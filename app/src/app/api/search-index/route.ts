@@ -6,13 +6,14 @@ import { readInbox } from "@/lib/inbox";
 import { readMemo } from "@/lib/memo";
 import { readNotions } from "@/lib/notions";
 import { readAgenda } from "@/lib/agenda";
+import { readHighlights } from "@/lib/highlights";
 import { cachedNewsletters } from "@/lib/outlook";
 import { cachedArticles, byDateDesc, dedupe } from "@/lib/rss";
 
 export const dynamic = "force-dynamic";
 
 export interface SearchItem {
-  type: "project" | "area" | "memo" | "notion" | "inbox" | "favorite" | "newsletter" | "news" | "event";
+  type: "project" | "area" | "memo" | "notion" | "inbox" | "favorite" | "newsletter" | "news" | "event" | "highlight";
   id: string;
   title: string;
   subtitle?: string;
@@ -26,8 +27,8 @@ export interface SearchItem {
  */
 export async function GET() {
   try {
-    const [projects, areas, memo, notions, inbox, favorites, agenda] = await Promise.all([
-      listProjects(), listAreas(), readMemo(), readNotions(), readInbox(), readFavorites(), readAgenda(),
+    const [projects, areas, memo, notions, inbox, favorites, agenda, highlights] = await Promise.all([
+      listProjects(), listAreas(), readMemo(), readNotions(), readInbox(), readFavorites(), readAgenda(), readHighlights(),
     ]);
     const items: SearchItem[] = [
       ...projects.map((p) => ({ type: "project" as const, id: p.slug, title: p.title, subtitle: [p.status, p.priority].filter(Boolean).join(" · "), href: `/projets/${p.slug}` })),
@@ -46,6 +47,11 @@ export async function GET() {
         type: "event" as const, id: e.id, title: e.title,
         subtitle: [e.allDay ? e.start : e.start.replace(" ", " · "), e.repeat ? "chaque semaine" : "", e.location].filter(Boolean).join(" — "),
         href: `/?jour=${e.start.slice(0, 10)}`,
+      })),
+      ...highlights.highlights.map((h) => ({
+        type: "highlight" as const, id: h.id, title: h.text.length > 120 ? `${h.text.slice(0, 120)}…` : h.text,
+        subtitle: [h.note, `${h.subject} — ${h.from.replace(/\s*<[^>]*>\s*$/, "")}`].filter(Boolean).join(" · ").slice(0, 160),
+        href: `/surlignages#${h.id}`,
       })),
       ...cachedNewsletters().map((m) => ({ type: "newsletter" as const, id: m.id, title: m.subject, subtitle: m.from, href: `/newsletters/${encodeURIComponent(m.id)}` })),
       ...dedupe([...cachedArticles()].sort(byDateDesc)).slice(0, 300).map((a) => ({ type: "news" as const, id: a.id, title: a.title, subtitle: a.publisher, href: a.link, external: true })),
