@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { fail, isSameOrigin } from "@/lib/api";
-import { updatesAvailable } from "@/lib/git";
+import { readUpdateStatus, updatesAvailable } from "@/lib/git";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +10,8 @@ const isService = () => process.env.DASHBOARD_SERVICE === "1";
 /** État des mises à jour : { service, behind } (behind = nombre de nouveautés sur GitHub, null si injoignable). */
 export async function GET(req: Request) {
   const force = new URL(req.url).searchParams.get("check") === "1";
-  return NextResponse.json({ service: isService(), behind: await updatesAvailable(force) });
+  const [behind, last] = await Promise.all([updatesAvailable(force), readUpdateStatus()]);
+  return NextResponse.json({ service: isService(), behind, last });
 }
 
 /**

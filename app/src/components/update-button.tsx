@@ -7,7 +7,8 @@ import { btnGhost, btnPrimary } from "@/components/ui/forms";
 
 export const UPDATE_EVENT = "dashboard:update";
 
-type State = { service: boolean; behind: number | null };
+type Last = { result: "ok" | "blocked" | "network" | "auth" | "other"; message: string; checkedAt: string } | null;
+type State = { service: boolean; behind: number | null; last?: Last };
 type Phase = "idle" | "confirm" | "restarting" | "slow" | "error";
 
 /** Attend que le serveur se soit arrêté puis soit revenu (au plus ~4 minutes). */
@@ -87,6 +88,8 @@ export function UpdateButton() {
   }, [check]);
 
   const available = !!state?.behind;
+  // La dernière tentative du lanceur a échoué : on l'explique au lieu de reproposer en boucle.
+  const blocked = available && !!state?.last && state.last.result !== "ok" ? state.last : null;
 
   return (
     <>
@@ -94,10 +97,12 @@ export function UpdateButton() {
         <button
           type="button"
           onClick={() => setPhase("confirm")}
-          className="label mr-1 inline-flex h-9 items-center gap-1.5 rounded-full border border-accent px-3 text-accent-text transition-colors hover:bg-accent hover:text-white"
-          title="Une nouvelle version du dashboard est disponible"
+          className={`label mr-1 inline-flex h-9 items-center gap-1.5 rounded-full border px-3 transition-colors ${
+            blocked ? "border-amber-600 text-amber-800 hover:bg-amber-500/10 dark:text-amber-300" : "border-accent text-accent-text hover:bg-accent hover:text-white"
+          }`}
+          title={blocked ? "La mise à jour n'a pas pu s'installer : clique pour savoir pourquoi" : "Une nouvelle version du dashboard est disponible"}
         >
-          <Download className="size-3.5" aria-hidden /> Mettre à jour
+          <Download className="size-3.5" aria-hidden /> {blocked ? "Mise à jour bloquée" : "Mettre à jour"}
         </button>
       )}
 
@@ -113,6 +118,11 @@ export function UpdateButton() {
             </div>
             {phase === "confirm" && (
               <>
+                {blocked && (
+                  <p className="mb-3 border-l-2 border-amber-600 pl-3 text-sm leading-relaxed">
+                    <strong className="font-medium">La dernière mise à jour n&apos;a pas pu s&apos;installer.</strong> {blocked.message}
+                  </p>
+                )}
                 <p className="text-sm leading-relaxed">
                   {state?.behind
                     ? `Une nouvelle version est disponible (${state.behind} changement${state.behind > 1 ? "s" : ""}).`

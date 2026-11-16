@@ -107,22 +107,45 @@ if command -v git >/dev/null 2>&1 && git -C "$ROOT" rev-parse --is-inside-work-t
     fi
   fi
 
-  # 2. Récupérer la dernière version de « main » : avance rapide uniquement.
+  # 2. Récupérer la dernière version de « main » : jamais forcé, rien n'est effacé.
+  #    Résultat écrit pour l'app (bouton « Mettre à jour ») dans app/data/update-status.local.json.
+  UPDATE_STATUS="$ROOT/app/data/update-status.local.json"
+  write_update_status() { # $1 = ok|blocked|network|auth|other, $2 = explication (sans guillemets)
+    mkdir -p "$ROOT/app/data"
+    printf '{ "result": "%s", "message": "%s", "checkedAt": "%s" }\n' "$1" "$2" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$UPDATE_STATUS"
+  }
   if [ "$(git rev-parse --abbrev-ref HEAD)" = "main" ]; then
     PULL_OUT="$(git pull --ff-only --quiet origin main 2>&1)"
     if [ $? -eq 0 ]; then
       echo "✓ Version à jour"
+      write_update_status ok ""
     elif echo "$PULL_OUT" | grep -qiE "Could not resolve host|unable to access|timed out|Connection refused|Network is unreachable"; then
       note "Pas de connexion à GitHub : le dashboard démarre sur ta version actuelle (mise à jour au prochain lancement)."
+      write_update_status network "Pas de connexion à GitHub pour le moment. Réessaie plus tard."
     elif echo "$PULL_OUT" | grep -qiE "Not possible to fast-forward|diverge|non-fast-forward"; then
-      note "Ton ordinateur et GitHub ont chacun des changements différents : la mise à jour automatique est impossible sans risque. Le dashboard démarre sur ta version actuelle ; clique sur « Sauvegarder » (il réunit les deux versions proprement), puis relance."
+      # Des sauvegardes faites sur ce Mac (pas encore envoyées sur GitHub) + des nouveautés sur GitHub :
+      # on remet tes sauvegardes par-dessus la nouvelle version, comme le fait « Sauvegarder ».
+      # Jamais forcé ; en cas de conflit, tout est remis exactement comme avant.
+      if [ -z "$(git status --porcelain --untracked-files=no 2>/dev/null)" ] && git pull --rebase --quiet origin main >/dev/null 2>&1; then
+        echo "✓ Version à jour (tes sauvegardes de ce Mac sont gardées, elles partiront sur GitHub au prochain « Sauvegarder »)"
+        write_update_status ok ""
+      else
+        git rebase --abort >/dev/null 2>&1
+        note "Tes sauvegardes de ce Mac et la nouvelle version touchent les mêmes lignes : rien n'a été modifié, le dashboard démarre sur ta version actuelle."
+        write_update_status blocked "Tes modifications sur ce Mac et la nouvelle version touchent les mêmes lignes, ou des modifications ne sont pas encore sauvegardées. Clique sur Sauvegarder, puis réessaie."
+      fi
     elif echo "$PULL_OUT" | grep -qiE "would be overwritten|local changes"; then
       note "Des modifications locales non sauvegardées touchent des fichiers mis à jour sur GitHub. Rien n'a été effacé ; le dashboard démarre sur ta version actuelle. Clique sur « Sauvegarder », puis relance."
+      write_update_status blocked "Des modifications pas encore sauvegardées touchent des fichiers mis à jour. Clique sur Sauvegarder, puis réessaie."
     elif echo "$PULL_OUT" | grep -qiE "could not read Username|Authentication failed|Permission denied|denied"; then
       note "GitHub demande une connexion pour récupérer les mises à jour. Le dashboard démarre sur ta version actuelle ; la marche à suivre s'affiche dans le panneau « Sauvegarder »."
+      write_update_status auth "GitHub demande une connexion. Clique sur la clé orange à côté de Sauvegarder pour la marche à suivre (une seule fois)."
     else
       note "La mise à jour automatique n'a pas abouti ($(echo "$PULL_OUT" | tail -n 1 | cut -c1-120)). Le dashboard démarre sur ta version actuelle."
+      write_update_status other "La mise à jour n'a pas abouti : $(echo "$PULL_OUT" | tail -n 1 | tr -d '\\"' | cut -c1-120)"
     fi
+  else
+    write_update_status blocked "Le dashboard n'est pas sur la branche main (modifications non sauvegardées). Clique sur Sauvegarder, puis réessaie."
   fi
 
   # 4. Tester l'envoi vers GitHub (sans rien envoyer, sans demander de mot de passe).
