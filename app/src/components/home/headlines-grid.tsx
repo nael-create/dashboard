@@ -7,7 +7,7 @@ import { gridLayout, interleave } from "@/lib/headlines";
 import { HeadlineCard } from "./headline-card";
 import { AutoRefresh } from "./auto-refresh";
 
-const COUNT = 12; // 2 rangées de 6
+const COUNT = 18; // 3 rangées de 6
 /** Sujets examinés par source (image du flux, sinon og:image, mise en cache). */
 const PER_SOURCE = 14;
 

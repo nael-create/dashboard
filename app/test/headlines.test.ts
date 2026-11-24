@@ -9,14 +9,19 @@ const maxRun = (list: { sourceId: string }[]) => {
 };
 
 describe("alternance des sources", () => {
-  it("garde l'ordre du FT comme colonne vertébrale, 2 au plus d'affilée, autres sources à tour de rôle", () => {
-    const out = interleave(items("ft", 10), [items("verge", 5), items("maddy", 5)], 10);
-    expect(out.map((x) => x.id)).toEqual(["ft1", "ft2", "verge1", "ft3", "ft4", "maddy1", "ft5", "ft6", "verge2", "ft7"]);
+  it("équilibre : FT d'abord, puis chaque source à tour de rôle, chacune dans son ordre", () => {
+    const out = interleave(items("ft", 10), [items("verge", 5), items("maddy", 5), items("tnw", 5)], 12);
+    expect(out.map((x) => x.id)).toEqual(["ft1", "verge1", "maddy1", "tnw1", "ft2", "verge2", "maddy2", "tnw2", "ft3", "verge3", "maddy3", "tnw3"]);
+    const count = (src: string) => out.filter((x) => x.sourceId === src).length;
+    expect([count("ft"), count("verge"), count("maddy"), count("tnw")]).toEqual([3, 3, 3, 3]);
+  });
+  it("une source épuisée laisse sa place aux autres ; jamais 3 d'affilée", () => {
+    const out = interleave(items("ft", 10), [items("maddy", 1), items("tnw", 10)], 10);
+    expect(out.map((x) => x.id)).toEqual(["ft1", "maddy1", "tnw1", "ft2", "tnw2", "ft3", "tnw3", "ft4", "tnw4", "ft5"]);
     expect(maxRun(out)).toBeLessThanOrEqual(2);
   });
-  it("sans FT, les autres s'alternent ; jamais 3 d'affilée", () => {
+  it("sans FT, les autres s'alternent", () => {
     const out = interleave([], [items("verge", 6), items("maddy", 1)], 10);
-    expect(maxRun(out)).toBeLessThanOrEqual(2);
     expect(out.map((x) => x.id)).toEqual(["verge1", "maddy1", "verge2", "verge3"]);
   });
   it("s'arrête plutôt que d'enchaîner 3 sujets de la même source", () => {
