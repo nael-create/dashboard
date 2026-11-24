@@ -59,21 +59,17 @@ export const ROW_SIZE = 6;
 
 /**
  * Mise en page sans trou : 1 sujet = pleine largeur ; 2 = deux moitiés ; 3 = trois tiers ;
- * 4 et plus = deux grands sujets côte à côte, puis des rangées de 6 (ROW_SIZE) ; une rangée incomplète
- * est répartie sans trou (5 restants → 3 + 2 ; 6 → 6 ; 8 → 4 + 4 ; 12 → 6 + 6).
- * Les largeurs possibles sont 1, 2, 3, 4 ou 6 par rangée (12 colonnes) : 5 restants donnent 3 + 2.
+ * 4 et plus = rangées de 6 petites images (ROW_SIZE, réglage du propriétaire), la dernière rangée
+ * incomplète répartie sans trou (5 → 3 + 2 ; 8 → 6 + 2 ; 12 → 6 + 6). Largeurs possibles par rangée :
+ * 1, 2, 3, 4 ou 6 sujets (12 colonnes).
  */
 export function gridLayout(n: number): Cell[] {
   if (n <= 0) return [];
   if (n <= 3) return Array.from({ length: n }, () => ({ span: SPAN[n], big: n <= 2 }));
-  const cells: Cell[] = [{ span: SPAN[2], big: true }, { span: SPAN[2], big: true }];
-  let rest = n - 2;
-  // Rangées pleines de 6, puis le reste réparti en rangées de largeurs possibles (4, 3, 2, 1).
+  const cells: Cell[] = [];
+  let rest = n;
   while (rest > 0) {
-    let size: number;
-    if (rest >= ROW_SIZE) size = ROW_SIZE;
-    else if (rest === 5) size = 3;
-    else size = rest;
+    const size = rest >= ROW_SIZE ? ROW_SIZE : rest === 5 ? 3 : rest;
     for (let i = 0; i < size; i++) cells.push({ span: SPAN[size], big: false });
     rest -= size;
   }

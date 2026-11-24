@@ -18,6 +18,7 @@ widgets: source
 - [x] the-verge
 - [x] the-economist
 - [x] maddyness
+- [x] the-next-web
 
 ## FT International
 id: ft-international
@@ -87,4 +88,11 @@ id: maddyness
 url: https://www.maddyness.com/feed/
 category: Startups
 color: #0f9d8a
+enabled: yes
+
+## The Next Web
+id: the-next-web
+url: https://thenextweb.com/feed
+category: Tech
+color: #ff3c00
 enabled: yes
