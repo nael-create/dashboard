@@ -1,7 +1,6 @@
 # CLAUDE.md — Règles de ce dépôt
 
-> **Rappels pour les sessions futures**
-> - À partir du **2026-11-18**, à la prochaine demande du propriétaire, lui rappeler de mettre à jour `fast-xml-parser` (actuellement 5.11.2, faille de gravité faible) vers 5.12.0 ou la dernière version publiée depuis au moins 14 jours. Retirer ce rappel une fois la mise à jour faite.
+> **Note de maintenance** — 2026-11-24 : `next` 16.4.3 → 16.4.6 (avis de sécurité ; `next build` refusait de construire une version vulnérable) et `fast-xml-parser` 5.11.2 → 5.12.0 (faille de gravité faible), via `npm install --before`. Vérifier `npm audit` de temps en temps : `next build` échoue quand la version de Next.js est vulnérable, et le lanceur retombe alors en mode développement.
 
 Ce dépôt est le tableau de bord personnel et la source unique de vérité de son propriétaire : un dossier de fichiers Markdown, maintenu de session en session. Toute session future DOIT suivre les règles ci-dessous.
 
@@ -143,7 +142,7 @@ Règles :
 - **Accueil** (`app/src/app/page.tsx`), de haut en bas — cet ordre est imposé :
   1. **En-tête** ;
   2. **01. agenda** : le calendrier, premier bloc de contenu et le plus grand (toutes ses fonctions) ;
-  3. **02. à la une** : grille d'images des grands sujets (`app/src/components/home/headlines-grid.tsx`), dans l'ordre éditorial du flux FT International entrecoupé de Reuters (2 pour 1) ; un article sans image devient une carte typographique (titre sur aplat), jamais une image cassée ; étoiles actives ; pas d'autre extraction que la règle `og:image` existante ;
+  3. **02. à la une** : grille d'images des grands sujets (`app/src/components/home/headlines-grid.tsx`, logique pure `app/src/lib/headlines.ts`) : **uniquement des articles avec image** (image du flux, sinon `og:image`, cherchée côté serveur et mise en cache) — plus de cartes typographiques ; colonne vertébrale = ordre éditorial du flux FT International, les autres sources actives (une par site, ex. The Verge, Maddyness) intercalées à tour de rôle, **jamais plus de 2 sujets d'affilée de la même source** ; première rangée = deux grandes images de même format, hauteur plafonnée (≈ 50 % de l'écran) ; mise en page sans trou selon le nombre de sujets (1, 2, 3, puis rangées réparties) ; une image qui ne charge pas retire le sujet ; étoiles actives ; pas d'autre extraction que la règle `og:image` existante ;
   4. **tout le reste** : ligne « revue de la semaine » (jour de revue), 03. projets actifs, 04. à retenir aujourd'hui (notions), 05. mémo, 06. newsletters.
 - Aucune fonctionnalité ne doit prendre la place du calendrier ni de « à la une ».
 - Le **Focus de la semaine** n'est plus sur l'accueil : il est en haut de la page `/projets`. DASHBOARD.md garde sa section « Focus de la semaine » inchangée.
@@ -224,7 +223,9 @@ enabled: yes
 - **Lien privé** (URL contenant une clé personnelle, ex. flux myFT) : JAMAIS dans NEWS.md. Il est stocké dans `app/data/news.local.json` (ignoré par git). L'app refuse d'enregistrer dans NEWS.md un lien qui ressemble à une clé et demande de cocher « Lien privé ».
 - Flux téléchargés côté serveur uniquement, au plus une fois toutes les 5 minutes par flux (un flux en échec peut être retenté par « Rafraîchir » au bout d'une minute) ; dédoublonnage (même URL ou titre quasi identique). Aucun article n'est écrit dans le dépôt, aucun texte d'article n'est récupéré, aucun paywall n'est contourné, aucun identifiant FT n'est utilisé. Pas d'intégration X / Twitter.
 - Vignettes : celles du flux (media:content, media:thumbnail, enclosure), sinon uniquement la balise `og:image` de l'article, au plus une fois par article, en cache dans le dossier temporaire du système (hors dépôt). Jamais pour les liens Google News.
-- Accueil : la section « à la une » (grille d'images, 10 sujets) est la seule présence des actus sur l'accueil ; ne pas en ajouter d'autre.
+- Accueil : la section « à la une » (grille d'images, 10 sujets au plus, section 9) est la seule présence des actus sur l'accueil ; ne pas en ajouter d'autre.
+- Page `/news` : les widgets ne montrent que les articles illustrés ; les articles **dont on sait qu'ils n'ont pas d'image** (lien Google News, page sans `og:image` ou refusée) sont marqués `noImage` par `app/src/lib/news.ts` et affichés dans le **Fil**, liste compacte sous les widgets (étoile, clic). Un widget qui n'a que des articles sans image n'apparaît qu'en mode « Organiser ». La page d'un widget (`/news/<clé>`) garde tous ses articles.
+- Sources ajoutées le 2026-11-24 : The Verge (Tech), The Economist (Monde ; flux de titres seulement : ses pages d'articles renvoient une vérification anti-robot Cloudflare, donc pas d'image — **ne jamais contourner**), Maddyness (Startups).
 
 ## 12. NOTIONS.md — notions (répétition espacée)
 

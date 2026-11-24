@@ -197,7 +197,9 @@ Les calendriers abonnés (Outlook, Google, iCloud) restent en lecture seule. Pou
 - **Sources** : ajouter (lien RSS, nom, catégorie, couleur), renommer, changer de couleur ou de catégorie, désactiver, retirer. Le lien est vérifié avant d'être ajouté.
 - **Lien privé** : si un lien contient une clé personnelle (par exemple un flux myFT), coche « Lien privé » : il reste sur ton ordinateur (`app/data/news.local.json`) et ne va jamais sur GitHub.
 - Mise à jour automatique toutes les 5 minutes ; « Rafraîchir » retente les sources en erreur. Repère « Nouveau » sur les articles publiés depuis ta dernière visite.
-- Sur l'accueil, « À la une » montre les 5 derniers titres.
+- **Fil** : les articles sans image (Reuters via Google News, The Economist…) sont regroupés sous les widgets, du plus récent au plus ancien, avec l'étoile. Les widgets, eux, ne montrent que les articles illustrés.
+- Sur l'accueil, **« À la une »** montre jusqu'à 10 sujets **avec image** : l'ordre éditorial du FT, avec les autres sources (The Verge, Maddyness…) intercalées, jamais plus de 2 sujets d'affilée de la même source. Les deux premiers sont en grand, sur la moitié de l'écran au plus.
+- Sources : FT (International, World, Markets, Global Economy), Reuters (via Google News), The Verge, The Economist (titres seulement : son site refuse la lecture automatique des pages, donc pas d'image), Maddyness.
 
 ## Notions (répétition espacée)
 

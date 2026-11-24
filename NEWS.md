@@ -15,6 +15,9 @@ widgets: source
 - [x] reuters
 - [x] reuters-business
 - [x] reuters-markets
+- [x] the-verge
+- [x] the-economist
+- [x] maddyness
 
 ## FT International
 id: ft-international
@@ -63,4 +66,25 @@ id: reuters-markets
 url: https://news.google.com/rss/search?q=when:7d+site:reuters.com/markets+-site:reuters.com/markets/quote&ceid=US:en&hl=en-US&gl=US
 category: Marchés
 color: #10b981
+enabled: yes
+
+## The Verge
+id: the-verge
+url: https://www.theverge.com/rss/index.xml
+category: Tech
+color: #5b3fd1
+enabled: yes
+
+## The Economist
+id: the-economist
+url: https://www.economist.com/latest/rss.xml
+category: Monde
+color: #c8102e
+enabled: yes
+
+## Maddyness
+id: maddyness
+url: https://www.maddyness.com/feed/
+category: Startups
+color: #0f9d8a
 enabled: yes
