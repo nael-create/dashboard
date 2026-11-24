@@ -33,7 +33,7 @@ export function DocPage({ initial, projectTitle, ctx }: { initial: DocPageData; 
   const [title, setTitle] = useState(initial.title);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [decision, setDecision] = useState<string | null>(null);
-  const [suggest, setSuggest] = useState<{ start: number; query: string } | null>(null);
+  const [suggest, setSuggest] = useState<{ start: number; query: string; top: number } | null>(null);
   const [sel, setSel] = useState(0);
   const area = useRef<HTMLTextAreaElement>(null);
   const base = `/api/projects/${doc.project}/docs/${doc.slug}`;
@@ -137,7 +137,16 @@ export function DocPage({ initial, projectTitle, ctx }: { initial: DocPageData; 
     setText(v);
     const before = v.slice(0, caret);
     const m = before.match(/\[\[([^\]\n|]*)$/);
-    setSuggest(m ? { start: caret - m[1].length, query: m[1] } : null);
+    // Liste placée sous la ligne du curseur (approximation par le nombre de lignes, sans retour à la ligne automatique).
+    let top = 0;
+    const el = area.current;
+    if (m && el) {
+      const cs = getComputedStyle(el);
+      const lh = parseFloat(cs.lineHeight) || 21;
+      const line = before.split("\n").length;
+      top = Math.max(0, Math.min(el.clientHeight - 40, parseFloat(cs.paddingTop) + line * lh - el.scrollTop + 6));
+    }
+    setSuggest(m ? { start: caret - m[1].length, query: m[1], top } : null);
     setSel(0);
   };
   const pick = (insert: string) => {
@@ -256,7 +265,7 @@ export function DocPage({ initial, projectTitle, ctx }: { initial: DocPageData; 
                   placeholder={"## Titre de section\n\nTexte… [[autre page]] pour un lien, colle ou dépose une image."}
                 />
                 {options.length > 0 && (
-                  <ul role="listbox" aria-label="Pages et projets" className="absolute left-4 top-4 z-20 w-72 border border-border bg-surface shadow-lg">
+                  <ul role="listbox" aria-label="Pages et projets" style={{ top: (suggest?.top ?? 0) + 12 }} className="absolute left-6 z-20 w-72 border border-border bg-surface shadow-lg">
                     <li className="label border-b border-border px-3 py-1.5 text-muted">lier à…</li>
                     {options.map((o, i) => (
                       <li key={o.insert} role="option" aria-selected={i === sel}>

@@ -65,8 +65,9 @@ export function PipelineBoard({
       {timeline ? (
         <Timeline projects={visible} today={today} />
       ) : (
-        <div className="-mx-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0">
-          <div className="grid min-w-[960px] gap-3" style={{ gridTemplateColumns: `repeat(${stages.length}, minmax(0, 1fr))` }}>
+        <div className="pb-2">
+          {/* Téléphone : étapes l'une sous l'autre ; grand écran : une colonne par étape. */}
+          <div className="grid grid-cols-1 gap-x-3 gap-y-6 lg:[grid-template-columns:repeat(var(--cols),minmax(0,1fr))]" style={{ "--cols": stages.length } as React.CSSProperties}>
             {stages.map((s, i) => {
               const list = visible.filter((p) => p.stage === s.id);
               return (
@@ -84,7 +85,7 @@ export function PipelineBoard({
                     const slug = e.dataTransfer.getData(DRAG);
                     if (slug) moveTo(slug, s.id);
                   }}
-                  className={`min-h-48 border-t-2 pt-3 transition-colors ${over === s.id ? "border-accent bg-accent-soft/40" : "border-text/80"}`}
+                  className={`border-t-2 pt-3 transition-colors lg:min-h-48 ${over === s.id ? "border-accent bg-accent-soft/40" : "border-text/80"}`}
                 >
                   <h3 className="mb-3 flex items-baseline justify-between gap-2 px-1">
                     <span className="flex items-baseline gap-2"><span className="label text-muted">{String(i + 1).padStart(2, "0")}</span><span className="text-[15px] lowercase">{s.label}</span></span>

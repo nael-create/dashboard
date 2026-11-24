@@ -101,9 +101,10 @@ export function TaskRow({
       onTouchMove={() => pressTimer.current && clearTimeout(pressTimer.current)}
       className={`group relative flex items-start gap-3 border-b border-border py-2.5 outline-none focus-visible:bg-surface-2 ${dropHint ? "border-t-2 border-t-accent" : ""} ${done ? "opacity-60" : ""}`}
     >
-      {draggable && !done && (
-        <GripVertical className="mt-1 hidden size-3.5 shrink-0 cursor-grab text-muted/50 opacity-0 transition-opacity group-hover:opacity-100 sm:block" aria-hidden />
-      )}
+      {/* Poignée (ou simple retrait) : toutes les lignes restent alignées. */}
+      <span className="mt-1 hidden size-3.5 shrink-0 sm:block" aria-hidden>
+        {draggable && !done && <GripVertical className="size-3.5 cursor-grab text-muted/50 opacity-0 transition-opacity group-hover:opacity-100" />}
+      </span>
       <button
         type="button"
         role="checkbox"
