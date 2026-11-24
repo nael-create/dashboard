@@ -112,6 +112,16 @@ export async function updatesAvailable(force = false): Promise<number | null> {
   return behind;
 }
 
+/** Versions comparées par « Mettre à jour » : celle en service et celle de GitHub (date du commit). */
+export async function versionDates(): Promise<{ running: string | null; latest: string | null; mode: "production" | "developpement" }> {
+  const built = await runningVersion();
+  const date = async (ref: string) => {
+    const r = await git(["log", "-1", "--format=%cI", ref, "--"]);
+    return r.code === 0 && r.stdout.trim() ? r.stdout.trim() : null;
+  };
+  return { running: await date(built ?? "HEAD"), latest: await date("origin/main"), mode: built ? "production" : "developpement" };
+}
+
 /** Chemins de contenu autorisés à être sauvegardés. */
 export function isContentPath(p: string): boolean {
   if (/(^|\/)\.env/.test(p) || /\.local\.json$/.test(p) || p.startsWith("app/")) return false;
