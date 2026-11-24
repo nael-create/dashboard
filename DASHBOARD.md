@@ -1,12 +1,11 @@
 # Dashboard
 
 <!-- Fichier généré à partir du frontmatter des projets/domaines, des revues et de INBOX.md. Ne pas éditer à la main. -->
-Dernière mise à jour : 2026-11-15
+Dernière mise à jour : 2026-11-24
 
 ## Focus de la semaine
 
-1. fintech fest
-2. premier pas dans l'univers de la Medtech (Medtech)
+1. TODO: fill in
 
 ## Projets actifs
 
