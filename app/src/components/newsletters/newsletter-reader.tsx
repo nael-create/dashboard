@@ -6,6 +6,7 @@ import { createPortal } from "react-dom";
 import { apiJson, isConflict } from "@/lib/client-api";
 import { locateQuote, MAX_PASSAGE, quoteFrom, type Quote } from "@/lib/anchoring";
 import { EVENTS } from "@/lib/shortcuts";
+import { viewportFactor } from "@/lib/zoom";
 import { btnGhost, btnPrimary, field } from "@/components/ui/forms";
 
 export type HlColor = "yellow" | "green" | "blue" | "pink";
@@ -174,7 +175,10 @@ export function NewsletterReader({
         const end = offsetOf(root, range.endContainer, range.endOffset);
         const quote = quoteFrom(text, start, end);
         if (!quote) return setToolbar(null);
-        const rect = range.getBoundingClientRect();
+        // Mesures dans le contenu (zoomable) → pixels de l'écran pour la barre flottante.
+        const f = viewportFactor();
+        const r = range.getBoundingClientRect();
+        const rect = { top: r.top * f, bottom: r.bottom * f, left: r.left * f, width: r.width * f };
         // Sur écran tactile, sous la sélection (le menu du système s'affiche au-dessus) ;
         // au-dessus si la place manque en bas de l'écran.
         let below = coarse || rect.top < 90;
@@ -237,7 +241,9 @@ export function NewsletterReader({
 
   const openPopover = (el: HTMLElement, editNote = false) => {
     const id = el.dataset.hl!;
-    const rect = el.getBoundingClientRect();
+    const f = viewportFactor();
+    const r = el.getBoundingClientRect();
+    const rect = { top: r.top * f, bottom: r.bottom * f, left: r.left * f, width: r.width * f };
     const below = rect.top < 260;
     setToolbar(null);
     setPopover({ id, editNote, below, x: Math.min(Math.max(rect.left + rect.width / 2, 170), window.innerWidth - 170), y: below ? rect.bottom + 10 : rect.top - 10 });
