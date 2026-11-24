@@ -222,6 +222,36 @@ async function archiveProject(slug: string): Promise<string> {
   return target;
 }
 
+/** Ce que contient le dossier d'un projet (affiché dans la confirmation de suppression). */
+export async function projectContents(slug: string): Promise<{ docs: number; images: number; files: number }> {
+  assertSlug(slug);
+  const dir = path.join(/*turbopackIgnore: true*/ CONTENT_DIR, "projects", slug);
+  const count = async (sub: string, filter: (n: string) => boolean) =>
+    fs.readdir(/*turbopackIgnore: true*/ path.join(dir, sub)).then((l) => l.filter(filter).length, () => 0);
+  const all = await fs.readdir(/*turbopackIgnore: true*/ dir, { recursive: true, withFileTypes: true }).then((l) => l.filter((e) => e.isFile()).length, () => 0);
+  return { docs: await count("docs", (n) => n.endsWith(".md")), images: await count("assets", (n) => !n.startsWith(".")), files: all };
+}
+
+/**
+ * Supprime DÉFINITIVEMENT le dossier projects/<slug>/ (README, docs, images), après confirmation dans
+ * l'interface. Refusé si le README a changé depuis la lecture (409). Les tâches liées restent dans
+ * TACHES.md ; une copie reste dans l'historique git si le projet avait été sauvegardé.
+ */
+export async function deleteProject(slug: string, version: string): Promise<{ title: string }> {
+  assertSlug(slug);
+  if (RESERVED_SLUGS.has(slug)) throw new UserError("Nom réservé.", 404);
+  const cur = await readVersioned(readmePath("project", slug));
+  if (!cur.exists) throw new UserError("Ce projet n'existe plus (déjà supprimé ou archivé ?). Recharge la page.", 404);
+  if (cur.version !== version) throw new UserError("Ce projet a été modifié ailleurs entre-temps. Recharge la page avant de le supprimer.", 409);
+  const title = cur.text.match(/^title:\s*"?(.*?)"?\s*(?:#.*)?$/m)?.[1] || slug;
+  const dir = path.join(/*turbopackIgnore: true*/ CONTENT_DIR, "projects", slug);
+  // Garde-fou : uniquement un sous-dossier direct de projects/ (jamais _template ni autre chose).
+  if (path.dirname(dir) !== path.join(CONTENT_DIR, "projects") || slug.startsWith("_")) throw new UserError("Suppression refusée.", 400);
+  await fs.rm(/*turbopackIgnore: true*/ dir, { recursive: true, force: false });
+  await regenerateDashboard();
+  return { title };
+}
+
 /** Crée projects/<slug>/ (ou areas/<slug>/) à partir du template ; seul le titre est demandé. */
 export async function createEntry(kind: Kind, title: string): Promise<string> {
   const clean = oneLine(title);

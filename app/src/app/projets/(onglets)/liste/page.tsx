@@ -35,6 +35,7 @@ export default async function ListTab({ searchParams }: { searchParams: SP }) {
   const tag = pick("tag", allTags);
   const sort = pick("tri", SORTS.map((s) => s.id)) === "all" ? "priorite" : str("tri");
   const archived = /^[a-z0-9-]+$/.test(str("archive")) ? str("archive") : null;
+  const deleted = str("supprime").slice(0, 120);
 
   const shown = all
     .filter((p) => (status === "all" || p.status === status) && (priority === "all" || p.priority === priority) && (stage === "all" || p.stage === stage) && (tag === "all" || p.tags.includes(tag)))
@@ -52,6 +53,7 @@ export default async function ListTab({ searchParams }: { searchParams: SP }) {
   return (
     <>
       {archived && <div className="mb-6"><Notice>Projet archivé : son dossier a été déplacé tel quel dans archive/{archived}/.</Notice></div>}
+      {deleted && <div className="mb-6"><Notice>Projet « {deleted} » supprimé. Clique sur « Sauvegarder » pour envoyer la suppression sur GitHub.</Notice></div>}
       <div className="mb-10 space-y-3 border-b border-border pb-4">
         <FilterChips label="Statut" param="statut" current={status} otherParams={others("statut")}
           chips={[{ value: "all", label: "Tous" }, ...STATUSES.filter((s) => s !== "done" && s !== "dropped").map((s) => ({ value: s, label: STATUS_LABELS[s], count: all.filter((e) => e.status === s).length }))]} />

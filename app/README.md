@@ -248,7 +248,8 @@ Les calendriers abonnés (Outlook, Google, iCloud) restent en lecture seule. Pou
 - **Prochaines actions** : ajoute-les en bas, réordonne-les avec ↑ ↓, modifie-les avec le crayon. **Coche une action** : elle disparaît de la liste et s'inscrit dans le **Journal** (« 2026-11-13 — Fait : … »).
 - **Objectif, Notes, Liens** : crayon → éditeur avec onglets « Écrire » et « Aperçu ».
 - **Journal** : choisis la date et ajoute une entrée ; elle se place en haut.
-- **Terminé / Abandonné** : une confirmation s'affiche, puis le dossier est déplacé dans `archive/`. Il n'y a pas de bouton de suppression : on archive.
+- **Terminé / Abandonné** : une confirmation s'affiche, puis le dossier est déplacé dans `archive/` (récupérable).
+- **Supprimer le projet…** (en bas de la page du projet) : après confirmation, le dossier du projet est effacé définitivement (README, docs, images). Les tâches liées restent. Clique ensuite sur « Sauvegarder » pour envoyer la suppression sur GitHub.
 - Chaque modification met à jour la date `updated` et le fichier `DASHBOARD.md`, et apparaît dans le compteur du bouton **Sauvegarder**.
 
 ## Tâches du jour (`TACHES.md`)

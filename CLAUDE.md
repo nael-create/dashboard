@@ -136,6 +136,7 @@ Séparation stricte :
   | `projects/*/README.md`, `areas/*/README.md` | 9, 22 | frontmatter (dont `stage`, `started`, `tags`), sections, actions, jalons, journal ; création depuis `_template` (sans `docs-templates/`) |
   | `projects/*/docs/*.md`, `projects/*/assets/*` | 22 | pages de docs (création, titre, texte, ordre, « Nouvelle décision », suppression = déplacement dans `docs/_archive/`) ; images collées ou déposées |
   | `archive/` | 9 | déplacement d'un projet passé à `done` / `dropped` (après confirmation) |
+  | `projects/<nom>/` (suppression) | 14 | suppression définitive d'un projet entier, après confirmation |
   | `DASHBOARD.md` | 9 | régénéré entièrement après chaque modification de projet / domaine (et de revue ou d'inbox) |
 
 - Toute écriture passe par `app/src/lib/content-file.ts` : règle « fichier inchangé depuis la lecture » (empreinte de version, refus HTTP 409 sinon), modification ligne par ligne du seul bloc concerné, écriture atomique. Les fichiers restent modifiables à la main.
@@ -283,7 +284,8 @@ Définition (une ou plusieurs lignes).
 - Domaine : titre, statut, priorité ; sections Rôle, Standards à maintenir, Notes.
 - Chaque modification met `updated` à la date du jour et régénère DASHBOARD.md. Les commentaires du frontmatter (ex. `# idea | active…`) et les sections ajoutées à la main sont conservés (ces dernières affichées en lecture seule).
 - « Nouveau projet » / « Nouveau domaine » : seul le titre est demandé ; copie de `_template`, `idea`/`P3` (projet) ou `active`/`P3` (domaine), le reste à `TODO: fill in`.
-- Passer un projet à `done` ou `dropped` demande une confirmation, puis déplace son dossier tel quel dans `archive/` (suffixe de date si le nom existe déjà). **Aucune suppression de projet depuis l'interface.**
+- Passer un projet à `done` ou `dropped` demande une confirmation, puis déplace son dossier tel quel dans `archive/` (suffixe de date si le nom existe déjà).
+- **Supprimer un projet** (demandé par le propriétaire le 2026-11-24) : bouton « Supprimer le projet… » en bas de la page projet, puis confirmation qui liste ce qui sera effacé (README, nombre de pages de docs et d'images) et propose plutôt « Statut → Abandonné ». Efface définitivement `projects/<nom>/` (`deleteProject` dans `app/src/lib/entries-edit.ts`, `DELETE /api/entries/project/<nom>?version=…` : refus 409 si le README a changé, jamais `_template` ni un nom réservé), régénère DASHBOARD.md ; les tâches liées restent dans TACHES.md. « Sauvegarder » envoie la suppression (« projet x supprimé »). Pas de suppression de domaine depuis l'interface.
 - Pas de titres `#`/`##` ni de secrets dans les textes saisis.
 
 ## 15. FAVORIS.md — favoris

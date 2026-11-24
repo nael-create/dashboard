@@ -160,3 +160,11 @@ describe("synchro automatique de TACHES.md", () => {
     sh(A, "checkout", "-q", "main");
   });
 });
+
+describe("message de sauvegarde : projet supprimé", () => {
+  it("« projet x supprimé » quand tout le dossier part ; « modifié » pour une seule page de docs", () => {
+    const ns = (...pairs: [string, string][]) => pairs.flatMap(([st, p]) => [st, p]).join("\0") + "\0";
+    expect(G.buildMessage(ns(["D", "projects/demo/docs/a.md"], ["D", "projects/demo/README.md"]), "")).toContain("projet demo supprimé");
+    expect(G.buildMessage(ns(["D", "projects/demo/docs/a.md"]), "")).toContain("projet demo modifié");
+  });
+});
