@@ -247,7 +247,10 @@ export function buildMessage(nameStatus: string, diff: string): string {
       const key = `${kind}:${slug}`;
       if (done.has(key) || done.has(`proj:${slug}`)) continue;
       done.add(key);
-      out.push(`${kind} ${slug} ${c.status === "A" ? "créé" : c.status === "D" ? "retiré" : "modifié"}`);
+      // Dossier entier supprimé (README retiré) → « supprimé » ; une page de docs retirée → « modifié ».
+      const readmeGone = changes.some((x) => x.status === "D" && x.path === `${p.split("/")[0]}/${slug}/README.md`);
+      const readmeNew = changes.some((x) => x.status === "A" && x.path === `${p.split("/")[0]}/${slug}/README.md`);
+      out.push(`${kind} ${slug} ${readmeNew ? "créé" : readmeGone ? "supprimé" : "modifié"}`);
     } else if (p.startsWith("reviews/")) {
       out.push(`revue ${p.replace(/^reviews\/|\.md$/g, "")} ${c.status === "A" ? "ajoutée" : "modifiée"}`);
     } else if (p.startsWith("archive/")) {

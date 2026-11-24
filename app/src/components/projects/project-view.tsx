@@ -223,7 +223,10 @@ export function ProjectView({
         {tab === "docs" && <Docs project={e.slug} initial={initialDocs} templates={templates} />}
         {tab === "journal" && <div className="max-w-3xl"><Journal entries={e.journal} change={change} /></div>}
       </div>
-      <p className="mt-12 text-xs text-muted">Source : <code className="break-all">projects/{e.slug}/README.md</code></p>
+      <footer className="mt-16 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
+        <p className="text-xs text-muted">Source : <code className="break-all">projects/{e.slug}/README.md</code></p>
+        <DeleteProject slug={e.slug} title={e.fields.title || e.slug} version={() => versionRef.current} onError={(t) => setError({ text: t, conflict: true })} />
+      </footer>
     </article>
   );
 }
@@ -437,5 +440,58 @@ function Docs({ project, initial, templates }: { project: string; initial: DocLi
       )}
       <p className="mt-3 text-xs text-muted">Pages dans <code>projects/{project}/docs/</code> · glisser-déposer ou ↑ ↓ pour réordonner · liens entre pages : <code>[[nom]]</code>.</p>
     </section>
+  );
+}
+
+/**
+ * « Supprimer le projet » : confirmation qui dit exactement ce qui sera effacé, et rappelle qu'on peut
+ * plutôt archiver (Statut → Abandonné). Suppression définitive du dossier projects/<nom>/.
+ */
+function DeleteProject({ slug, title, version, onError }: { slug: string; title: string; version: () => string; onError: (t: string) => void }) {
+  const router = useRouter();
+  const [ask, setAsk] = useState(false);
+  const [info, setInfo] = useState<{ docs: number; images: number; files: number } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const open = async () => {
+    setAsk(true);
+    try {
+      setInfo(await apiJson(`/api/entries/project/${slug}?contenu=1`));
+    } catch {
+      setInfo(null);
+    }
+  };
+  const remove = async () => {
+    setBusy(true);
+    try {
+      const r = await apiJson<{ title: string }>(`/api/entries/project/${slug}?version=${encodeURIComponent(version())}`, "DELETE");
+      router.push(`/projets/liste?supprime=${encodeURIComponent(r.title)}`);
+      router.refresh();
+    } catch (err) {
+      setBusy(false);
+      setAsk(false);
+      onError(err instanceof Error ? err.message : String(err));
+    }
+  };
+  if (!ask) {
+    return (
+      <button type="button" onClick={open} className={`${btnGhost} hover:text-rose-700 dark:hover:text-rose-400`}>
+        <Trash2 className="size-3.5" aria-hidden /> Supprimer le projet…
+      </button>
+    );
+  }
+  return (
+    <div role="alertdialog" aria-label="Confirmer la suppression" className="w-full bg-rose-500/10 p-4 text-sm">
+      <p className="font-medium">Supprimer définitivement « {title} » ?</p>
+      <p className="mt-2 text-muted">
+        Le dossier <code>projects/{slug}/</code> sera effacé de ton ordinateur
+        {info ? <> : le README{info.docs ? `, ${info.docs} page${info.docs > 1 ? "s" : ""} de docs` : ""}{info.images ? `, ${info.images} image${info.images > 1 ? "s" : ""}` : ""} ({info.files} fichier{info.files > 1 ? "s" : ""} en tout)</> : null}.
+        Les tâches liées restent dans TACHES.md. Si le projet avait déjà été envoyé avec « Sauvegarder », une copie reste dans l&apos;historique GitHub.
+      </p>
+      <p className="mt-2 text-muted">Pour seulement le ranger (récupérable), choisis plutôt <strong>Statut → Abandonné</strong>.</p>
+      <div className="mt-3 flex flex-wrap justify-end gap-2">
+        <button type="button" className={btnGhost} onClick={() => setAsk(false)} autoFocus>Annuler</button>
+        <button type="button" className={btnDanger} disabled={busy} onClick={remove}>{busy ? "Suppression…" : "Supprimer définitivement"}</button>
+      </div>
+    </div>
   );
 }

@@ -100,3 +100,25 @@ describe("édition des projets et domaines", () => {
     expect(D.yamlValue("yes")).toBe('"yes"');
   });
 });
+
+describe("suppression d'un projet", () => {
+  it("refuse sans la bonne version, puis efface tout le dossier et met DASHBOARD.md à jour", async () => {
+    const slug = await E.createEntry("project", "À effacer");
+    fs.mkdirSync(path.join(dir, "projects", slug, "docs"), { recursive: true });
+    fs.writeFileSync(path.join(dir, "projects", slug, "docs", "brief.md"), "---\ntitle: Brief\n---\n");
+    expect(await E.projectContents(slug)).toMatchObject({ docs: 1, images: 0 });
+    await expect(E.deleteProject(slug, "mauvaise-version")).rejects.toThrow(/modifié ailleurs/);
+    expect(fs.existsSync(path.join(dir, "projects", slug))).toBe(true);
+    const e = (await E.readEditable("project", slug))!;
+    expect(await E.deleteProject(slug, e.version)).toEqual({ title: "À effacer" });
+    expect(fs.existsSync(path.join(dir, "projects", slug))).toBe(false);
+    expect(fs.existsSync(path.join(dir, "projects", "_template"))).toBe(true);
+    expect(readme("DASHBOARD.md")).not.toContain(slug);
+  });
+
+  it("refuse les noms invalides, le modèle et un projet absent", async () => {
+    await expect(E.deleteProject("../areas", "x")).rejects.toThrow();
+    await expect(E.deleteProject("_template", "x")).rejects.toThrow();
+    await expect(E.deleteProject("inexistant", "x")).rejects.toThrow(/n'existe plus/);
+  });
+});
