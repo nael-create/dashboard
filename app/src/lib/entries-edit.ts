@@ -11,7 +11,8 @@ import { readVersioned, updateFile } from "./content-file";
 import { regenerateDashboard } from "./dashboard-md";
 import { todayISO } from "./dates";
 import {
-  actions, addAction, addJournal, checkAction, editAction, journal, moveAction, parseDoc, removeAction, sectionText,
+  actions, addAction, addJournal, addMilestone, checkAction, editAction, editMilestone, journal, milestones, moveAction, parseDoc,
+  removeAction, removeMilestone, sectionText, setMilestoneDone,
   serializeDoc, setField, setSectionText, type Doc,
 } from "./markdown-doc";
 import { detectSensitive } from "./secrets";
@@ -80,7 +81,11 @@ export type EditOp =
   | { op: "action-remove"; index: number; text: string }
   | { op: "action-edit"; index: number; text: string; newText: string }
   | { op: "action-move"; index: number; text: string; dir: -1 | 1 }
-  | { op: "journal-add"; text: string; date?: string };
+  | { op: "journal-add"; text: string; date?: string }
+  | { op: "milestone-add"; date: string; text: string }
+  | { op: "milestone-check"; index: number; text: string; done: boolean }
+  | { op: "milestone-edit"; index: number; text: string; date: string; newText: string }
+  | { op: "milestone-remove"; index: number; text: string };
 
 export const RESERVED_SLUGS = new Set(["aujourdhui", "pipeline", "liste", "domaines"]);
 
@@ -148,7 +153,30 @@ function apply(kind: Kind, d: Doc, op: EditOp, today: string) {
     case "journal-add":
       checkText(op.text);
       addJournal(d, op.date ?? today, oneLine(op.text));
+      return;
+    case "milestone-add":
+      if (kind !== "project") throw new UserError("Les jalons sont réservés aux projets.");
+      checkText(op.text);
+      addMilestone(d, isoDate(op.date), oneLine(op.text));
+      return;
+    case "milestone-check": {
+      const m = setMilestoneDone(d, op.index, op.text, op.done);
+      // Jalon atteint : entrée datée dans le journal.
+      if (op.done && !m.done) addJournal(d, today, `Jalon atteint : ${m.text}`);
+      return;
+    }
+    case "milestone-edit":
+      checkText(op.newText);
+      editMilestone(d, op.index, op.text, isoDate(op.date), oneLine(op.newText));
+      return;
+    case "milestone-remove":
+      removeMilestone(d, op.index, op.text);
   }
+}
+
+function isoDate(v: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(v) || Number.isNaN(Date.parse(`${v}T00:00:00Z`))) throw new UserError("Date invalide.");
+  return v;
 }
 
 function oneLine(t: string) {

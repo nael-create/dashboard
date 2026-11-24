@@ -169,6 +169,7 @@ Règles :
 - Tests : `npm test` dans `app/` (Vitest). Les fichiers ICS de test sont dans `app/test/fixtures/` (données fictives) ; tout cas réel problématique DOIT y être reproduit avec un test.
 - Un flux en échec affiche le nom du calendrier et la raison, sans bloquer les autres.
 - Les calendriers **abonnés** restent en lecture seule (clic = détails). Les événements personnels vont dans le calendrier intégré « Perso » (section 18).
+- **Calques intégrés « Tâches » et « Jalons »** (`app/src/lib/calendar-layers.ts`, ajoutés par `app/src/app/api/events/`) : listés dans « Gérer les calendriers » avec leur couleur et un interrupteur « Afficher » (réglages dans `options.layers` de `calendars.local.json`). Tâches (TACHES.md) : avec heure = événement (durée de la tâche, sinon 30 min, heure convertie du fuseau de TACHES.md vers le fuseau d'affichage), sans heure = journée entière, abandonnées masquées. Jalons (`## Jalons` des projets, `app/src/lib/milestones.ts`) : journée entière, « Jalon · Projet ». Une case à cocher (jamais imbriquée dans un autre bouton) coche la tâche ou le jalon ; faits = barrés et pâlis ; clic sur le titre = détails avec lien vers l'onglet « aujourd'hui » ou les jalons du projet. Clic sur un créneau libre : choix « Événement » (Perso) ou « Tâche » (date et heure pré-remplies, « Sans heure » possible).
 
 ### Secrets
 

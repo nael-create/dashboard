@@ -20,10 +20,14 @@ const calendarSchema = z.object({
   /** Fuseau des heures « flottantes » de ce calendrier (null/absent = détection automatique). */
   timeZone: z.string().nullable().optional(),
 });
+const layerSchema = z.object({ color: z.string().regex(HEX_COLOR), visible: z.boolean() });
 const optionsSchema = z.object({
   /** Affiche comme un seul bloc les événements consécutifs identiques (affichage uniquement). */
   mergeAdjacent: z.boolean().default(true),
+  /** Calques intégrés « Tâches » et « Jalons » : couleur et visibilité (voir calendar-layers.ts). */
+  layers: z.record(z.string(), layerSchema).optional(),
 });
+export type LayerSettings = z.infer<typeof layerSchema>;
 const storeSchema = z.object({
   calendars: z.array(calendarSchema),
   options: optionsSchema.default({ mergeAdjacent: true }),

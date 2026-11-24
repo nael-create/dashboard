@@ -9,7 +9,7 @@ import { btnDanger, btnGhost, btnPrimary, field, iconBtn } from "@/components/ui
 export type EventDialogState =
   | { mode: "create"; date: string; minutes: number | null }
   | { mode: "edit"; id: string }
-  | { mode: "view"; event: DisplayEvent; day: string; calendarName: string; color: string }
+  | { mode: "view"; event: DisplayEvent; day: string; calendarName: string; color: string; link?: { href: string; label: string } }
   | null;
 
 interface Form {
@@ -40,6 +40,8 @@ export function EventDialog({
   const [error, setError] = useState<{ text: string; conflict: boolean } | null>(null);
   const [busy, setBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  // Clic sur un créneau : « Événement » (Perso) ou « Tâche » (TACHES.md), date et heure pré-remplies.
+  const [kind, setKind] = useState<"event" | "task">("event");
 
   useEffect(() => {
     const d = ref.current;
@@ -48,6 +50,7 @@ export function EventDialog({
     if (!state && d.open) d.close();
     setError(null);
     setConfirmDelete(false);
+    setKind("event");
     if (state?.mode === "create") {
       const start = state.minutes ?? 9 * 60;
       setForm({
@@ -80,7 +83,10 @@ export function EventDialog({
     setBusy(true);
     setError(null);
     try {
-      if (state.mode === "create") await apiJson("/api/agenda", "POST", payload(form));
+      if (state.mode === "create" && kind === "task") {
+        await apiJson("/api/tasks", "POST", { action: "add", task: { title: form.title, date: form.date, time: form.allDay ? null : form.startTime } });
+        window.dispatchEvent(new Event("tasks-changed"));
+      } else if (state.mode === "create") await apiJson("/api/agenda", "POST", payload(form));
       else if (state.mode === "edit") await apiJson(`/api/agenda/${encodeURIComponent(state.id)}`, "PATCH", { ...payload(form), version });
       onSaved();
       onClose();
@@ -128,12 +134,27 @@ export function EventDialog({
           {state.event.mergedCount && state.event.mergedCount > 1 && (
             <p className="mt-3 text-xs text-muted">Regroupe {state.event.mergedCount} événements consécutifs.</p>
           )}
-          <p className="mt-5 border-t border-border pt-3 text-xs text-muted">Les calendriers abonnés se modifient dans Outlook, Google ou iCloud.</p>
+          {state.link ? (
+            <p className="mt-5 border-t border-border pt-3 text-sm"><a href={state.link.href} className="link-underline">{state.link.label} →</a></p>
+          ) : (
+            <p className="mt-5 border-t border-border pt-3 text-xs text-muted">Les calendriers abonnés se modifient dans Outlook, Google ou iCloud.</p>
+          )}
         </div>
       ) : (
         <form onSubmit={save} className="p-6">
           <div className="mb-5 flex items-start justify-between gap-3">
-            <h2 className="title-md lowercase">{state?.mode === "edit" ? "modifier l'événement" : "nouvel événement"}</h2>
+            {state?.mode === "create" ? (
+              <div role="radiogroup" aria-label="Type" className="flex gap-1">
+                {(["event", "task"] as const).map((k) => (
+                  <button key={k} type="button" role="radio" aria-checked={kind === k} onClick={() => setKind(k)}
+                    className={`rounded-full border px-3 py-1 text-[12px] uppercase tracking-[0.04em] transition-colors ${kind === k ? "border-text bg-text text-bg" : "border-border text-muted hover:text-text"}`}>
+                    {k === "event" ? "Événement" : "Tâche"}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <h2 className="title-md lowercase">modifier l&apos;événement</h2>
+            )}
             <button type="button" onClick={onClose} aria-label="Fermer" className={iconBtn}><X className="size-4" /></button>
           </div>
           {!form ? (
@@ -149,9 +170,15 @@ export function EventDialog({
                 </label>
                 <label className="col-span-2 flex items-center gap-2 self-end pb-2 text-sm sm:col-span-1">
                   <input type="checkbox" checked={form.allDay} onChange={(e) => set({ allDay: e.target.checked })} className="size-4 accent-[var(--accent)]" />
-                  Toute la journée
+                  {kind === "task" ? "Sans heure" : "Toute la journée"}
                 </label>
-                {!form.allDay && (
+                {!form.allDay && kind === "task" && (
+                  <label className="col-span-2 block text-sm sm:col-span-1">
+                    <span className="label mb-1 block text-muted">Heure</span>
+                    <input type="time" value={form.startTime} onChange={(e) => set({ startTime: e.target.value })} required className={field} />
+                  </label>
+                )}
+                {!form.allDay && kind === "event" && (
                   <>
                     <label className="block text-sm">
                       <span className="label mb-1 block text-muted">Début</span>
@@ -164,6 +191,7 @@ export function EventDialog({
                   </>
                 )}
               </div>
+              {kind === "event" && <>
               <input value={form.location} onChange={(e) => set({ location: e.target.value })} maxLength={200} placeholder="Lieu (facultatif)" aria-label="Lieu" className={field} />
               <textarea value={form.note} onChange={(e) => set({ note: e.target.value })} rows={2} placeholder="Note (facultatif)" aria-label="Note" className={`${field} resize-y`}
                 onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) (e.currentTarget.form as HTMLFormElement).requestSubmit(); }} />
@@ -179,7 +207,10 @@ export function EventDialog({
                   </label>
                 )}
               </div>
-              <p className="label text-muted">Calendrier « {persoName} » · AGENDA.md · fuseau {timeZone.replace(/_/g, " ")}</p>
+              </>}
+              <p className="label text-muted">
+                {kind === "task" ? <>Tâche · TACHES.md · onglet projets → aujourd&apos;hui</> : <>Calendrier « {persoName} » · AGENDA.md · fuseau {timeZone.replace(/_/g, " ")}</>}
+              </p>
               {error && (
                 <p className="bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-300">
                   {error.text}
