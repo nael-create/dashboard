@@ -48,27 +48,34 @@ export function interleave<T extends { sourceId: string }>(backbone: T[], others
 
 export interface Cell {
   /** Classe de largeur sur grand écran (12 colonnes). */
-  span: "lg:col-span-12" | "lg:col-span-6" | "lg:col-span-4" | "lg:col-span-3";
+  span: "lg:col-span-12" | "lg:col-span-6" | "lg:col-span-4" | "lg:col-span-3" | "lg:col-span-2";
   /** Première rangée : grande image (hauteur plafonnée). */
   big: boolean;
 }
 
-const SPAN: Record<number, Cell["span"]> = { 1: "lg:col-span-12", 2: "lg:col-span-6", 3: "lg:col-span-4", 4: "lg:col-span-3" };
+const SPAN: Record<number, Cell["span"]> = { 1: "lg:col-span-12", 2: "lg:col-span-6", 3: "lg:col-span-4", 4: "lg:col-span-3", 6: "lg:col-span-2" };
+/** Sujets par rangée sous les deux grands (6 = petites images, réglage du propriétaire). */
+export const ROW_SIZE = 6;
 
 /**
  * Mise en page sans trou : 1 sujet = pleine largeur ; 2 = deux moitiés ; 3 = trois tiers ;
- * 4 et plus = deux grands sujets côte à côte, puis des rangées de 4 au plus, réparties à parts égales
- * (ex. 5 restants → 3 + 2, 6 → 3 + 3, 7 → 4 + 3).
+ * 4 et plus = deux grands sujets côte à côte, puis des rangées de 6 (ROW_SIZE) ; une rangée incomplète
+ * est répartie sans trou (5 restants → 3 + 2 ; 6 → 6 ; 8 → 4 + 4 ; 12 → 6 + 6).
+ * Les largeurs possibles sont 1, 2, 3, 4 ou 6 par rangée (12 colonnes) : 5 restants donnent 3 + 2.
  */
 export function gridLayout(n: number): Cell[] {
   if (n <= 0) return [];
   if (n <= 3) return Array.from({ length: n }, () => ({ span: SPAN[n], big: n <= 2 }));
   const cells: Cell[] = [{ span: SPAN[2], big: true }, { span: SPAN[2], big: true }];
-  const rest = n - 2;
-  const rows = Math.ceil(rest / 4);
-  for (let r = 0; r < rows; r++) {
-    const size = Math.floor(rest / rows) + (r < rest % rows ? 1 : 0);
+  let rest = n - 2;
+  // Rangées pleines de 6, puis le reste réparti en rangées de largeurs possibles (4, 3, 2, 1).
+  while (rest > 0) {
+    let size: number;
+    if (rest >= ROW_SIZE) size = ROW_SIZE;
+    else if (rest === 5) size = 3;
+    else size = rest;
     for (let i = 0; i < size; i++) cells.push({ span: SPAN[size], big: false });
+    rest -= size;
   }
   return cells;
 }
