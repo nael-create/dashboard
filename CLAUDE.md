@@ -1,7 +1,6 @@
 # CLAUDE.md — Règles de ce dépôt
 
-> **Rappels pour les sessions futures**
-> - À partir du **2026-11-18**, à la prochaine demande du propriétaire, lui rappeler de mettre à jour `fast-xml-parser` (actuellement 5.11.2, faille de gravité faible) vers 5.12.0 ou la dernière version publiée depuis au moins 14 jours. Retirer ce rappel une fois la mise à jour faite.
+> **Note de maintenance** — 2026-11-24 : `next` 16.4.3 → 16.4.6 (avis de sécurité ; `next build` refusait de construire une version vulnérable) et `fast-xml-parser` 5.11.2 → 5.12.0 (faille de gravité faible), via `npm install --before`. Vérifier `npm audit` de temps en temps : `next build` échoue quand la version de Next.js est vulnérable, et le lanceur retombe alors en mode développement.
 
 Ce dépôt est le tableau de bord personnel et la source unique de vérité de son propriétaire : un dossier de fichiers Markdown, maintenu de session en session. Toute session future DOIT suivre les règles ci-dessous.
 
