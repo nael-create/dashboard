@@ -3,6 +3,10 @@ import { readNewsConfig, type NewsSource, type WidgetMode } from "./news-config"
 import { byDateDesc, dedupe, loadFeed, type Article } from "./rss";
 import { displayTimeZone } from "./display-tz";
 import { localStamp } from "./tz";
+import { knownOgImage, ogImage } from "./og-image";
+
+/** Article d'un widget ; `noImage` : on sait qu'il n'a pas d'image (Google News, page sans og:image…). */
+export type NewsArticle = Article & { noImage?: true };
 
 export interface NewsWidget {
   key: string;
@@ -11,7 +15,7 @@ export interface NewsWidget {
   domain: string;
   sourceIds: string[];
   visible: boolean;
-  items: Article[];
+  items: NewsArticle[];
 }
 
 export interface NewsError { sourceId: string; name: string; message: string; staleSince?: string }
@@ -22,6 +26,8 @@ export interface NewsPayload {
   sources: (Omit<NewsSource, "url"> & { host: string; domain: string })[];
   widgets: NewsWidget[];
   latest: Article[];
+  /** « Fil » : articles sans image (ex. Reuters via Google News), du plus récent au plus ancien. */
+  fil: NewsArticle[];
   errors: NewsError[];
   fetchedAt: string;
 }
@@ -55,11 +61,17 @@ export async function buildNews(retryFailed = false): Promise<NewsPayload> {
 
   // Dédoublonnage global, dans l'ordre des widgets : un article déjà montré n'est pas répété.
   const seen: Article[] = [];
+  const filCandidates: { a: NewsArticle; key: string }[] = [];
+  const noImage = (a: Article) => !a.thumbnail && knownOgImage(a.link) === null;
   const widgets: NewsWidget[] = ordered.map((key) => {
     const srcs = enabled.filter((s) => widgetKeyFor(cfg.mode, s) === key);
     const items = srcs.flatMap((s) => feeds.get(s.id)!.items).sort(byDateDesc);
-    const unique = dedupe([...seen, ...items]).slice(seen.length);
-    seen.push(...unique);
+    const all = dedupe([...seen, ...items]).slice(seen.length);
+    seen.push(...all);
+    // Articles dont on sait qu'ils n'ont pas d'image : marqués ; la page News les montre dans le Fil
+    // plutôt que dans les widgets (la page d'un widget, elle, les garde tous).
+    const unique: NewsArticle[] = all.map((a) => (noImage(a) ? { ...a, noImage: true } : a));
+    filCandidates.push(...unique.filter((a) => a.noImage).map((a) => ({ a, key })));
     const first = srcs[0];
     return {
       key,
@@ -74,6 +86,13 @@ export async function buildNews(retryFailed = false): Promise<NewsPayload> {
 
   const visibleIds = new Set(widgets.filter((w) => w.visible).flatMap((w) => w.sourceIds));
   const latest = dedupe(widgets.flatMap((w) => w.items).filter((a) => visibleIds.has(a.sourceId)).sort(byDateDesc)).slice(0, 5);
+  const visibleKeys = new Set(widgets.filter((w) => w.visible).map((w) => w.key));
+  const fil = filCandidates.filter((c) => visibleKeys.has(c.key)).map((c) => c.a).sort(byDateDesc).slice(0, 80);
+
+  // En arrière-plan : on cherche l'image des articles pas encore examinés (og:image, en cache), pour
+  // que le prochain affichage les range au bon endroit. Aucune attente ici.
+  const unknown = widgets.flatMap((w) => w.items).filter((a) => !a.thumbnail && knownOgImage(a.link) === undefined).slice(0, 40);
+  for (const a of unknown) void ogImage(a.link).catch(() => null);
 
   return {
     mode: cfg.mode,
@@ -89,6 +108,7 @@ export async function buildNews(retryFailed = false): Promise<NewsPayload> {
     }),
     widgets,
     latest,
+    fil,
     errors,
     fetchedAt: new Date().toISOString(),
   };

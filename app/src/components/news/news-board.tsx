@@ -7,6 +7,7 @@ import { btnGhost, iconBtn } from "@/components/ui/forms";
 import { Notice } from "@/components/ui/notice";
 import { relativeTime } from "@/lib/relative-time";
 import { NewsCard } from "./news-card";
+import { StarButton } from "@/components/favorites/favorites-context";
 import { NewsSourcesDialog } from "./news-sources-dialog";
 import { useNews, type Article, type NewsWidgetData } from "./use-news";
 
@@ -43,7 +44,11 @@ export function NewsBoard({ renderActions }: { renderActions?: (a: Article) => R
     saveOrder(next);
   };
 
-  const shown = data ? data.widgets.filter((w) => editing || w.visible) : [];
+  // Les articles sans image vont dans le « Fil » ; un widget qui n'a que ceux-là n'est montré qu'en mode Organiser.
+  const pictured = (w: NewsWidgetData) => w.items.filter((a) => !a.noImage);
+  const onlyFil = (w: NewsWidgetData) => w.items.length > 0 && pictured(w).length === 0;
+  const shown = data ? data.widgets.filter((w) => editing || (w.visible && !onlyFil(w))) : [];
+  const sourceOf = new Map(data?.sources.map((s) => [s.id, s]) ?? []);
   const errorsBySource = new Map(data?.errors.map((e) => [e.sourceId, e]) ?? []);
 
   return (
@@ -121,9 +126,9 @@ export function NewsBoard({ renderActions }: { renderActions?: (a: Article) => R
                   href={editing ? undefined : `/news/${encodeURIComponent(w.key)}`}
                   domain={w.domain}
                   color={w.color}
-                  items={w.items.slice(0, 5)}
+                  items={pictured(w).slice(0, 5)}
                   isNew={isNew}
-                  error={err ? `Erreur : ${err.message}` : undefined}
+                  error={err ? `Erreur : ${err.message}` : editing && onlyFil(w) ? "Articles sans image : affichés dans le Fil, plus bas." : undefined}
                   renderActions={editing ? undefined : renderActions}
                 >
                   {editing && (
@@ -142,6 +147,41 @@ export function NewsBoard({ renderActions }: { renderActions?: (a: Article) => R
             );
           })}
         </ol>
+      )}
+
+      {/* Fil : les articles sans image (ex. Reuters via Google News), en liste compacte. */}
+      {data && data.fil.length > 0 && !editing && (
+        <section aria-labelledby="fil-titre" className="mt-16">
+          <header className="mb-2 flex items-baseline justify-between gap-3 border-t border-text/80 pt-3">
+            <h2 id="fil-titre" className="title-md lowercase">fil</h2>
+            <p className="label text-muted">Articles sans image · {data.fil.length}</p>
+          </header>
+          <ol className="divide-y divide-border">
+            {data.fil.map((a) => {
+              const src = sourceOf.get(a.sourceId);
+              return (
+                <li key={a.id} className="group grid grid-cols-[1fr_auto] items-start gap-x-3 py-2.5 sm:grid-cols-[4.5rem_9rem_1fr_auto] sm:items-baseline">
+                  <span className="label order-2 col-span-2 flex items-center gap-2 text-muted sm:order-none sm:col-span-1">
+                    {a.date ? <time dateTime={a.date} suppressHydrationWarning>{relativeTime(a.date)}</time> : "—"}
+                    <span className="sm:hidden" aria-hidden>·</span>
+                    <span className="flex items-center gap-1.5 truncate sm:hidden">{src?.name ?? a.publisher}</span>
+                  </span>
+                  <span className="label hidden items-center gap-1.5 truncate text-muted sm:flex">
+                    <span className="size-1.5 shrink-0 rounded-full" style={{ background: src?.color ?? "var(--muted)" }} aria-hidden />
+                    <span className="truncate">{src?.name ?? a.publisher}</span>
+                  </span>
+                  <a href={a.link} target="_blank" rel="noopener noreferrer" className="min-w-0 leading-snug">
+                    <span className="link-underline">{a.title}</span>
+                    {isNew(a) && <span className="label ml-2 text-accent-text">nouveau</span>}
+                  </a>
+                  <span className="-my-1">
+                    <StarButton type="article" refId={a.link} title={a.title} source={a.publisher} published={a.date?.slice(0, 10) ?? null} />
+                  </span>
+                </li>
+              );
+            })}
+          </ol>
+        </section>
       )}
 
       {data && <NewsSourcesDialog open={dialog} onClose={() => setDialog(false)} data={data} onChanged={() => load()} />}

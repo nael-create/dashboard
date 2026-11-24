@@ -10,6 +10,8 @@ export interface Article {
   sourceId: string;
   date: string | null;
   thumbnail: string | null;
+  /** On sait que l'article n'a pas d'image : rangé dans le « Fil » de la page News. */
+  noImage?: true;
 }
 export interface NewsWidgetData {
   key: string;
@@ -36,6 +38,7 @@ export interface NewsData {
   sources: NewsSourceData[];
   widgets: NewsWidgetData[];
   latest: Article[];
+  fil: Article[];
   errors: { sourceId: string; name: string; message: string; staleSince?: string }[];
   fetchedAt: string;
 }

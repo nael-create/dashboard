@@ -102,3 +102,13 @@ export async function ogImage(link: string): Promise<string | null> {
   }
   return pending.get(link)!;
 }
+
+/**
+ * Image d'aperçu DÉJÀ connue, sans aucun appel réseau : l'URL, null si l'article n'en a pas
+ * (lien Google News, page sans og:image, page refusée), undefined si on ne sait pas encore.
+ */
+export function knownOgImage(link: string): string | null | undefined {
+  if (/^https?:\/\/news\.google\.com\//.test(link)) return null;
+  const c = cache();
+  return c.has(link) ? c.get(link)! : undefined;
+}
