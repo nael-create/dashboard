@@ -1,5 +1,6 @@
 "use client";
 
+import { getZoom, viewportFactor } from "@/lib/zoom";
 import { AlertTriangle, ArrowLeft, ArrowRight, MapPin, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
@@ -389,7 +390,9 @@ function TimeGrid({
   const slotClick = (day: string, e: React.MouseEvent<HTMLDivElement>) => {
     if (!handlers.onSlot || e.target !== e.currentTarget) return;
     const rect = e.currentTarget.getBoundingClientRect();
-    const minutes = Math.max(0, Math.min(1410, Math.floor(((e.clientY - rect.top) / HOUR) * 2) * 30));
+    // Position dans la grille, en pixels CSS, quel que soit le zoom du dashboard (src/lib/zoom.ts).
+    const offset = (e.clientY - rect.top * viewportFactor()) / getZoom();
+    const minutes = Math.max(0, Math.min(1410, Math.floor((offset / HOUR) * 2) * 30));
     handlers.onSlot(day, minutes);
   };
 

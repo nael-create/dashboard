@@ -148,6 +148,7 @@ Tout se règle dans **`app/dashboard.config.ts`** :
 
 Le thème clair/sombre suit le réglage du système ; le bouton en haut à droite alterne
 **système → clair → sombre**.
+- **Zoom** : sous l'heure, en haut, « − 100 % + » agrandit ou réduit tout le dashboard (80 à 125 %). Clique sur le pourcentage pour revenir à 100 %. Le réglage est gardé dans ce navigateur.
 
 ## Pages
 

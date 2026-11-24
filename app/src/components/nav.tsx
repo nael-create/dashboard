@@ -40,7 +40,7 @@ function useLocalTime() {
  * En-tête éditorial : nom, navigation en petites capitales, heure locale, actions discrètes.
  * Sur téléphone : « Menu » ouvre un menu plein écran en très grands caractères.
  */
-export function SiteHeader({ title, actions, mobileExtras }: { title: string; actions: ReactNode; mobileExtras: ReactNode }) {
+export function SiteHeader({ title, actions, mobileExtras, zoom }: { title: string; actions: ReactNode; mobileExtras: ReactNode; zoom?: ReactNode }) {
   const pathname = usePathname();
   const { hh, mm, zone } = useLocalTime();
   const [menu, setMenu] = useState(false);
@@ -99,6 +99,7 @@ export function SiteHeader({ title, actions, mobileExtras }: { title: string; ac
         <div className="col-span-3 hidden sm:block lg:col-span-2">
           <span className="block text-muted">Heure locale{zone ? ` — ${zone}` : ""}</span>
           <span className="block">{time}</span>
+          {zoom}
         </div>
 
         {/* Actions (Sauvegarder, recherche, ajout rapide, thème) */}
