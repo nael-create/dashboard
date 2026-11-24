@@ -6,6 +6,8 @@ import { ArrowDown, ArrowLeft, ArrowUp, Check, Pencil, Plus, X } from "lucide-re
 import { useCallback, useRef, useState, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { PlanButton } from "@/components/tasks/plan-button";
+import { TASKS_EVENT } from "@/components/tasks/use-tasks";
 import { apiJson, isConflict } from "@/lib/client-api";
 import { btnDanger, btnGhost, btnPrimary, field, iconBtn } from "@/components/ui/forms";
 import { MarkdownEditor } from "@/components/ui/markdown-editor";
@@ -21,15 +23,16 @@ export interface Editable {
   sections: Record<string, string>;
   actions: { text: string; done: boolean }[];
   journal: { date: string; text: string }[];
+  milestones?: { date: string; text: string; done: boolean }[];
   body: string;
 }
 
-const STATUSES: [string, string][] = [["idea", "Idée"], ["active", "Actif"], ["paused", "En pause"], ["done", "Terminé"], ["dropped", "Abandonné"]];
-const PRIORITIES = ["P1", "P2", "P3"];
-const KNOWN = new Set(["Objectif", "Prochaines actions", "Notes", "Liens", "Journal", "Rôle", "Standards à maintenir"]);
-const isTodo = (v?: string) => !v || v.trim() === "TODO: fill in";
+export const STATUSES: [string, string][] = [["idea", "Idée"], ["active", "Actif"], ["paused", "En pause"], ["done", "Terminé"], ["dropped", "Abandonné"]];
+export const PRIORITIES = ["P1", "P2", "P3"];
+const KNOWN = new Set(["Objectif", "Pourquoi", "Critères de réussite", "Ressources", "Risques", "Prochaines actions", "Notes", "Liens", "Jalons", "Journal", "Rôle", "Standards à maintenir"]);
+export const isTodo = (v?: string) => !v || v.trim() === "TODO: fill in";
 
-type Change = Record<string, unknown> & { op: string };
+export type Change = Record<string, unknown> & { op: string };
 
 export function EntryEditor({ initial, star }: { initial: Editable; star?: ReactNode }) {
   const router = useRouter();
@@ -53,7 +56,7 @@ export function EntryEditor({ initial, star }: { initial: Editable; star?: React
       const res = await apiJson<{ version: string; archivedTo: string | null }>(base, "PATCH", { version: versionRef.current, change: c, confirmArchive });
       versionRef.current = res.version;
       if (res.archivedTo) {
-        router.push(`/projets?archive=${encodeURIComponent(res.archivedTo)}`);
+        router.push(`/projets/liste?archive=${encodeURIComponent(res.archivedTo)}`);
         router.refresh();
         return true;
       }
@@ -66,11 +69,26 @@ export function EntryEditor({ initial, star }: { initial: Editable; star?: React
   };
   const setFields = (fields: Record<string, string>) => change({ op: "fields", fields });
 
+  /** « Planifier » : l'action devient une tâche datée liée au projet (TACHES.md). */
+  const plan = async (index: number, text: string, date: string, time: string | null): Promise<boolean> => {
+    setError(null);
+    try {
+      const res = await apiJson<{ projectVersion: string }>("/api/tasks", "POST", { action: "plan", slug: e.slug, projectVersion: versionRef.current, index, text, date, time });
+      versionRef.current = res.projectVersion;
+      window.dispatchEvent(new Event(TASKS_EVENT));
+      await reload();
+      return true;
+    } catch (err) {
+      setError({ text: err instanceof Error ? err.message : String(err), conflict: isConflict(err) });
+      return false;
+    }
+  };
+
   const extra = extraSections(e.body);
 
   return (
     <article>
-      <Link href="/projets" className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-accent-text">
+      <Link href={initial.kind === "project" ? "/projets/liste" : "/projets/domaines"} className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-accent-text">
         <ArrowLeft className="size-4" aria-hidden /> Projets et domaines
       </Link>
       {error && (
@@ -99,7 +117,7 @@ export function EntryEditor({ initial, star }: { initial: Editable; star?: React
             <SectionEditor key={name} name={name} text={e.sections[name] ?? ""} onSave={(t) => change({ op: "section", name, text: t })} />
           ))}
 
-          {isProject && <Actions items={e.actions} change={change} />}
+          {isProject && <Actions items={e.actions} change={change} plan={plan} />}
 
           {(isProject ? ["Notes", "Liens"] : ["Notes"]).map((name) => (
             <SectionEditor key={name} name={name} text={e.sections[name] ?? ""} onSave={(t) => change({ op: "section", name, text: t })} />
@@ -180,7 +198,7 @@ export function EntryEditor({ initial, star }: { initial: Editable; star?: React
 }
 
 /** Champ d'une ligne modifiable sur place (Entrée ou sortie du champ pour enregistrer). */
-function InlineText({
+export function InlineText({
   value, label, onSave, className = "", boxed = false,
 }: { value: string; label: string; onSave: (v: string) => Promise<boolean>; className?: string; boxed?: boolean }) {
   const [v, setV] = useState(isTodo(value) ? "" : value);
@@ -207,7 +225,7 @@ function InlineText({
   );
 }
 
-function SectionEditor({ name, text, onSave }: { name: string; text: string; onSave: (t: string) => Promise<boolean> }) {
+export function SectionEditor({ name, text, onSave }: { name: string; text: string; onSave: (t: string) => Promise<boolean> }) {
   const [editing, setEditing] = useState(false);
   return (
     <section>
@@ -231,7 +249,11 @@ function SectionEditor({ name, text, onSave }: { name: string; text: string; onS
   );
 }
 
-function Actions({ items, change }: { items: { text: string; done: boolean }[]; change: (c: Change) => Promise<boolean> }) {
+export function Actions({ items, change, plan }: {
+  items: { text: string; done: boolean }[];
+  change: (c: Change) => Promise<boolean>;
+  plan?: (index: number, text: string, date: string, time: string | null) => Promise<boolean>;
+}) {
   const [adding, setAdding] = useState("");
   const [editing, setEditing] = useState<number | null>(null);
   const [draft, setDraft] = useState("");
@@ -269,6 +291,7 @@ function Actions({ items, change }: { items: { text: string; done: boolean }[]; 
                   <button type="button" className={iconBtn} aria-label={`Monter « ${a.text} »`} disabled={k === 0} onClick={() => change({ op: "action-move", index: a.i, text: a.text, dir: -1 })}><ArrowUp className="size-4" /></button>
                   <button type="button" className={iconBtn} aria-label={`Descendre « ${a.text} »`} disabled={k === visible.length - 1} onClick={() => change({ op: "action-move", index: a.i, text: a.text, dir: 1 })}><ArrowDown className="size-4" /></button>
                   <button type="button" className={iconBtn} aria-label={`Modifier « ${a.text} »`} onClick={() => { setEditing(a.i); setDraft(a.text); }}><Pencil className="size-4" /></button>
+                  {plan && !a.done && <PlanButton text={a.text} onPlan={(date, time) => plan(a.i, a.text, date, time)} />}
                 </span>
               </>
             )}
@@ -283,7 +306,7 @@ function Actions({ items, change }: { items: { text: string; done: boolean }[]; 
   );
 }
 
-function Journal({ entries, change }: { entries: { date: string; text: string }[]; change: (c: Change) => Promise<boolean> }) {
+export function Journal({ entries, change }: { entries: { date: string; text: string }[]; change: (c: Change) => Promise<boolean> }) {
   const [text, setText] = useState("");
   const [date, setDate] = useState(() => new Date().toLocaleDateString("en-CA"));
   return (
@@ -311,7 +334,7 @@ function Journal({ entries, change }: { entries: { date: string; text: string }[
 }
 
 /** Sections ajoutées à la main (hors modèle) : affichées en lecture seule. */
-function extraSections(body: string): [string, string][] {
+export function extraSections(body: string): [string, string][] {
   const out: [string, string][] = [];
   const parts = body.split(/^## /m).slice(1);
   for (const p of parts) {

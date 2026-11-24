@@ -4,7 +4,8 @@ import { errorResponse, fail, isSameOrigin, UserError } from "@/lib/api";
 import { todayISO } from "@/lib/dates";
 import { editEntry, readEditable } from "@/lib/entries-edit";
 import { markInboxDone, readInbox, removeInboxItem } from "@/lib/inbox";
-import { addMemo, readMemo } from "@/lib/memo";
+import { addTask } from "@/lib/tasks";
+import { scheduleTaskSync } from "@/lib/task-sync";
 import { addNotion } from "@/lib/notions";
 
 export const dynamic = "force-dynamic";
@@ -12,8 +13,10 @@ export const dynamic = "force-dynamic";
 const schema = z.object({
   index: z.number().int().min(0),
   raw: z.string(),
-  action: z.enum(["project", "notion", "memo", "delete", "keep"]),
+  action: z.enum(["project", "notion", "task", "delete", "keep"]),
   project: z.string().optional(),
+  /** « Tâche » : date choisie (aujourd'hui par défaut). */
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 });
 
 /** Traite un élément de l'inbox ; les éléments routés sont cochés « - [x] », « Supprimer » retire la ligne. */
@@ -21,7 +24,7 @@ export async function POST(req: Request) {
   if (!isSameOrigin(req)) return fail("Requête refusée.", 403);
   const parsed = schema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return fail("Données invalides.");
-  const { index, raw, action, project } = parsed.data;
+  const { index, raw, action, project, date } = parsed.data;
   try {
     const item = (await readInbox()).items[index];
     if (!item || item.raw !== raw) throw new UserError("Cet élément de l'inbox a changé entre-temps. Recharge la page.", 409);
@@ -50,10 +53,11 @@ export async function POST(req: Request) {
           label = `${text} → déjà dans les notions`;
         }
         break;
-      case "memo": {
-        const { version } = await readMemo();
-        await addMemo(version, { title: text.slice(0, 120), text: "", tags: [], pinned: false, date: todayISO() });
-        label = `${text} → mémo`;
+      case "task": {
+        const today = todayISO();
+        const r = await addTask({ title: text.slice(0, 300), date: date ?? today }, today);
+        scheduleTaskSync();
+        label = `${text} → tâche du ${r.result?.date ?? today}`;
         break;
       }
     }

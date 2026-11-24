@@ -4,7 +4,7 @@ import { Star } from "lucide-react";
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { apiJson } from "@/lib/client-api";
 
-type FavType = "article" | "newsletter" | "notion" | "memo" | "project" | "highlight";
+type FavType = "article" | "newsletter" | "notion" | "doc" | "project" | "highlight" | "memo";
 
 interface Ctx {
   has: (type: FavType, ref: string) => boolean;

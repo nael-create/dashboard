@@ -7,6 +7,9 @@ export interface PublicCalendar {
   id: string; name: string; color: string; host: string; timeZone: string | null;
   /** Calendrier intégré « Perso » (AGENDA.md) : nom et couleur modifiables, jamais supprimé. */
   editable?: boolean;
+  /** Calque intégré « Tâches » ou « Jalons » : couleur et visibilité réglables. */
+  layer?: boolean;
+  hidden?: boolean;
 }
 export interface ZoneInfo { source: "calendar" | "x-wr-timezone" | "vtimezone" | "display"; name: string }
 
@@ -77,9 +80,10 @@ export function CalendarManager({
               {timeZones.map((z) => <option key={z} value={z} />)}
             </datalist>
             <ul className="mb-4 space-y-2">
-              {calendars.map((c) => (
+              {calendars.filter((c) => !c.layer).map((c) => (
                 <CalendarRow key={c.id} cal={c} zone={zones[c.id]} listId={listId} timeZones={timeZones} onChanged={onChanged} />
               ))}
+              {calendars.filter((c) => c.layer).map((c) => <LayerRow key={c.id} cal={c} onChanged={onChanged} />)}
             </ul>
             <MergeToggle value={mergeAdjacent} onChanged={onChanged} />
           </>
@@ -114,6 +118,42 @@ function ColorPicker({ value, onChange, label }: { value: string; onChange: (c: 
         <input type="color" value={value} onChange={(e) => onChange(e.target.value)} className="absolute inset-0 cursor-pointer opacity-0" aria-label="Autre couleur" />
       </label>
     </div>
+  );
+}
+
+/** Calque intégré (Tâches, Jalons) : couleur et « Afficher ». */
+function LayerRow({ cal, onChanged }: { cal: PublicCalendar; onChanged: () => void }) {
+  const [error, setError] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
+  const patch = async (set: { color?: string; visible?: boolean }) => {
+    setError(null);
+    try {
+      await api("/api/calendar-options", { method: "PATCH", body: JSON.stringify({ layer: { id: cal.id, set } }) });
+      onChanged();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  };
+  const visible = !cal.hidden;
+  return (
+    <li className="rounded-xl border border-border p-3">
+      <div className="flex items-center gap-3">
+        <button type="button" onClick={() => setEditing((v) => !v)} className="size-3.5 shrink-0 rounded-full" style={{ background: cal.color }} aria-label={`Couleur de ${cal.name}`} />
+        <span className="min-w-0 flex-1">
+          <span className={`block text-sm font-medium ${visible ? "" : "text-muted line-through"}`}>{cal.name}</span>
+          <span className="block text-xs text-muted">{cal.host} · intégré</span>
+        </span>
+        <label className="flex items-center gap-2 text-xs text-muted">
+          Afficher
+          <button type="button" role="switch" aria-checked={visible} aria-label={`Afficher ${cal.name}`} onClick={() => patch({ visible: !visible })}
+            className={`relative h-6 w-10 shrink-0 rounded-full transition-colors ${visible ? "bg-accent" : "bg-border"}`}>
+            <span className={`absolute top-0.5 size-5 rounded-full bg-white shadow transition-all ${visible ? "left-[18px]" : "left-0.5"}`} />
+          </button>
+        </label>
+      </div>
+      {editing && <div className="mt-3"><ColorPicker value={cal.color} onChange={(c) => patch({ color: c })} label={`Couleur de ${cal.name}`} /></div>}
+      {error && <p className="mt-2 text-sm text-rose-600">{error}</p>}
+    </li>
   );
 }
 

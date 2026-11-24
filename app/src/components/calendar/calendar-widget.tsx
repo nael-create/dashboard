@@ -4,6 +4,7 @@ import { getZoom, viewportFactor } from "@/lib/zoom";
 import { AlertTriangle, ArrowLeft, ArrowRight, MapPin, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { apiJson } from "@/lib/client-api";
 import {
   WEEKDAYS, bucketByDay, fmtDayNum, fmtLongDay, fmtShortDay, fmtWeekday, shift, timeLabel,
   mergeAdjacent, todayInTz, viewTitle, visibleRange, type DisplayEvent, type View, type ViewEvent,
@@ -27,6 +28,31 @@ interface Payload {
 export interface CalendarHandlers {
   onSlot?: (day: string, minutes: number | null) => void;
   onEvent?: (ev: DisplayEvent, day: string) => void;
+  /** Tâche ou jalon : cocher / décocher. */
+  onToggle?: (ev: DisplayEvent) => void;
+}
+
+const isChecked = (ev: DisplayEvent) => !!(ev.task?.done || ev.milestone?.done);
+const doneCls = (ev: DisplayEvent) => (isChecked(ev) ? "line-through opacity-60" : "");
+
+/** Case à cocher d'une tâche ou d'un jalon, à côté de son titre (jamais dans un autre bouton). */
+function EventCheck({ ev, onToggle, className = "" }: { ev: DisplayEvent; onToggle?: CalendarHandlers["onToggle"]; className?: string }) {
+  if (!(ev.task || ev.milestone) || !onToggle) return null;
+  const done = isChecked(ev);
+  const what = ev.task ? "la tâche" : "le jalon";
+  return (
+    <button
+      type="button" role="checkbox" aria-checked={done}
+      aria-label={`${done ? "Décocher" : "Cocher"} ${what} « ${ev.milestone?.text ?? ev.title} »`}
+      onClick={(e) => {
+        e.stopPropagation();
+        onToggle(ev);
+      }}
+      className={`grid size-3.5 shrink-0 place-items-center border border-current bg-surface text-text/70 hover:text-accent ${className}`}
+    >
+      {done && <span className="size-2 bg-current" aria-hidden />}
+    </button>
+  );
 }
 
 const VIEWS: { id: View; label: string }[] = [
@@ -114,6 +140,12 @@ export function CalendarWidget({ initialToday }: { initialToday?: string }) {
   useEffect(() => {
     load();
   }, [load]);
+  // Tâche ajoutée / cochée ailleurs (accueil, palette, onglet aujourd'hui) : le calque se met à jour.
+  useEffect(() => {
+    const on = () => load();
+    window.addEventListener("tasks-changed", on);
+    return () => window.removeEventListener("tasks-changed", on);
+  }, [load]);
 
   const colorOf = useMemo(() => {
     const m = new Map(data?.calendars.map((c) => [c.id, c.color]));
@@ -137,11 +169,36 @@ export function CalendarWidget({ initialToday }: { initialToday?: string }) {
           if (ev.editable && ev.sourceId) setDialog({ mode: "edit", id: ev.sourceId });
           else {
             const cal = data?.calendars.find((c) => c.id === ev.calendarId);
-            setDialog({ mode: "view", event: ev, day, calendarName: cal?.name ?? "Calendrier", color: cal?.color ?? "var(--muted)" });
+            const link = ev.task ? { href: `/projets/aujourdhui#task-${ev.task.id}`, label: "Ouvrir dans projets → aujourd'hui" }
+              : ev.milestone ? { href: `/projets/${ev.milestone.project}?onglet=jalons`, label: `Ouvrir les jalons de « ${ev.milestone.projectTitle} »` }
+              : undefined;
+            setDialog({ mode: "view", event: ev, day, calendarName: cal?.name ?? "Calendrier", color: cal?.color ?? "var(--muted)", link });
           }
         },
+        onToggle: (ev) => toggleItem(ev),
       }
     : {};
+  /** Coche / décoche une tâche (TACHES.md) ou un jalon (README du projet), avec la version lue juste avant. */
+  const toggleItem = async (ev: DisplayEvent) => {
+    const done = !(ev.task?.done || ev.milestone?.done);
+    // Affichage immédiat, puis rechargement.
+    setData((d) => d && { ...d, events: d.events.map((e) => (e.id !== ev.id ? e : e.task ? { ...e, task: { ...e.task, done } } : e.milestone ? { ...e, milestone: { ...e.milestone, done } } : e)) });
+    try {
+      if (ev.task) {
+        const { version } = await apiJson<{ version: string }>("/api/tasks");
+        await apiJson("/api/tasks", "POST", { action: "status", version, id: ev.task.id, status: done ? "done" : "todo" });
+        window.dispatchEvent(new Event("tasks-changed"));
+      } else if (ev.milestone) {
+        const base = `/api/entries/project/${ev.milestone.project}`;
+        const { version } = await apiJson<{ version: string }>(base);
+        await apiJson(base, "PATCH", { version, change: { op: "milestone-check", index: ev.milestone.index, text: ev.milestone.text, done } });
+      }
+    } catch (e) {
+      setFatal(e instanceof Error ? e.message : String(e));
+    }
+    load();
+  };
+
   const openDay = (d: string) => {
     setCursor(d);
     changeView("day");
@@ -240,7 +297,7 @@ export function CalendarWidget({ initialToday }: { initialToday?: string }) {
       {!noCalendars && (
         <footer className="mt-6 flex flex-wrap items-center justify-between gap-4 border-t border-border pt-4">
           <ul className="label flex flex-wrap items-center gap-x-5 gap-y-2 text-muted">
-            {data?.calendars.map((c) => (
+            {data?.calendars.filter((c) => !c.hidden).map((c) => (
               <li key={c.id} className="flex items-center gap-1.5">
                 <span className="size-2 rounded-full" style={{ background: c.color }} aria-hidden />
                 {c.name}
@@ -293,13 +350,13 @@ const mergedHint = (ev: DisplayEvent) =>
   ev.mergedCount && ev.mergedCount > 1 ? `Regroupe ${ev.mergedCount} événements consécutifs` : undefined;
 
 /** Ligne d'événement (listes « ensuite », semaine sur téléphone). */
-function EventRow({ ev, day, colorOf, onEvent }: { ev: DisplayEvent; day: string; colorOf: ColorOf; onEvent?: CalendarHandlers["onEvent"] }) {
+function EventRow({ ev, day, colorOf, onEvent, onToggle }: { ev: DisplayEvent; day: string; colorOf: ColorOf; onEvent?: CalendarHandlers["onEvent"]; onToggle?: CalendarHandlers["onToggle"] }) {
   const body = (
     <>
       <span className="label w-24 shrink-0 pt-0.5 tabular-nums text-muted">{timeLabel(ev, day)}</span>
       <span className="mt-1.5 size-2 shrink-0 rounded-full" style={{ background: colorOf(ev.calendarId) }} aria-hidden />
       <span className="min-w-0 text-left">
-        <span className="block leading-snug">{ev.title}</span>
+        <span className={`block leading-snug ${doneCls(ev)}`}>{ev.title}</span>
         {ev.location && (
           <span className="mt-0.5 flex items-center gap-1 truncate text-xs text-muted">
             <MapPin className="size-3 shrink-0" aria-hidden /> {ev.location}
@@ -309,7 +366,8 @@ function EventRow({ ev, day, colorOf, onEvent }: { ev: DisplayEvent; day: string
     </>
   );
   return (
-    <li title={mergedHint(ev)} className="border-b border-border last:border-b-0">
+    <li title={mergedHint(ev)} className="flex items-start gap-2 border-b border-border last:border-b-0">
+      <EventCheck ev={ev} onToggle={onToggle} className="mt-3.5" />
       {onEvent ? (
         <button type="button" onClick={() => onEvent(ev, day)} className="flex w-full gap-3 py-2.5 transition-colors hover:bg-surface-2/60">{body}</button>
       ) : (
@@ -419,10 +477,10 @@ function TimeGrid({
           {allDay.map((list, i) => (
             <ul key={days[i]} className="space-y-1 border-l border-border p-1">
               {list.map((ev) => (
-                <li key={ev.id}>
+                <li key={ev.id} className="flex items-center gap-1 pl-1" style={{ background: `color-mix(in oklab, ${colorOf(ev.calendarId)} 22%, transparent)` }}>
+                  <EventCheck ev={ev} onToggle={handlers.onToggle} />
                   <button type="button" disabled={!handlers.onEvent} onClick={() => handlers.onEvent?.(ev, days[i])}
-                    className="block w-full truncate px-1.5 py-0.5 text-left text-xs disabled:cursor-default"
-                    style={{ background: `color-mix(in oklab, ${colorOf(ev.calendarId)} 22%, transparent)` }} title={ev.title}>
+                    className={`block min-w-0 flex-1 truncate px-0.5 py-0.5 text-left text-xs disabled:cursor-default ${doneCls(ev)}`} title={ev.title}>
                     {ev.title}
                   </button>
                 </li>
@@ -453,13 +511,10 @@ function TimeGrid({
                 const color = colorOf(p.ev.calendarId);
                 const label = timeLabel(p.ev, d);
                 return (
-                  <button
+                  <div
                     key={p.ev.id}
-                    type="button"
-                    disabled={!handlers.onEvent}
-                    onClick={() => handlers.onEvent?.(p.ev, d)}
                     title={`${label} · ${p.ev.title}${p.ev.location ? ` · ${p.ev.location}` : ""}${mergedHint(p.ev) ? ` (${mergedHint(p.ev)!.toLowerCase()})` : ""}`}
-                    className="absolute overflow-hidden border-l-2 px-1.5 py-1 text-left text-xs leading-tight transition-[filter] hover:brightness-95 disabled:cursor-default"
+                    className="absolute flex gap-1 overflow-hidden border-l-2 py-1 pl-1 text-xs leading-tight transition-[filter] hover:brightness-95"
                     style={{
                       top: p.top + 1,
                       height: p.height,
@@ -469,10 +524,14 @@ function TimeGrid({
                       background: `color-mix(in oklab, ${color} 18%, var(--surface))`,
                     }}
                   >
-                    <span className="block truncate font-medium">{p.ev.title}</span>
-                    {p.height > 34 && <span className="block truncate tabular-nums text-muted">{label}</span>}
-                    {p.height > 52 && p.ev.location && <span className="block truncate text-muted">{p.ev.location}</span>}
-                  </button>
+                    <EventCheck ev={p.ev} onToggle={handlers.onToggle} />
+                    <button type="button" disabled={!handlers.onEvent} onClick={() => handlers.onEvent?.(p.ev, d)}
+                      className="min-w-0 flex-1 self-stretch pr-1 text-left disabled:cursor-default">
+                      <span className={`block truncate font-medium ${doneCls(p.ev)}`}>{p.ev.title}</span>
+                      {p.height > 34 && <span className="block truncate tabular-nums text-muted">{label}</span>}
+                      {p.height > 52 && p.ev.location && <span className="block truncate text-muted">{p.ev.location}</span>}
+                    </button>
+                  </div>
                 );
               })}
               {d === today && now !== null && (
@@ -507,7 +566,7 @@ function DayView({
             {upcoming.map((d) => (
               <div key={d}>
                 <p className={`mb-1 text-base font-light tracking-[-0.02em] ${d === today ? "text-accent-text" : ""}`}>{fmtShortDay(d).toLowerCase()}</p>
-                <ul>{byDay.get(d)!.map((ev) => <EventRow key={ev.id} ev={ev} day={d} colorOf={colorOf} onEvent={handlers.onEvent} />)}</ul>
+                <ul>{byDay.get(d)!.map((ev) => <EventRow key={ev.id} ev={ev} day={d} colorOf={colorOf} onEvent={handlers.onEvent} onToggle={handlers.onToggle} />)}</ul>
               </div>
             ))}
           </div>
@@ -543,7 +602,7 @@ function WeekView({
                 )}
               </div>
               {events.length ? (
-                <ul>{events.map((ev) => <EventRow key={ev.id} ev={ev} day={d} colorOf={colorOf} onEvent={handlers.onEvent} />)}</ul>
+                <ul>{events.map((ev) => <EventRow key={ev.id} ev={ev} day={d} colorOf={colorOf} onEvent={handlers.onEvent} onToggle={handlers.onToggle} />)}</ul>
               ) : (
                 <p className="text-sm text-muted">—</p>
               )}
@@ -599,10 +658,10 @@ function MonthView({
                 {events.slice(0, 3).map((ev) => {
                   const label = timeLabel(ev, d);
                   return (
-                    <li key={ev.id}>
+                    <li key={ev.id} data-cell="1" className="flex items-center gap-1 pl-0.5" style={{ background: `color-mix(in oklab, ${colorOf(ev.calendarId)} 16%, transparent)` }}>
+                      <EventCheck ev={ev} onToggle={handlers.onToggle} />
                       <button type="button" disabled={!handlers.onEvent} onClick={() => handlers.onEvent?.(ev, d)}
-                        className="block w-full truncate px-1 text-left text-xs leading-5 disabled:cursor-default"
-                        style={{ background: `color-mix(in oklab, ${colorOf(ev.calendarId)} 16%, transparent)` }}
+                        className={`block min-w-0 flex-1 truncate px-0.5 text-left text-xs leading-5 disabled:cursor-default ${doneCls(ev)}`}
                         title={`${label} · ${ev.title}${mergedHint(ev) ? ` (${mergedHint(ev)!.toLowerCase()})` : ""}`}>
                         {!ev.allDay && label !== "Journée" && <span className="mr-1 tabular-nums text-muted">{label.startsWith("→") ? "→" : label.slice(0, 5)}</span>}
                         {ev.title}

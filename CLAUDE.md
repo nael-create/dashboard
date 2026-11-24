@@ -8,8 +8,8 @@ Les mots « DOIT », « NE DOIT PAS », « DEVRAIT », « PEUT » ont le sens de
 
 ## 1. Contraintes générales
 
-- Tous les fichiers de **contenu personnel** DOIVENT être du Markdown simple (`.md`) : pas de base de données, pas de JSON. (Exception technique : `archive/.gitkeep`.)
-- Le code de l'application web vit **uniquement** dans `app/` (voir section 9). Hors de `app/`, aucun script ni dépendance, à une exception près : le lanceur macOS `Lancer le dashboard.command` à la racine (exécutable, voir `app/README.md`).
+- Tous les fichiers de **contenu personnel** DOIVENT être du Markdown simple (`.md`) : pas de base de données, pas de JSON. (Exceptions : `archive/.gitkeep` ; les images des pages de docs, `projects/<projet>/assets/*.png|jpg|webp|gif`, section 22.)
+- Le code de l'application web vit **uniquement** dans `app/` (voir section 9). Hors de `app/`, aucun script ni dépendance, à deux exceptions près : le lanceur macOS `Lancer le dashboard.command` à la racine (exécutable, voir `app/README.md`) et le workflow `.github/workflows/rappels.yml` (section 21), qui exécute un script de `app/`.
 - Les fichiers DOIVENT rester lisibles et modifiables à la main dans n'importe quel éditeur de texte.
 - Noms de fichiers et de dossiers : minuscules, kebab-case (ex. `projects/side-app/`).
   - **Exceptions autorisées** : les fichiers de revue `reviews/YYYY-Www.md` (ex. `2026-W46.md`, avec `W` majuscule, semaine ISO 8601) ; les fichiers racine imposés `CLAUDE.md`, `DASHBOARD.md`, `INBOX.md` et les `README.md` ; les préfixes `_` des templates (`_template`) ; le contenu de `app/`, qui suit les conventions de Next.js (`[slug]`, `next.config.ts`, `README.md`…) ; `.gitignore` ; le lanceur macOS `Lancer le dashboard.command` (nom imposé par le propriétaire).
@@ -23,17 +23,22 @@ Les mots « DOIT », « NE DOIT PAS », « DEVRAIT », « PEUT » ont le sens de
 CLAUDE.md               # Ce fichier : règles pour les sessions futures
 DASHBOARD.md            # Page de synthèse unique (générée)
 INBOX.md                # Capture rapide, non triée
-MEMO.md                 # Choses à retenir (voir section 10)
+MEMO.md                 # Ancien mémo, conservé tel quel (voir section 10)
 NEWS.md                 # Sources d'actus RSS et disposition des widgets (voir section 11)
 NOTIONS.md              # Glossaire à mémoriser (voir section 12)
 FAVORIS.md              # Favoris (voir section 15)
 AGENDA.md               # Événements personnels, calendrier « Perso » (voir section 18)
+TACHES.md               # Tâches datées et réglages des rappels (voir section 20)
 SURLIGNAGES.md          # Passages surlignés dans les newsletters (voir section 19)
 .gitignore              # Secrets et fichiers générés
 Lancer le dashboard.command  # Lanceur macOS en double-clic (doit rester exécutable)
+.github/workflows/rappels.yml # Rappels par e-mail des tâches (voir section 21)
 app/                    # Application web (code uniquement, voir section 9)
 projects/               # Un dossier par projet en cours
   _template/README.md
+  _template/docs-templates/   # Modèles de pages de docs (section 22)
+  <projet>/docs/        # Pages de docs du projet (section 22) ; docs/_archive/ = pages supprimées
+  <projet>/assets/      # Images des pages de docs
 areas/                  # Responsabilités continues sans date de fin (finances, santé…)
   _template/README.md
 archive/                # Projets terminés ou abandonnés, déplacés tels quels
@@ -57,8 +62,13 @@ Frontmatter YAML obligatoire (toute valeur contenant « : » DOIT être entre gu
 | `updated` | `YYYY-MM-DD` |
 | `next_action` | texte |
 | `deadline` | `YYYY-MM-DD` ou vide (optionnel) |
+| `stage` | étape : `idee` \| `recherche` \| `conception` \| `realisation` \| `lancement` \| `suivi` (liste dans `dashboard.config.ts`, `projectStages`) ; absente = `idee`, ajoutée par l'app à la première modification |
+| `started` | `YYYY-MM-DD` ou vide (optionnel) : début réel |
+| `tags` | `a, b` (optionnel, minuscules) |
 
 Sections obligatoires, dans cet ordre : `## Objectif`, `## Prochaines actions` (liste de cases à cocher), `## Notes`, `## Liens`, `## Journal` (entrées datées, ordre antichronologique : la plus récente en haut).
+
+Sections facultatives (modèle et page projet) : `## Pourquoi`, `## Critères de réussite`, `## Ressources`, `## Risques` (après Objectif), `## Jalons` (avant Journal : `- [ ] YYYY-MM-DD — Titre`, `[x]` = atteint, ordre chronologique). Une section ajoutée par l'app se place dans cet ordre : Objectif, Pourquoi, Critères de réussite, Ressources, Risques, Prochaines actions, Notes, Liens, Jalons, Journal.
 
 ## 4. Domaines — `areas/<nom-du-domaine>/README.md`
 
@@ -108,14 +118,13 @@ Les dossiers `_template` et `archive/` sont toujours exclus du dashboard.
 
 Séparation stricte :
 
-- **Contenu** (racine du dépôt, Markdown) = seule source de vérité : projets, domaines, inbox, revues, mémo.
+- **Contenu** (racine du dépôt, Markdown) = seule source de vérité : projets, domaines, tâches, inbox, revues, notions…
 - **Code** (`app/`) = Next.js (App Router) + TypeScript + Tailwind CSS. Il lit le Markdown à chaque requête et NE DOIT PAS dupliquer ce contenu dans un autre format (pas de base, pas de JSON, pas de cache sur disque).
 - L'app ne commite que via le bouton **Sauvegarder** (section 13), à la demande du propriétaire.
 - Fichiers de contenu que l'app écrit (et uniquement ceux-là) — tableau tenu à jour à chaque phase :
 
   | Fichier | Phase | Ce que l'app y écrit |
   |---|---|---|
-  | `MEMO.md` | 4 | entrées du mémo (ajout, modification, épinglage, suppression avec confirmation) |
   | `NEWS.md` | 6 | sources d'actus publiques, regroupement des widgets, ordre et visibilité des widgets |
   | `NOTIONS.md` | 7 | notions (ajout rapide, import en masse, modification, suppression avec confirmation) |
   | `INBOX.md` | 11 | ajout daté (palette), élément routé coché `- [x]`, « Supprimer » retire la ligne |
@@ -123,7 +132,9 @@ Séparation stricte :
   | `AGENDA.md` | 18 | événements « Perso » (création, modification, suppression avec confirmation), nom et couleur du calendrier |
   | `FAVORIS.md` | 10 | favoris (ajout / retrait par l'étoile, note personnelle, retrait d'un élément supprimé) |
   | `SURLIGNAGES.md` | 19 | surlignages (ajout depuis la lecture d'une newsletter, couleur, note, suppression avec confirmation) |
-  | `projects/*/README.md`, `areas/*/README.md` | 9 | frontmatter, sections, actions, journal ; création depuis `_template` |
+  | `TACHES.md` | 20 | tâches (ajout, modification, cochage, report, abandon, suppression avec confirmation, ordre) et réglages des rappels (frontmatter) |
+  | `projects/*/README.md`, `areas/*/README.md` | 9, 22 | frontmatter (dont `stage`, `started`, `tags`), sections, actions, jalons, journal ; création depuis `_template` (sans `docs-templates/`) |
+  | `projects/*/docs/*.md`, `projects/*/assets/*` | 22 | pages de docs (création, titre, texte, ordre, « Nouvelle décision », suppression = déplacement dans `docs/_archive/`) ; images collées ou déposées |
   | `archive/` | 9 | déplacement d'un projet passé à `done` / `dropped` (après confirmation) |
   | `DASHBOARD.md` | 9 | régénéré entièrement après chaque modification de projet / domaine (et de revue ou d'inbox) |
 
@@ -137,15 +148,16 @@ Règles :
 - **Fuseau d'affichage** : celui de l'ordinateur par défaut (`timeZone: null`). `dashboard.config.ts` PEUT forcer un fuseau précis (ex. `"Asia/Kuala_Lumpur"`). Ne jamais coder un fuseau en dur ailleurs : utiliser `displayTimeZone()` (`app/src/lib/display-tz.ts`).
 - Interface en français, responsive (utilisable sur téléphone), thème clair/sombre (système + bouton manuel), une seule couleur d'accent.
 - **Design** : système éditorial décrit dans `app/previews/redesign/BRIEF.md` (fond grège / noir chaud, police libre Inter Tight auto-hébergée, titres en minuscules très grands, petites capitales pour les étiquettes, fils fins, aucun arrondi sur cartes et images, une seule couleur d'accent). Jetons de couleur et utilitaires (`display`, `section-title`, `title-md`, `label`, `link-underline`, `rise`) dans `app/src/app/globals.css`. Mouvement discret, désactivé si `prefers-reduced-motion`. Contraste au moins AA dans les deux modes, focus visible partout.
-- **En-tête** (`app/src/components/nav.tsx`, liste `HEADER_ITEMS`) : nom, navigation complète (Accueil, Projets, Notions, Mémo, Newsletters, Surlignages, News, Favoris, Revue), heure locale avec le **zoom du dashboard** dessous (« − 100 % + », clic sur le pourcentage = retour à 100 % ; niveaux 80–125 %, `app/src/lib/zoom.ts`, `zoom` CSS sur `#zoom-root`, mémorisé dans le navigateur ; les fenêtres flottantes convertissent leurs mesures avec `viewportFactor()`), puis Sauvegarder, loupe (palette), « + » (notion) et thème. Sur téléphone : bouton « Menu » ouvrant un menu plein écran numéroté. La palette utilise `app/src/lib/navigation.ts` pour ses « Aller à … ».
+- **En-tête** (`app/src/components/nav.tsx`, liste `HEADER_ITEMS`) : nom, navigation complète (Accueil, Projets, Notions, Newsletters, Surlignages, News, Favoris, Revue), heure locale avec le **zoom du dashboard** dessous (« − 100 % + », clic sur le pourcentage = retour à 100 % ; niveaux 80–125 %, `app/src/lib/zoom.ts`, `zoom` CSS sur `#zoom-root`, mémorisé dans le navigateur ; les fenêtres flottantes convertissent leurs mesures avec `viewportFactor()`), puis Sauvegarder, loupe (palette), « + » (notion) et thème. Sur téléphone : bouton « Menu » ouvrant un menu plein écran numéroté. La palette utilise `app/src/lib/navigation.ts` pour ses « Aller à … ».
 - Raccourcis clavier : `app/src/components/shortcuts.tsx`. Les raccourcis à modificateur (`⌘K` / `Ctrl+K`) DOIVENT fonctionner partout, y compris pendant la saisie ; les raccourcis à une touche (`N`, `?`) ne s'activent JAMAIS pendant la saisie dans un champ.
 - **Accueil** (`app/src/app/page.tsx`), de haut en bas — cet ordre est imposé :
   1. **En-tête** ;
   2. **01. agenda** : le calendrier, premier bloc de contenu et le plus grand (toutes ses fonctions) ;
   3. **02. à la une** : grille d'images des grands sujets (`app/src/components/home/headlines-grid.tsx`, logique pure `app/src/lib/headlines.ts`) : **uniquement des articles avec image** (image du flux, sinon `og:image`, cherchée côté serveur et mise en cache) — plus de cartes typographiques ; colonne vertébrale = ordre éditorial du flux FT International, les autres sources actives (une par site, ex. The Verge, Maddyness) intercalées à tour de rôle, **jamais plus de 2 sujets d'affilée de la même source** ; première rangée = deux grandes images de même format, hauteur plafonnée (≈ 50 % de l'écran) ; mise en page sans trou selon le nombre de sujets (1, 2, 3, puis rangées réparties) ; une image qui ne charge pas retire le sujet ; étoiles actives ; pas d'autre extraction que la règle `og:image` existante ;
-  4. **tout le reste** : ligne « revue de la semaine » (jour de revue), 03. projets actifs, 04. à retenir aujourd'hui (notions), 05. mémo, 06. newsletters.
+  4. **tout le reste** : ligne « revue de la semaine » (jour de revue), 03. projets actifs, 04. à retenir aujourd'hui (notions), 05. aujourd'hui (tâches en retard et du jour, cochables sur place, saisie rapide ; `app/src/components/tasks/today-checklist.tsx`, à la place de l'ancien mémo), 06. newsletters.
 - Aucune fonctionnalité ne doit prendre la place du calendrier ni de « à la une ».
-- Le **Focus de la semaine** n'est plus sur l'accueil : il est en haut de la page `/projets`. DASHBOARD.md garde sa section « Focus de la semaine » inchangée.
+- Le **Focus de la semaine** n'est plus sur l'accueil : il est en haut de l'onglet « aujourd'hui » de `/projets`, en version compacte (`FocusCard compact`). DASHBOARD.md garde sa section « Focus de la semaine » inchangée.
+- **Section « projets »** (entrée unique « Projets » de l'en-tête, qui remplace Projets et Mémo) : quatre onglets, chacun avec son adresse — `/projets/aujourdhui` (par défaut, `/projets` y redirige), `/projets/pipeline`, `/projets/liste`, `/projets/domaines` (`app/src/app/projets/(onglets)/`, onglets `app/src/components/projects/project-tabs.tsx`). Les anciens liens `/projets?statut=…`, `?archive=…`, `?nouveau=projet` vont sur « liste ». Les noms `aujourdhui`, `pipeline`, `liste`, `domaines` sont réservés (pas de projet à ces noms).
 - Lanceur macOS : `Lancer le dashboard.command`. À chaque lancement : (1) repasse sur `main` sauf s'il reste du contenu non sauvegardé (message demandant « Sauvegarder ») ; (2) `git pull --ff-only` (jamais forcé, n'efface rien) ; si l'historique a divergé (sauvegardes faites sur le Mac mais pas envoyées, ex. clé orange) et que les modifications en cours ne touchent aucun fichier mis à jour, `git pull --rebase --autostash` remet sauvegardes et modifications par-dessus la nouvelle version (comme « Sauvegarder »), `git rebase --abort` en cas de conflit, en nommant les fichiers en cause ; sinon démarre sur la version locale et explique. Résultat écrit dans `app/data/update-status.local.json` et affiché par le bouton « Mettre à jour » (« Mise à jour bloquée » + raison) ; (3) `npm ci` seulement si l'empreinte de `package-lock.json` a changé ; (4) `git push --dry-run` non interactif, résultat écrit dans `app/data/push-check.local.json` et affiché dans le panneau « Sauvegarder » (clé orange) ; puis vérifie Node.js ≥ 22 et démarre l'app. Il DOIT rester exécutable (`git update-index --chmod=+x`). **Mode service** (`DASHBOARD_SERVICE=1`) : le même lanceur, lancé sans fenêtre par un agent macOS (`~/Library/LaunchAgents/local.dashboard.plist`, installé / retiré par `app/scripts/install-service.sh [--off]`) à chaque ouverture de session, relancé par macOS en cas d'échec ; aucune question, pas de navigateur ouvert, journal `~/Library/Logs/dashboard.log`. Un double-clic sur le lanceur pendant que le service tourne ouvre simplement le navigateur. **Le lanceur sert l'app en mode production** (`next build` puis `next start`, toujours sur 127.0.0.1) : il reconstruit (`rm -rf app/.next` puis `next build`, journal dans `$TMPDIR/dashboard-build.log`) seulement si `git rev-parse HEAD` diffère de `app/node_modules/.dashboard-head` (écrit après une construction réussie) ou s'il n'y a pas de construction ; si la construction échoue, il démarre en mode développement et l'explique. Raison : en développement, des styles Tailwind périmés étaient servis après une mise à jour (cartes et images cassées). `npm run dev` reste réservé au développement ; le cache disque de Turbopack y est désactivé (`next.config.ts`). **Bouton « Mettre à jour »** (`app/src/components/update-button.tsx`, route `app/src/app/api/app/update/`) : affiché quand `origin/main` a des nouveautés par rapport à la version **en service** (`app/node_modules/.dashboard-head`, sinon `HEAD` ; `git fetch` au plus toutes les 10 min, arguments fixes) ; en mode service, il arrête le serveur avec le code 1, macOS relance le service qui se met à jour ; hors service, il explique de relancer le lanceur. Aussi dans la palette.
 - Les instructions de test données au propriétaire NE DOIVENT contenir que des étapes réalisables sur son ordinateur, ou sur son téléphone **uniquement via l'accès Tailscale** une fois celui-ci en place (pour l'affichage mobile, le mode « responsive » des outils de développement du navigateur reste la méthode de base).
 - **Accès depuis le téléphone (Tailscale)** : l'app écoute toujours uniquement sur `127.0.0.1` ; le téléphone y accède par **Tailscale Serve** (réseau privé, HTTPS), activé par `app/scripts/enable-phone-access.sh` (`--off` pour désactiver). Toute requête non locale (`app/src/lib/remote-access.ts` : Host local ET adresse d'origine 127.0.0.1/::1) exige le mot de passe `DASHBOARD_BASIC_AUTH` (`identifiant:mot-de-passe`, 12 caractères minimum, dans `app/.env.local`), sinon 403. **Jamais `tailscale funnel` ni aucune exposition publique.** La connexion Outlook ne se fait que depuis le Mac (redirection `localhost`).
@@ -165,6 +177,7 @@ Règles :
 - Tests : `npm test` dans `app/` (Vitest). Les fichiers ICS de test sont dans `app/test/fixtures/` (données fictives) ; tout cas réel problématique DOIT y être reproduit avec un test.
 - Un flux en échec affiche le nom du calendrier et la raison, sans bloquer les autres.
 - Les calendriers **abonnés** restent en lecture seule (clic = détails). Les événements personnels vont dans le calendrier intégré « Perso » (section 18).
+- **Calques intégrés « Tâches » et « Jalons »** (`app/src/lib/calendar-layers.ts`, ajoutés par `app/src/app/api/events/`) : listés dans « Gérer les calendriers » avec leur couleur et un interrupteur « Afficher » (réglages dans `options.layers` de `calendars.local.json`). Tâches (TACHES.md) : avec heure = événement (durée de la tâche, sinon 30 min, heure convertie du fuseau de TACHES.md vers le fuseau d'affichage), sans heure = journée entière, abandonnées masquées. Jalons (`## Jalons` des projets, `app/src/lib/milestones.ts`) : journée entière, « Jalon · Projet ». Une case à cocher (jamais imbriquée dans un autre bouton) coche la tâche ou le jalon ; faits = barrés et pâlis ; clic sur le titre = détails avec lien vers l'onglet « aujourd'hui » ou les jalons du projet. Clic sur un créneau libre : choix « Événement » (Perso) ou « Tâche » (date et heure pré-remplies, « Sans heure » possible).
 
 ### Secrets
 
@@ -179,7 +192,9 @@ Règles :
 - **Exception étroite et voulue** à « le corps d'un e-mail n'est jamais écrit dans le dépôt » : les passages que le propriétaire **surligne lui-même** (section 19), 1 000 caractères au plus chacun, jamais l'e-mail entier.
 - **Avant chaque commit**, vérifier qu'aucun secret, jeton ou lien de calendrier n'est indexé : `git status`, `git diff --cached --name-only` (aucun `.env*` réel ni `*.local.json`) et une recherche dans `git diff --cached` de motifs comme `webcal:`, `.ics`, `client_secret`, `token`, `password`.
 
-## 10. MEMO.md — choses à retenir
+## 10. MEMO.md — choses à retenir (retiré de l'app)
+
+> Depuis le 2026-11-24, le mémo est remplacé par les tâches (section 20) : plus de page `/memo` (redirigée vers `/projets/aujourdhui`), plus d'API ni de carte sur l'accueil. **MEMO.md reste dans le dépôt, intact** (il ne contenait aucune entrée) ; il NE DOIT PAS être supprimé sans l'accord du propriétaire. Les règles ci-dessous (format, pas de secrets) restent valables s'il est modifié à la main.
 
 Fichier unique à la racine. Une entrée = un bloc, du plus récent au plus ancien :
 
@@ -200,7 +215,7 @@ Texte libre, sur une ou plusieurs lignes.
 - **MEMO.md NE DOIT JAMAIS contenir de mots de passe, codes d'accès, numéros de carte ni aucun secret** : le dépôt est sur GitHub. Si une demande en contient, refuser de l'y écrire et le signaler.
 - L'app refuse elle aussi ces contenus (`app/src/lib/secrets.ts` : « mot de passe : … », digicode, numéro de carte valide, IBAN, clé ou jeton) et affiche un rappel d'une ligne sous chaque zone de saisie.
 - Une entrée écrite à la main sans `id:` est acceptée ; l'app lui ajoute un `id:` à sa première modification. Les titres `##` qui ne suivent pas le format `## YYYY-MM-DD — Titre` sont ignorés et conservés tels quels.
-- Page `/memo` : ajout, modification, épingler/désépingler, filtre par tag, recherche, suppression avec confirmation. L'accueil affiche les entrées épinglées (« À retenir »).
+- (Ancienne page `/memo` : retirée.)
 
 ## 11. NEWS.md — actus (flux RSS)
 
@@ -263,7 +278,7 @@ Définition (une ou plusieurs lignes).
 ## 14. Modifier projets et domaines depuis l'app
 
 - Code : `app/src/lib/markdown-doc.ts` (modifications ligne par ligne) et `app/src/lib/entries-edit.ts`.
-- Projet : titre, statut, priorité, `next_action`, `deadline` (sélecteurs et calendrier) ; sections Objectif, Notes, Liens (éditeur « Écrire / Aperçu ») ; prochaines actions (ajout, modification, ↑/↓) ; journal (entrée datée ajoutée en haut).
+- Projet (page `/projets/<nom>`, `app/src/components/projects/project-view.tsx`) : en-tête (titre, statut, **étapes cliquables**, priorité, deadline, avancement = % de jalons atteints, dernière activité = max de `updated`, du journal et des tâches liées faites) ; onglets `?onglet=` « vue d'ensemble » (Objectif, Pourquoi, Critères de réussite, Ressources, Risques, Notes, Liens avec l'éditeur « Écrire / Aperçu » ; prochaine action, prochaines actions avec « Planifier », début, tags), « tâches » (tâches liées, saisie rapide pré-liée), « jalons » (ajout, cochage → `Jalon atteint : …` au journal, modification, suppression avec confirmation), « docs » (section 22), « journal » (ajout rapide, plus récent en haut).
 - Cocher une prochaine action la retire de la liste et ajoute `- YYYY-MM-DD — Fait : …` en haut du Journal.
 - Domaine : titre, statut, priorité ; sections Rôle, Standards à maintenir, Notes.
 - Chaque modification met `updated` à la date du jour et régénère DASHBOARD.md. Les commentaires du frontmatter (ex. `# idea | active…`) et les sections ajoutées à la main sont conservés (ces dernières affichées en lecture seule).
@@ -276,14 +291,14 @@ Définition (une ou plusieurs lignes).
 ```markdown
 ## 2026-11-13 — Titre
 id: fav-20261113-1
-type: article                # article | newsletter | notion | memo | project | highlight
-ref: https://…               # lien, ou référence interne : notion:<id>, memo:<id>, project:<dossier>, highlight:<id>
+type: article                # article | newsletter | notion | doc | project | highlight
+ref: https://…               # lien, ou référence interne : notion:<id>, doc:<projet>/<page>, project:<dossier>, highlight:<id>
 source: FT World
 published: 2026-11-12        # facultatif
 note: Note personnelle courte  # facultatif
 ```
 
-- Étoile sur les articles (widgets et listes), newsletters (liste et lecture), notions, mémos, projets et surlignages ; page `/favoris` (filtre par type, recherche, note). Pas de widget de favoris sur l'accueil.
+- Étoile sur les articles (widgets et listes), newsletters (liste et lecture), notions, pages de docs (type « Doc », qui remplace « Mémo »), projets et surlignages ; les anciens favoris `memo` s'affichent « Élément supprimé » (retrait possible, plus d'ajout) ; page `/favoris` (filtre par type, recherche, note). Pas de widget de favoris sur l'accueil.
 - **Articles : titre, URL, source, date uniquement. Newsletters : objet, expéditeur, date et lien Outlook web uniquement. Jamais le texte d'un article ni le corps d'un e-mail.**
 - Références internes vérifiées à l'affichage : cible disparue → « Élément supprimé » avec bouton de retrait ; projet archivé → « Archivé ».
 - L'étoile ajoute / retire un bloc sur le contenu du moment (rien d'autre n'est réécrit) ; la note suit la règle « fichier inchangé depuis la lecture ».
@@ -292,8 +307,8 @@ note: Note personnelle courte  # facultatif
 
 - 4 étapes (Fait cette semaine, Bloqué, Inbox, Focus semaine prochaine), « Suivant » / « Retour », indicateur de progression ; toutes facultatives ; brouillon gardé dans le navigateur (localStorage, sans erreur s'il est indisponible).
 - Semaine ISO calculée dans le **fuseau d'affichage** (`app/src/lib/review.ts`).
-- « Fait » est pré-rempli avec les entrées de journal (dont « Fait : … ») datées de la semaine, projets actifs et archivés.
-- Inbox, élément par élément : « Action d'un projet » (devient une prochaine action), « Notion » (à compléter), « Mémo », « Supprimer » (retire la ligne, avec confirmation), « Garder ». Les éléments routés sont cochés `- [x]`.
+- « Fait » est pré-rempli avec les entrées de journal (dont « Fait : … ») datées de la semaine, projets actifs et archivés, puis les tâches faites cette semaine (TACHES.md) qui n'y figurent pas déjà.
+- Inbox, élément par élément : « Action d'un projet » (devient une prochaine action), « Notion » (à compléter), « Tâche » (date au choix, aujourd'hui par défaut ; ajoutée à TACHES.md), « Supprimer » (retire la ligne, avec confirmation), « Garder ». Les éléments routés sont cochés `- [x]`.
 - Focus : 3 éléments max parmi les prochaines actions des projets actifs, ou texte libre.
 - Terminer crée `reviews/YYYY-Www.md` depuis le template et régénère DASHBOARD.md. **Une revue existante n'est jamais écrasée** : l'app propose de la modifier (mise à jour de ses sections).
 - Accueil : ligne discrète « revue de la semaine — 5 min » en tête de la partie « tout le reste », à partir du jour `reviewDay` (dashboard.config.ts, 0 = dimanche) et tant que la revue de la semaine n'existe pas.
@@ -301,8 +316,8 @@ note: Note personnelle courte  # facultatif
 ## 17. Palette de commandes et raccourcis
 
 - `⌘K` / `Ctrl+K` (ou la loupe de l'en-tête) ouvre la palette, **même pendant la saisie dans un champ** ; `Échap` la ferme. `N` : nouvelle notion. `?` : aide des raccourcis. **Les raccourcis à une touche ne s'activent jamais pendant la saisie** (ni quand une fenêtre est déjà ouverte).
-- Recherche approximative sans dépendance (`app/src/lib/fuzzy.ts`, insensible aux accents) sur : projets, domaines, mémos, notions, surlignages (passage, note, objet, expéditeur), éléments de l'inbox, favoris, newsletters (objet et expéditeur seulement, liste déjà en mémoire) et titres d'actus déjà en cache. Index : `GET /api/search-index` (aucun appel réseau).
-- Actions : « Ajouter à l'inbox : … », « Nouvelle notion », « Nouveau mémo », « Nouveau projet » (reprennent le texte tapé), « Aller à … » pour chaque page, « Sauvegarder », « Changer de thème », « Faire la revue ».
+- Recherche approximative sans dépendance (`app/src/lib/fuzzy.ts`, insensible aux accents) sur : projets, domaines, tâches (à faire et faites récemment), jalons, pages de docs, notions, surlignages (passage, note, objet, expéditeur), éléments de l'inbox, favoris, newsletters (objet et expéditeur seulement, liste déjà en mémoire) et titres d'actus déjà en cache. Index : `GET /api/search-index` (aucun appel réseau).
+- Actions : « Ajouter à l'inbox : … », « Nouvelle notion », « Nouvelle tâche », « Nouveau projet » (reprennent le texte tapé ; Maj+Entrée sur un texte inconnu = tâche), « Aller à … » pour chaque page, « Sauvegarder », « Changer de thème », « Faire la revue ».
 - Un texte qui ne correspond à rien propose « Ajouter à l'inbox » comme action par défaut (Entrée) : capture en un raccourci et une touche.
 
 ## 18. AGENDA.md — calendrier « Perso »
@@ -357,3 +372,54 @@ Note libre (facultative, plusieurs lignes possibles).
 - Page `/surlignages` (`app/src/components/highlights/highlights-board.tsx`) : chronologique (plus récent d'abord) ou par newsletter ; filtres couleur et expéditeur ; recherche instantanée (passage, note, objet, expéditeur) ; par surlignage : « Ouvrir dans la newsletter » (`/surlignages/ouvrir/<id>` : la lecture défilée jusqu'au passage, sinon le lien Outlook web), note, couleur, suppression avec confirmation, étoile (favori `highlight:<id>`), « Créer une notion ». Pas de widget sur l'accueil. Inclus dans la palette.
 - Tests : `app/test/highlights.test.ts`, `app/test/anchoring.test.ts`, `app/test/reading-security.test.ts`.
 
+
+## 20. TACHES.md — tâches du jour
+
+```markdown
+---
+timezone: Asia/Kuala_Lumpur
+reminders: yes            # rappels par e-mail (section 21)
+evening_digest: "18:00"
+morning_digest: "08:00"
+morning_enabled: no
+autosync: yes             # envoi automatique de TACHES.md sur GitHub
+---
+
+# Tâches
+
+- [ ] 2026-11-25 14:00 Appeler la banque ⏱30min #medtech ⏰-30m id:t-20261124-1
+- [ ] 2026-11-30 07:00 Sport 🔁chaque-lundi id:t-20261124-2
+- [x] 2026-11-24 Faire les courses id:t-20261124-3 ✓2026-11-24
+- [-] 2026-11-20 Rappeler Paul id:t-20261120-1 ✗2026-11-24
+```
+
+- Une ligne par tâche : case (`[ ]` à faire, `[x]` faite, `[-]` abandonnée), **date obligatoire**, heure facultative, titre, puis marqueurs facultatifs dans n'importe quel ordre : `⏱durée` (`30min`, `1h`, `1h30`), `#projet` (dossier de `projects/`), `⏰` (rappel à l'heure) ou `⏰-30m` / `⏰-1h` (avant), `🔁tous-les-jours` / `🔁chaque-lundi` / `🔁le-1-du-mois`, `id:t-YYYYMMDD-n` (stable, date de création), `✓date` (faite) / `✗date` (abandonnée). Les autres lignes (texte à la main) sont conservées.
+- Frontmatter : réglages **non secrets** des rappels uniquement (fuseau IANA, heures des récapitulatifs, matin activé, synchro auto). **L'adresse e-mail et la clé d'API ne sont JAMAIS dans le dépôt** (secrets GitHub Actions, section 21). Fichier créé au premier ajout, fuseau = fuseau d'affichage.
+- Code : format et logique pure `app/src/lib/tasks-core.ts` (sans dépendance, partagé avec le workflow des rappels), saisie en français `app/src/lib/task-input.ts`, écriture `app/src/lib/tasks.ts` (règle « fichier inchangé depuis la lecture », sauf l'ajout ; contrôle des secrets `lineSecretReason`), regroupements `app/src/lib/tasks-view.ts`, route `app/src/app/api/tasks/`. Tests : `app/test/task-input.test.ts`, `tasks-core.test.ts`, `tasks.test.ts`.
+- **Saisie rapide** (`app/src/components/tasks/task-quick-add.tsx`) : Entrée enregistre, date par défaut aujourd'hui, aperçu des morceaux reconnus avant l'enregistrement. Reconnus et retirés du titre : aujourd'hui, demain, après-demain, jours de la semaine (« lundi » = le prochain lundi, jamais aujourd'hui), dates (25/11, 25/11/2027, 25 nov, 1er décembre ; une date passée sans année = l'an prochain), heures (14h, 14h30, 9:15, midi, minuit), durées (1h, 30min ; « 2h » sans « à » vaut une heure si ≥ 6, une durée sinon), `#projet` (seulement s'il existe ; autocomplétion), récurrences (tous les jours, chaque lundi, tous les mois le 1er), `⏰`. Ambiguïté (deux dates, date impossible) : le texte reste dans le titre, la date reste aujourd'hui.
+- **Récurrence** : cocher (ou abandonner) une occurrence crée la suivante (à partir d'aujourd'hui au plus tôt) et retire la récurrence de l'ancienne ; une occurrence non faite dont la date est passée reste « en retard » et la suivante est créée à la lecture (`rollRecurring`). Mensuelle le 31 : dernier jour des mois courts.
+- **Onglet « aujourd'hui »** (`app/src/components/tasks/tasks-today.tsx`) : focus compact, saisie rapide, sections « en retard », « aujourd'hui » (toujours affichée, faites barrées dessous, progression discrète « 3 / 7 »), « demain », « cette semaine » (jusqu'au dimanche ; le week-end, la semaine suivante), puis « plus tard » replié ; sections vides masquées. Ligne : case, heure, titre, projet ; actions au survol / appui long / « ⋯ » (Aujourd'hui, Demain, Choisir une date, Modifier, Abandonner, Supprimer avec confirmation). En retard : « Reporter à aujourd'hui », « Reporter à demain », « Abandonner » (gardée barrée dans l'historique). Ordre d'une journée = ordre des lignes (glisser-déposer, ⌥/Ctrl+↑/↓) ; une tâche avec heure est insérée à sa place horaire. Espace coche, Entrée modifie. Lien « historique » (`?vue=historique`) : faites et abandonnées par semaine. Pas de séries ni de scores.
+- **Projets** : cocher une tâche liée ajoute `- YYYY-MM-DD — Fait : …` en haut du Journal du projet (et met `updated` à jour) ; « Planifier » sur une prochaine action la retire du README (sans entrée au journal) et crée une tâche datée liée.
+- **Palette** : « Nouvelle tâche » (reprend le texte tapé, même analyseur) ; sur un texte qui ne correspond à rien, **Maj+Entrée** crée une tâche (Entrée l'envoie toujours à l'inbox).
+- Pas de secrets dans TACHES.md (même contrôle que le mémo).
+
+## 21. Rappels par e-mail (GitHub Actions + Resend)
+
+- **Exception explicite et unique à la règle « pas de notifications »** : les e-mails de rappel des tâches sont les seules notifications du dashboard. Aucune autre (navigateur, push, son, alerte) ne DOIT être ajoutée.
+- Workflow `.github/workflows/rappels.yml` : toutes les heures (`7 * * * *`) et à la demande (`workflow_dispatch`, case « mail de test »). Il lit `TACHES.md` sur `main` et exécute `node --experimental-strip-types app/scripts/send-reminders.ts` (aucune dépendance installée ; le script n'importe que `app/src/lib/tasks-core.ts` et `app/src/lib/reminders-core.ts`, qui DOIVENT rester sans dépendance, imports relatifs en `.ts`, sans syntaxe TypeScript non effaçable).
+- Envoi par l'API Resend (offre gratuite : expéditeur `onboarding@resend.dev`, destinataire = adresse du compte Resend uniquement), en-tête `Idempotency-Key`. **Secrets GitHub Actions uniquement** : `RESEND_API_KEY` et `REMINDER_TO` ; le workflow n'envoie JAMAIS ailleurs qu'à `REMINDER_TO`. L'adresse et la clé ne DOIVENT jamais apparaître dans le dépôt (ni TACHES.md, ni code, ni `.env`). Secrets absents : le passage horaire s'arrête sans erreur (pas de mail d'échec de GitHub) ; le mail de test, lui, échoue en expliquant.
+- Règles (`app/src/lib/reminders-core.ts`, tests `app/test/reminders.test.ts`) : récapitulatif du soir (`evening_digest`, 18:00 par défaut : non faites d'aujourd'hui + en retard), du matin (`morning_digest`, 08:00, seulement si `morning_enabled: yes`, désactivé par défaut : tâches du jour), rappel d'une tâche (`⏰` à l'heure, `⏰-30m` avant) au premier passage horaire à partir de ce moment et au plus 6 h après (sinon sauté) ; heures lues dans le fuseau `timezone` de TACHES.md. **3 mails par jour au plus** (une place gardée pour le soir), aucun mail s'il n'y a rien à dire, plusieurs rappels d'un même passage regroupés en un mail. Français, HTML sobre au style du dashboard + texte brut, un lien par tâche vers `http://127.0.0.1:3000/projets/aujourdhui`.
+- **Anti-doublon** : clé par mail (`evening:<jour>`, `morning:<jour>`, `task:<id>:<date>T<heure>:<rappel>` — un report réarme le rappel), gardée dans `sent.json` sur la branche dédiée **`rappels-etat`** (un commit par changement, jamais de push forcé ; choisie plutôt que le cache d'Actions, effacé après 7 jours sans accès), jamais dans TACHES.md ; clés oubliées après 14 jours.
+- **Synchro automatique** (`app/src/lib/task-sync.ts`, `syncTasksFile` dans `app/src/lib/git.ts`, tests dans `app/test/git.test.ts`) : une minute après la dernière modification d'une tâche, commit limité à `TACHES.md` (`git commit --only`), contrôle des secrets, `pull --rebase --autostash`, `push` ; jamais de push forcé ; conflit → `rebase --abort` ; seulement sur `main` ; échec → message discret et nouvel essai 5 min plus tard. Activée par défaut, `autosync: no` la coupe. État en mémoire (« synchronisé il y a X min »).
+- Panneau « rappels par e-mail » (`app/src/components/tasks/reminders-panel.tsx`, route `app/src/app/api/tasks/reminders/`) : activer, heures, matin, synchro, « Envoyer un mail de test » et dernier passage via **GitHub CLI** (`app/src/lib/gh.ts` : `gh workflow run rappels.yml --ref main -f test=true`, `gh run list`, sans shell, arguments fixes).
+- Consommation estimée : ≈ 720 min/mois (1 min par passage). Dépôt public : gratuit et illimité ; s'il devient privé, ≈ 36 % des 2 000 min gratuites — fréquence horaire conservée.
+- Guide de mise en place en français : `app/README.md`, « Rappels par e-mail ».
+
+## 22. Pipeline, liste et pages de docs des projets
+
+- **Pipeline** (`/projets/pipeline`, `app/src/components/projects/pipeline-board.tsx`, données `app/src/lib/project-board.ts`, indicateurs `app/src/lib/project-stats.ts`) : une colonne par étape, une carte par projet actif ou en pause (titre, priorité, deadline, barre d'avancement des jalons, prochaine tâche liée sinon `next_action`). Glisser une carte ou utiliser son menu « étape » (clavier) écrit `stage`. Bascules `?termines=1` (projets de `archive/`, lecture seule, pâlis) et `?chronologie=1` (jalons des 3 prochains mois, une ligne par projet). « à l'arrêt » : projet actif sans activité depuis `stalledDays` jours (dashboard.config.ts, 14) — simple mention, aucune alerte.
+- **Liste** (`/projets/liste`) : filtres statut, priorité, étape, tags (`?statut=`, `?priorite=`, `?etape=`, `?tag=`) et tri priorité / deadline / dernière activité (`?tri=`). **Domaines** (`/projets/domaines`) : inchangés.
+- **Pages de docs** (`app/src/lib/docs.ts`, routes `app/src/app/api/projects/[slug]/docs/` et `/assets/`, page `/projets/<projet>/docs/<page>`, `app/src/components/projects/doc-page.tsx`) : `projects/<projet>/docs/<page>.md` avec frontmatter `title`, `created`, `updated`, `order`, puis Markdown libre. Créer (vide ou depuis un modèle de `projects/_template/docs-templates/` : Brief, Recherche / benchmark, Journal de décisions, Specs, Retour d'expérience), renommer (le titre ; le nom de fichier reste, les liens tiennent), réordonner (glisser ou ↑/↓), modifier (« Écrire / Aperçu », ⌘S), **supprimer = ranger dans `docs/_archive/` après confirmation, jamais effacer**. Journal de décisions : « Nouvelle décision » ajoute un bloc daté en tête de `## Décisions`.
+- Sommaire automatique dès 3 titres `##`/`###`. Liens `[[page]]`, `[[projet]]`, `[[projet/page]]`, `[[cible|texte]]` (`app/src/lib/wiki-links.ts`), autocomplétion après « [[ » ; lien cassé = visible, rouge pointillé, sans erreur.
+- Images collées, déposées ou choisies : `projects/<projet>/assets/<horodatage>-<nom>.<ext>`, **5 Mo max, PNG/JPG/WebP/GIF vérifiés par leur signature** (jamais de SVG), insérées en `![](../assets/…)`, servies par `/api/projects/<projet>/assets/<fichier>` (type fixé, `nosniff`, CSP `default-src 'none'`). Images distantes non chargées dans les docs.
+- Pages de docs dans la palette et les favoris (type « Doc »). Pas de secrets (même contrôle que le mémo). Tests : `app/test/docs.test.ts`, `app/test/milestones.test.ts`.

@@ -19,7 +19,6 @@ import { UserError } from "./api";
 import { joinLines, readVersioned, splitLines, updateFile } from "./content-file";
 import { detectSensitive } from "./secrets";
 import { slugify } from "./slug";
-import { splitTags } from "./memo";
 import { addDays } from "./tz";
 
 export const NOTIONS_FILE = "NOTIONS.md";
@@ -313,4 +312,13 @@ export function parseBulk(raw: string, existingTerms: string[]) {
     out.push({ line: i + 1, term, definition, status });
   });
   return out;
+}
+
+/** « a, #b, A » → ["a", "b"] (doublons ignorés, sans tenir compte des majuscules). */
+export function splitTags(v: string): string[] {
+  const seen = new Set<string>();
+  return v
+    .split(",")
+    .map((t) => t.trim().replace(/^#/, ""))
+    .filter((t) => t && !seen.has(t.toLowerCase()) && seen.add(t.toLowerCase()));
 }

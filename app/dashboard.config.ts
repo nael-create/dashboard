@@ -12,6 +12,8 @@ interface DashboardConfig {
   notionsFront: "definition" | "term";
   saveReminderDays: number;
   reviewDay: number;
+  projectStages: { id: string; label: string }[];
+  stalledDays: number;
 }
 
 const dashboardConfig: DashboardConfig = {
@@ -54,6 +56,23 @@ const dashboardConfig: DashboardConfig = {
    * un lien discret « Revue de la semaine — 5 min » apparaît sur l'accueil.
    */
   reviewDay: 0,
+
+  /**
+   * Étapes des projets (champ « stage » du frontmatter), dans l'ordre : colonnes du pipeline et
+   * frise de la page projet. « id » est écrit dans le fichier (minuscules, sans accent), « label » est affiché.
+   * Un projet sans étape (ou avec une étape inconnue) est rangé dans la première.
+   */
+  projectStages: [
+    { id: "idee", label: "idée" },
+    { id: "recherche", label: "recherche" },
+    { id: "conception", label: "conception" },
+    { id: "realisation", label: "réalisation" },
+    { id: "lancement", label: "lancement" },
+    { id: "suivi", label: "suivi" },
+  ],
+
+  /** Un projet actif sans activité depuis ce nombre de jours est marqué « à l'arrêt » dans le pipeline (sans alerte). */
+  stalledDays: 14,
 };
 
 export default dashboardConfig;

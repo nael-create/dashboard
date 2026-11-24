@@ -71,7 +71,7 @@ describe("édition des projets et domaines", () => {
     expect(e.sections.Objectif).toBe("Un site **simple**.\n\n- léger\n- rapide");
     expect(e.journal[0].text).toBe("Maquette validée");
     const t = readme(`projects/${slug}/README.md`);
-    expect(t).toContain("## Objectif\n\nUn site **simple**.\n\n- léger\n- rapide\n\n## Prochaines actions");
+    expect(t).toContain("## Objectif\n\nUn site **simple**.\n\n- léger\n- rapide\n\n## Pourquoi");
     expect(readme("DASHBOARD.md")).toContain("| [Site perso : refonte](projects/site-perso-refonte/README.md) | P1 | active | Écrire la page « À propos » | 2026-12-01 |");
   });
 

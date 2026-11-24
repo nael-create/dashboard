@@ -19,6 +19,10 @@ export interface ViewEvent {
   /** Calendrier « Perso » : identifiant de l'événement dans AGENDA.md. */
   sourceId?: string;
   editable?: boolean;
+  /** Calque « Tâches » : la tâche (case à cocher). */
+  task?: { id: string; done: boolean; project: string | null };
+  /** Calque « Jalons » : le jalon d'un projet (case à cocher). */
+  milestone?: { project: string; projectTitle: string; index: number; text: string; done: boolean };
 }
 
 export { addDays };

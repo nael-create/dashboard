@@ -16,6 +16,10 @@ const opSchema = z.discriminatedUnion("op", [
   z.object({ op: z.literal("action-edit"), index: z.number().int().min(0), text: z.string(), newText: line }),
   z.object({ op: z.literal("action-move"), index: z.number().int().min(0), text: z.string(), dir: z.union([z.literal(-1), z.literal(1)]) }),
   z.object({ op: z.literal("journal-add"), text: line, date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional() }),
+  z.object({ op: z.literal("milestone-add"), date: z.string(), text: line }),
+  z.object({ op: z.literal("milestone-check"), index: z.number().int().min(0), text: z.string(), done: z.boolean() }),
+  z.object({ op: z.literal("milestone-edit"), index: z.number().int().min(0), text: z.string(), date: z.string(), newText: line }),
+  z.object({ op: z.literal("milestone-remove"), index: z.number().int().min(0), text: z.string() }),
 ]);
 const schema = z.object({ version: z.string(), confirmArchive: z.boolean().default(false), change: opSchema });
 

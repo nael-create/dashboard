@@ -10,6 +10,8 @@ import { CONTENT_DIR, isValidSlug, listProjects } from "./content";
 import { readVersioned, updateFile } from "./content-file";
 import { regenerateDashboard } from "./dashboard-md";
 import { todayISO } from "./dates";
+import { readTasks } from "./tasks";
+import type { Task } from "./tasks-core";
 import { actions, findSection, journal, parseDoc, sectionText, serializeDoc, setSectionText } from "./markdown-doc";
 import { detectSensitive } from "./secrets";
 import { addDays } from "./tz";
@@ -71,18 +73,31 @@ const titleOf = (text: string, slug: string) => {
   return t && t !== "TODO: fill in" ? t : slug;
 };
 
-/** « Fait cette semaine » : entrées de journal (dont « Fait : … ») datées de la semaine, projets actifs ou archivés. */
+/**
+ * « Fait cette semaine » : entrées de journal (dont « Fait : … ») datées de la semaine, projets actifs ou
+ * archivés, puis tâches faites cette semaine (TACHES.md) qui ne sont pas déjà dans un journal.
+ */
 export async function prefillDone(week: IsoWeek): Promise<string[]> {
   const out: string[] = [];
+  const seen = new Set<string>();
+  const titles = new Map<string, string>();
   for (const dir of ["projects", "archive"] as const) {
     for (const { slug, text } of await readmes(dir)) {
       const title = titleOf(text, slug);
+      titles.set(slug, title);
       for (const j of journal(parseDoc(text))) {
         if (j.date >= week.monday && j.date <= week.sunday && !/^Création du projet\.?$/.test(j.text)) {
           out.push(`${title} : ${j.text.replace(/^Fait : /, "")}`);
+          seen.add(`${slug}|${j.text}`);
         }
       }
     }
+  }
+  const { tasks } = await readTasks().catch(() => ({ tasks: [] as Task[] }));
+  for (const t of tasks) {
+    if (t.status !== "done" || !t.closedOn || t.closedOn < week.monday || t.closedOn > week.sunday) continue;
+    if (t.project && seen.has(`${t.project}|Fait : ${t.title}`)) continue;
+    out.push(t.project ? `${titles.get(t.project) ?? t.project} : ${t.title}` : t.title);
   }
   return out;
 }

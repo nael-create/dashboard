@@ -6,6 +6,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import matter from "gray-matter";
+import config from "@config";
 
 // Annotations turbopackIgnore : ces fichiers sont lus à l'exécution, ils ne doivent jamais être
 // embarqués dans une compilation (ni le contenu personnel, ni data/calendars.local.json).
@@ -26,6 +27,17 @@ export const STATUS_LABELS: Record<Status, string> = {
 
 export type Kind = "project" | "area";
 
+/** Étapes des projets (dashboard.config.ts) ; la première est la valeur par défaut. */
+export const STAGES = config.projectStages;
+export const stageOf = (v: string | null | undefined) => (STAGES.some((s) => s.id === v) ? (v as string) : STAGES[0].id);
+export const stageLabel = (id: string) => STAGES.find((s) => s.id === id)?.label ?? id;
+
+/** Tags : « a, b » ou liste YAML [a, b] ; minuscules, sans « # ». */
+export function parseTags(v: unknown): string[] {
+  const list = Array.isArray(v) ? v.map(String) : typeof v === "string" ? v.split(",") : [];
+  return [...new Set(list.map((t) => t.trim().replace(/^#/, "").toLowerCase()).filter(Boolean))];
+}
+
 export interface Entry {
   kind: Kind;
   slug: string;
@@ -36,6 +48,10 @@ export interface Entry {
   updated: string | null;
   nextAction: string | null;
   deadline: string | null;
+  /** Projets : étape (dashboard.config.ts, première par défaut), début, tags. */
+  stage: string;
+  started: string | null;
+  tags: string[];
   /** Problème de lecture du frontmatter, affiché tel quel dans l'interface. */
   error: string | null;
 }
@@ -62,9 +78,9 @@ function asEnum<T extends string>(v: unknown, allowed: readonly T[]): T | null {
   return s && (allowed as readonly string[]).includes(s) ? (s as T) : null;
 }
 
-async function readEntry(kind: Kind, slug: string): Promise<EntryWithBody | null> {
+async function readEntry(kind: Kind, slug: string, root: string = ROOTS[kind]): Promise<EntryWithBody | null> {
   if (!isValidSlug(slug)) return null;
-  const file = path.join(/*turbopackIgnore: true*/ CONTENT_DIR, ROOTS[kind], slug, "README.md");
+  const file = path.join(/*turbopackIgnore: true*/ CONTENT_DIR, root, slug, "README.md");
   let raw: string;
   try {
     raw = await fs.readFile(/*turbopackIgnore: true*/ file, "utf8");
@@ -74,7 +90,7 @@ async function readEntry(kind: Kind, slug: string): Promise<EntryWithBody | null
 
   const base: EntryWithBody = {
     kind, slug, title: slug, status: null, priority: null, created: null,
-    updated: null, nextAction: null, deadline: null, error: null, body: raw,
+    updated: null, nextAction: null, deadline: null, stage: STAGES[0].id, started: null, tags: [], error: null, body: raw,
   };
 
   try {
@@ -94,6 +110,9 @@ async function readEntry(kind: Kind, slug: string): Promise<EntryWithBody | null
       updated: asString(data.updated),
       nextAction: asString(data.next_action),
       deadline: asString(data.deadline),
+      stage: stageOf(asString(data.stage)),
+      started: asString(data.started),
+      tags: parseTags(data.tags),
       error: problems.length ? problems.join(", ") : null,
       body: content,
     };
@@ -139,6 +158,30 @@ export function sortEntries<T extends Entry>(list: T[]): T[] {
 }
 
 export const listProjects = async () => sortEntries(await listEntries("project"));
+
+/** Projets archivés (archive/<nom>/README.md), en lecture seule, avec leur corps (jalons, journal). */
+export async function listArchivedProjects(): Promise<EntryWithBody[]> {
+  let dirs: string[];
+  try {
+    dirs = (await fs.readdir(/*turbopackIgnore: true*/ path.join(/*turbopackIgnore: true*/ CONTENT_DIR, "archive"), { withFileTypes: true }))
+      .filter((d) => d.isDirectory() && isValidSlug(d.name)).map((d) => d.name);
+  } catch {
+    return [];
+  }
+  return (await Promise.all(dirs.map((d) => readEntry("project", d, "archive")))).filter((e): e is EntryWithBody => e !== null);
+}
+
+/** Projets en cours avec leur corps (pipeline, liste : jalons et journal). */
+export async function listProjectsWithBody(): Promise<EntryWithBody[]> {
+  let dirs: string[];
+  try {
+    dirs = (await fs.readdir(/*turbopackIgnore: true*/ path.join(/*turbopackIgnore: true*/ CONTENT_DIR, "projects"), { withFileTypes: true }))
+      .filter((d) => d.isDirectory() && isValidSlug(d.name)).map((d) => d.name);
+  } catch {
+    return [];
+  }
+  return sortEntries((await Promise.all(dirs.map((d) => readEntry("project", d)))).filter((e): e is EntryWithBody => e !== null));
+}
 export const listAreas = async () => sortEntries(await listEntries("area"));
 export const getProject = (slug: string) => readEntry("project", slug);
 export const getArea = (slug: string) => readEntry("area", slug);

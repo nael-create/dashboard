@@ -6,7 +6,9 @@ import { NotionsToday } from "@/components/notions/notions-today";
 import { ReviewLink } from "@/components/review/review-link";
 import { Section } from "@/components/ui/card";
 import { HeadlinesSkeleton } from "@/components/home/headlines-grid";
-import { ActiveProjectsWidget, MemoWidget, NewsWidget, NewslettersWidget } from "@/components/home/widgets";
+import { ActiveProjectsWidget, NewsWidget, NewslettersWidget } from "@/components/home/widgets";
+import { TodayChecklist } from "@/components/tasks/today-checklist";
+import { listProjects } from "@/lib/content";
 import { todayInTz } from "@/lib/calendar-view";
 import { displayTimeZone } from "@/lib/display-tz";
 
@@ -16,9 +18,10 @@ export const dynamic = "force-dynamic";
  * Accueil, de haut en bas (voir CLAUDE.md) :
  * 1. en-tête (layout) ; 2. 01. agenda — le calendrier, premier et plus grand bloc ;
  * 3. 02. à la une — grille d'images des grands sujets ;
- * 4. tout le reste : projets actifs, à retenir aujourd'hui, mémo, newsletters, lien de revue.
+ * 4. tout le reste : lien de revue, projets actifs, à retenir aujourd'hui, aujourd'hui (tâches), newsletters.
  */
-export default function HomePage() {
+export default async function HomePage() {
+  const projects = (await listProjects()).map((p) => ({ slug: p.slug, title: p.title }));
   return (
     <div className="space-y-20 sm:space-y-28">
       <Section n="01" title="agenda">
@@ -45,7 +48,7 @@ export default function HomePage() {
         <div className="grid grid-cols-1 gap-x-10 gap-y-16 lg:grid-cols-12">
           <div className="lg:col-span-7"><ActiveProjectsWidget n="03" /></div>
           <div className="lg:col-span-5"><NotionsToday n="04" /></div>
-          <div className="lg:col-span-6"><MemoWidget n="05" /></div>
+          <div className="lg:col-span-6"><TodayChecklist n="05" projects={projects} /></div>
           <div className="lg:col-span-6"><NewslettersWidget n="06" /></div>
         </div>
       </div>

@@ -202,6 +202,13 @@ export function checkAction(d: Doc, index: number, expected: string, date: strin
   addJournal(d, date, `Fait : ${item.text}`);
 }
 
+/** Retire une prochaine action sans l'inscrire au journal (« Planifier » : elle devient une tâche datée). */
+export function removeAction(d: Doc, index: number, expected: string) {
+  const item = itemAt(d, index, expected);
+  d.lines.splice(item.line, 1);
+  return item.text;
+}
+
 /** Entrées du journal (« - YYYY-MM-DD — texte »). */
 export function journal(d: Doc): { date: string; text: string }[] {
   const s = findSection(d, "Journal");
@@ -212,4 +219,73 @@ export function journal(d: Doc): { date: string; text: string }[] {
     if (m) out.push({ date: m[1], text: m[2].trim() });
   }
   return out;
+}
+
+/* ------------------------------------------------------------------ */
+/* Sections ajoutées avant le Journal, jalons                           */
+/* ------------------------------------------------------------------ */
+
+/** Crée « ## name » juste avant « ## Journal » (ou en fin de document) si elle n'existe pas. */
+export function ensureSectionBefore(d: Doc, name: string, before = "Journal"): Section {
+  const found = findSection(d, name);
+  if (found) return found;
+  const b = findSection(d, before);
+  if (!b) return ensureSection(d, name);
+  d.lines.splice(b.heading, 0, `## ${name}`, "");
+  return findSection(d, name)!;
+}
+
+/** Jalon : « - [ ] YYYY-MM-DD — Titre » dans « ## Jalons » ([x] = atteint). */
+export interface Milestone { line: number; index: number; date: string; text: string; done: boolean }
+
+const MILESTONE = /^(\s*[-*]\s+)\[([ xX])\]\s+(\d{4}-\d{2}-\d{2})\s+[—–-]\s+(.*)$/;
+
+export function milestones(d: Doc): Milestone[] {
+  const s = findSection(d, "Jalons");
+  if (!s) return [];
+  const out: Milestone[] = [];
+  for (let i = s.start; i < s.end; i++) {
+    const m = d.lines[i].match(MILESTONE);
+    if (m) out.push({ line: i, index: out.length, date: m[3], text: m[4].trim(), done: m[2] !== " " });
+  }
+  return out;
+}
+
+/** Ajoute un jalon à sa place chronologique (la section est créée avant le Journal si besoin). */
+export function addMilestone(d: Doc, date: string, text: string) {
+  const line = `- [ ] ${date} — ${text}`;
+  const list = milestones(d);
+  const after = list.find((m) => m.date > date);
+  if (after) return void d.lines.splice(after.line, 0, line);
+  if (list.length) return void d.lines.splice(list[list.length - 1].line + 1, 0, line);
+  const s = ensureSectionBefore(d, "Jalons");
+  const rest = trimBlank(d.lines.slice(s.start, s.end));
+  d.lines.splice(s.start, s.end - s.start, "", ...(rest.length ? [...rest, ""] : []), line, "");
+}
+
+function milestoneAt(d: Doc, index: number, expected: string): Milestone {
+  const m = milestones(d)[index];
+  if (!m || m.text !== expected) throw new Error("Ce jalon a changé entre-temps. Recharge la page.");
+  return m;
+}
+
+export function setMilestoneDone(d: Doc, index: number, expected: string, done: boolean): Milestone {
+  const m = milestoneAt(d, index, expected);
+  d.lines[m.line] = d.lines[m.line].replace(MILESTONE, (_x, pre, _b, date, text) => `${pre}[${done ? "x" : " "}] ${date} — ${text}`);
+  return m;
+}
+
+export function editMilestone(d: Doc, index: number, expected: string, date: string, text: string) {
+  const m = milestoneAt(d, index, expected);
+  d.lines.splice(m.line, 1);
+  addMilestone(d, date, text);
+  if (m.done) {
+    const again = milestones(d).find((x) => x.date === date && x.text === text && !x.done);
+    if (again) d.lines[again.line] = d.lines[again.line].replace("[ ]", "[x]");
+  }
+}
+
+export function removeMilestone(d: Doc, index: number, expected: string) {
+  const m = milestoneAt(d, index, expected);
+  d.lines.splice(m.line, 1);
 }
