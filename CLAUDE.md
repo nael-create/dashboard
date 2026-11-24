@@ -23,7 +23,7 @@ Les mots « DOIT », « NE DOIT PAS », « DEVRAIT », « PEUT » ont le sens de
 CLAUDE.md               # Ce fichier : règles pour les sessions futures
 DASHBOARD.md            # Page de synthèse unique (générée)
 INBOX.md                # Capture rapide, non triée
-MEMO.md                 # Choses à retenir (voir section 10)
+MEMO.md                 # Ancien mémo, conservé tel quel (voir section 10)
 NEWS.md                 # Sources d'actus RSS et disposition des widgets (voir section 11)
 NOTIONS.md              # Glossaire à mémoriser (voir section 12)
 FAVORIS.md              # Favoris (voir section 15)
@@ -118,14 +118,13 @@ Les dossiers `_template` et `archive/` sont toujours exclus du dashboard.
 
 Séparation stricte :
 
-- **Contenu** (racine du dépôt, Markdown) = seule source de vérité : projets, domaines, inbox, revues, mémo.
+- **Contenu** (racine du dépôt, Markdown) = seule source de vérité : projets, domaines, tâches, inbox, revues, notions…
 - **Code** (`app/`) = Next.js (App Router) + TypeScript + Tailwind CSS. Il lit le Markdown à chaque requête et NE DOIT PAS dupliquer ce contenu dans un autre format (pas de base, pas de JSON, pas de cache sur disque).
 - L'app ne commite que via le bouton **Sauvegarder** (section 13), à la demande du propriétaire.
 - Fichiers de contenu que l'app écrit (et uniquement ceux-là) — tableau tenu à jour à chaque phase :
 
   | Fichier | Phase | Ce que l'app y écrit |
   |---|---|---|
-  | `MEMO.md` | 4 | entrées du mémo (ajout, modification, épinglage, suppression avec confirmation) |
   | `NEWS.md` | 6 | sources d'actus publiques, regroupement des widgets, ordre et visibilité des widgets |
   | `NOTIONS.md` | 7 | notions (ajout rapide, import en masse, modification, suppression avec confirmation) |
   | `INBOX.md` | 11 | ajout daté (palette), élément routé coché `- [x]`, « Supprimer » retire la ligne |
@@ -155,7 +154,7 @@ Règles :
   1. **En-tête** ;
   2. **01. agenda** : le calendrier, premier bloc de contenu et le plus grand (toutes ses fonctions) ;
   3. **02. à la une** : grille d'images des grands sujets (`app/src/components/home/headlines-grid.tsx`, logique pure `app/src/lib/headlines.ts`) : **uniquement des articles avec image** (image du flux, sinon `og:image`, cherchée côté serveur et mise en cache) — plus de cartes typographiques ; colonne vertébrale = ordre éditorial du flux FT International, les autres sources actives (une par site, ex. The Verge, Maddyness) intercalées à tour de rôle, **jamais plus de 2 sujets d'affilée de la même source** ; première rangée = deux grandes images de même format, hauteur plafonnée (≈ 50 % de l'écran) ; mise en page sans trou selon le nombre de sujets (1, 2, 3, puis rangées réparties) ; une image qui ne charge pas retire le sujet ; étoiles actives ; pas d'autre extraction que la règle `og:image` existante ;
-  4. **tout le reste** : ligne « revue de la semaine » (jour de revue), 03. projets actifs, 04. à retenir aujourd'hui (notions), 05. mémo, 06. newsletters.
+  4. **tout le reste** : ligne « revue de la semaine » (jour de revue), 03. projets actifs, 04. à retenir aujourd'hui (notions), 05. aujourd'hui (tâches en retard et du jour, cochables sur place, saisie rapide ; `app/src/components/tasks/today-checklist.tsx`, à la place de l'ancien mémo), 06. newsletters.
 - Aucune fonctionnalité ne doit prendre la place du calendrier ni de « à la une ».
 - Le **Focus de la semaine** n'est plus sur l'accueil : il est en haut de l'onglet « aujourd'hui » de `/projets`, en version compacte (`FocusCard compact`). DASHBOARD.md garde sa section « Focus de la semaine » inchangée.
 - **Section « projets »** (entrée unique « Projets » de l'en-tête, qui remplace Projets et Mémo) : quatre onglets, chacun avec son adresse — `/projets/aujourdhui` (par défaut, `/projets` y redirige), `/projets/pipeline`, `/projets/liste`, `/projets/domaines` (`app/src/app/projets/(onglets)/`, onglets `app/src/components/projects/project-tabs.tsx`). Les anciens liens `/projets?statut=…`, `?archive=…`, `?nouveau=projet` vont sur « liste ». Les noms `aujourdhui`, `pipeline`, `liste`, `domaines` sont réservés (pas de projet à ces noms).
@@ -193,7 +192,9 @@ Règles :
 - **Exception étroite et voulue** à « le corps d'un e-mail n'est jamais écrit dans le dépôt » : les passages que le propriétaire **surligne lui-même** (section 19), 1 000 caractères au plus chacun, jamais l'e-mail entier.
 - **Avant chaque commit**, vérifier qu'aucun secret, jeton ou lien de calendrier n'est indexé : `git status`, `git diff --cached --name-only` (aucun `.env*` réel ni `*.local.json`) et une recherche dans `git diff --cached` de motifs comme `webcal:`, `.ics`, `client_secret`, `token`, `password`.
 
-## 10. MEMO.md — choses à retenir
+## 10. MEMO.md — choses à retenir (retiré de l'app)
+
+> Depuis le 2026-11-24, le mémo est remplacé par les tâches (section 20) : plus de page `/memo` (redirigée vers `/projets/aujourdhui`), plus d'API ni de carte sur l'accueil. **MEMO.md reste dans le dépôt, intact** (il ne contenait aucune entrée) ; il NE DOIT PAS être supprimé sans l'accord du propriétaire. Les règles ci-dessous (format, pas de secrets) restent valables s'il est modifié à la main.
 
 Fichier unique à la racine. Une entrée = un bloc, du plus récent au plus ancien :
 
@@ -214,7 +215,7 @@ Texte libre, sur une ou plusieurs lignes.
 - **MEMO.md NE DOIT JAMAIS contenir de mots de passe, codes d'accès, numéros de carte ni aucun secret** : le dépôt est sur GitHub. Si une demande en contient, refuser de l'y écrire et le signaler.
 - L'app refuse elle aussi ces contenus (`app/src/lib/secrets.ts` : « mot de passe : … », digicode, numéro de carte valide, IBAN, clé ou jeton) et affiche un rappel d'une ligne sous chaque zone de saisie.
 - Une entrée écrite à la main sans `id:` est acceptée ; l'app lui ajoute un `id:` à sa première modification. Les titres `##` qui ne suivent pas le format `## YYYY-MM-DD — Titre` sont ignorés et conservés tels quels.
-- Page `/memo` : ajout, modification, épingler/désépingler, filtre par tag, recherche, suppression avec confirmation. L'accueil affiche les entrées épinglées (« À retenir »).
+- (Ancienne page `/memo` : retirée.)
 
 ## 11. NEWS.md — actus (flux RSS)
 
@@ -306,8 +307,8 @@ note: Note personnelle courte  # facultatif
 
 - 4 étapes (Fait cette semaine, Bloqué, Inbox, Focus semaine prochaine), « Suivant » / « Retour », indicateur de progression ; toutes facultatives ; brouillon gardé dans le navigateur (localStorage, sans erreur s'il est indisponible).
 - Semaine ISO calculée dans le **fuseau d'affichage** (`app/src/lib/review.ts`).
-- « Fait » est pré-rempli avec les entrées de journal (dont « Fait : … ») datées de la semaine, projets actifs et archivés.
-- Inbox, élément par élément : « Action d'un projet » (devient une prochaine action), « Notion » (à compléter), « Mémo », « Supprimer » (retire la ligne, avec confirmation), « Garder ». Les éléments routés sont cochés `- [x]`.
+- « Fait » est pré-rempli avec les entrées de journal (dont « Fait : … ») datées de la semaine, projets actifs et archivés, puis les tâches faites cette semaine (TACHES.md) qui n'y figurent pas déjà.
+- Inbox, élément par élément : « Action d'un projet » (devient une prochaine action), « Notion » (à compléter), « Tâche » (date au choix, aujourd'hui par défaut ; ajoutée à TACHES.md), « Supprimer » (retire la ligne, avec confirmation), « Garder ». Les éléments routés sont cochés `- [x]`.
 - Focus : 3 éléments max parmi les prochaines actions des projets actifs, ou texte libre.
 - Terminer crée `reviews/YYYY-Www.md` depuis le template et régénère DASHBOARD.md. **Une revue existante n'est jamais écrasée** : l'app propose de la modifier (mise à jour de ses sections).
 - Accueil : ligne discrète « revue de la semaine — 5 min » en tête de la partie « tout le reste », à partir du jour `reviewDay` (dashboard.config.ts, 0 = dimanche) et tant que la revue de la semaine n'existe pas.
@@ -315,8 +316,8 @@ note: Note personnelle courte  # facultatif
 ## 17. Palette de commandes et raccourcis
 
 - `⌘K` / `Ctrl+K` (ou la loupe de l'en-tête) ouvre la palette, **même pendant la saisie dans un champ** ; `Échap` la ferme. `N` : nouvelle notion. `?` : aide des raccourcis. **Les raccourcis à une touche ne s'activent jamais pendant la saisie** (ni quand une fenêtre est déjà ouverte).
-- Recherche approximative sans dépendance (`app/src/lib/fuzzy.ts`, insensible aux accents) sur : projets, domaines, mémos, notions, surlignages (passage, note, objet, expéditeur), éléments de l'inbox, favoris, newsletters (objet et expéditeur seulement, liste déjà en mémoire) et titres d'actus déjà en cache. Index : `GET /api/search-index` (aucun appel réseau).
-- Actions : « Ajouter à l'inbox : … », « Nouvelle notion », « Nouveau mémo », « Nouveau projet » (reprennent le texte tapé), « Aller à … » pour chaque page, « Sauvegarder », « Changer de thème », « Faire la revue ».
+- Recherche approximative sans dépendance (`app/src/lib/fuzzy.ts`, insensible aux accents) sur : projets, domaines, tâches (à faire et faites récemment), jalons, pages de docs, notions, surlignages (passage, note, objet, expéditeur), éléments de l'inbox, favoris, newsletters (objet et expéditeur seulement, liste déjà en mémoire) et titres d'actus déjà en cache. Index : `GET /api/search-index` (aucun appel réseau).
+- Actions : « Ajouter à l'inbox : … », « Nouvelle notion », « Nouvelle tâche », « Nouveau projet » (reprennent le texte tapé ; Maj+Entrée sur un texte inconnu = tâche), « Aller à … » pour chaque page, « Sauvegarder », « Changer de thème », « Faire la revue ».
 - Un texte qui ne correspond à rien propose « Ajouter à l'inbox » comme action par défaut (Entrée) : capture en un raccourci et une touche.
 
 ## 18. AGENDA.md — calendrier « Perso »

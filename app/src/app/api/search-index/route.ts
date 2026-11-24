@@ -3,7 +3,9 @@ import { errorResponse } from "@/lib/api";
 import { listAreas, listProjects } from "@/lib/content";
 import { readFavorites } from "@/lib/favorites";
 import { readInbox } from "@/lib/inbox";
-import { readMemo } from "@/lib/memo";
+import { listAllDocs } from "@/lib/docs";
+import { listMilestones } from "@/lib/milestones";
+import { readTasks } from "@/lib/tasks";
 import { readNotions } from "@/lib/notions";
 import { readAgenda } from "@/lib/agenda";
 import { readHighlights } from "@/lib/highlights";
@@ -13,7 +15,7 @@ import { cachedArticles, byDateDesc, dedupe } from "@/lib/rss";
 export const dynamic = "force-dynamic";
 
 export interface SearchItem {
-  type: "project" | "area" | "memo" | "notion" | "inbox" | "favorite" | "newsletter" | "news" | "event" | "highlight";
+  type: "project" | "area" | "task" | "milestone" | "doc" | "notion" | "inbox" | "favorite" | "newsletter" | "news" | "event" | "highlight";
   id: string;
   title: string;
   subtitle?: string;
@@ -27,13 +29,27 @@ export interface SearchItem {
  */
 export async function GET() {
   try {
-    const [projects, areas, memo, notions, inbox, favorites, agenda, highlights] = await Promise.all([
-      listProjects(), listAreas(), readMemo(), readNotions(), readInbox(), readFavorites(), readAgenda(), readHighlights(),
+    const [projects, areas, notions, inbox, favorites, agenda, highlights, tasks, milestones, docs] = await Promise.all([
+      listProjects(), listAreas(), readNotions(), readInbox(), readFavorites(), readAgenda(), readHighlights(),
+      readTasks().then((t) => t.tasks).catch(() => []), listMilestones().catch(() => []), listAllDocs().catch(() => []),
     ]);
+    const projectTitle = new Map(projects.map((p) => [p.slug, p.title]));
     const items: SearchItem[] = [
       ...projects.map((p) => ({ type: "project" as const, id: p.slug, title: p.title, subtitle: [p.status, p.priority].filter(Boolean).join(" · "), href: `/projets/${p.slug}` })),
       ...areas.map((a) => ({ type: "area" as const, id: a.slug, title: a.title, href: `/domaines/${a.slug}` })),
-      ...memo.entries.map((e) => ({ type: "memo" as const, id: e.key, title: e.title, subtitle: e.text.slice(0, 80), href: `/memo#memo-${e.id ?? e.key}` })),
+      // Tâches à faire (toutes) et faites récemment (les 200 dernières lignes du fichier).
+      ...tasks.filter((t) => t.status === "todo").concat(tasks.filter((t) => t.status !== "todo").slice(-200)).map((t) => ({
+        type: "task" as const, id: t.id, title: t.title,
+        subtitle: [t.date + (t.time ? ` ${t.time}` : ""), t.status === "done" ? "faite" : t.status === "dropped" ? "abandonnée" : "", t.project ? projectTitle.get(t.project) ?? `#${t.project}` : ""].filter(Boolean).join(" · "),
+        href: t.status === "todo" ? `/projets/aujourdhui#task-${t.id}` : "/projets/aujourdhui?vue=historique",
+      })),
+      ...milestones.map((m) => ({
+        type: "milestone" as const, id: `${m.project}:${m.index}`, title: m.text,
+        subtitle: [m.date, m.projectTitle, m.done ? "atteint" : ""].filter(Boolean).join(" · "), href: `/projets/${m.project}?onglet=jalons`,
+      })),
+      ...docs.map((d) => ({
+        type: "doc" as const, id: `${d.project}/${d.slug}`, title: d.title, subtitle: projectTitle.get(d.project) ?? d.project, href: `/projets/${d.project}/docs/${d.slug}`,
+      })),
       ...notions.notions.map((n) => ({
         type: "notion" as const, id: n.id, title: n.term, subtitle: n.definition ? n.definition.slice(0, 80) : "à compléter",
         href: n.definition ? `/notions#notion-${n.id}` : "/notions?onglet=gerer",

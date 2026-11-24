@@ -218,12 +218,14 @@ function InboxStep({ data, log, onProcessed }: { data: Payload; log: string[]; o
   const [choosing, setChoosing] = useState(false);
   const [project, setProject] = useState(data.projects[0]?.slug ?? "");
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [dating, setDating] = useState(false);
+  const [taskDate, setTaskDate] = useState(() => new Date().toLocaleDateString("en-CA"));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const pending = data.inbox.filter((i) => !skipped.includes(i.raw));
   const item = pending[0];
 
-  const act = async (action: "project" | "notion" | "memo" | "delete" | "keep") => {
+  const act = async (action: "project" | "notion" | "task" | "delete" | "keep") => {
     if (!item) return;
     if (action === "keep") {
       setSkipped([...skipped, item.raw]);
@@ -232,8 +234,9 @@ function InboxStep({ data, log, onProcessed }: { data: Payload; log: string[]; o
     setBusy(true);
     setError(null);
     try {
-      const res = await apiJson<{ label: string | null }>("/api/review/inbox", "POST", { index: item.index, raw: item.raw, action, project });
+      const res = await apiJson<{ label: string | null }>("/api/review/inbox", "POST", { index: item.index, raw: item.raw, action, project, date: action === "task" ? taskDate : undefined });
       setChoosing(false);
+      setDating(false);
       setConfirmDelete(false);
       await onProcessed(res.label);
     } catch (e) {
@@ -262,6 +265,12 @@ function InboxStep({ data, log, onProcessed }: { data: Payload; log: string[]; o
               <button type="button" className={btnGhost} onClick={() => setChoosing(false)}>Annuler</button>
               {!data.projects.length && <p className="w-full text-sm text-muted">Aucun projet : crée-en un depuis la page Projets.</p>}
             </div>
+          ) : dating ? (
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <input type="date" value={taskDate} onChange={(e) => setTaskDate(e.target.value)} aria-label="Date de la tâche" className={`${field} w-auto`} />
+              <button type="button" className={btnPrimary} disabled={busy || !taskDate} onClick={() => act("task")}>Créer la tâche</button>
+              <button type="button" className={btnGhost} onClick={() => setDating(false)}>Annuler</button>
+            </div>
           ) : confirmDelete ? (
             <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
               <span>Retirer cette ligne d&apos;INBOX.md ?</span>
@@ -272,7 +281,7 @@ function InboxStep({ data, log, onProcessed }: { data: Payload; log: string[]; o
             <div className="mt-4 flex flex-wrap gap-2">
               <button type="button" className={btnPrimary} disabled={busy || !data.projects.length} onClick={() => setChoosing(true)}>Action d&apos;un projet</button>
               <button type="button" className={`${btnGhost} border border-border`} disabled={busy} onClick={() => act("notion")}>Notion</button>
-              <button type="button" className={`${btnGhost} border border-border`} disabled={busy} onClick={() => act("memo")}>Mémo</button>
+              <button type="button" className={`${btnGhost} border border-border`} disabled={busy} onClick={() => { setTaskDate(new Date().toLocaleDateString("en-CA")); setDating(true); }}>Tâche</button>
               <button type="button" className={`${btnGhost} border border-border hover:text-rose-600`} disabled={busy} onClick={() => setConfirmDelete(true)}><Trash2 className="size-4" aria-hidden /> Supprimer</button>
               <button type="button" className={btnGhost} disabled={busy} onClick={() => act("keep")}>Garder</button>
             </div>

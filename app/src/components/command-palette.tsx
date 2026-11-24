@@ -2,8 +2,8 @@
 
 import {
   ArrowRight, CalendarCheck, CalendarDays, CornerDownLeft, FolderKanban, GraduationCap, Inbox, Layers, Mail, Newspaper,
-  Palette, Plus, Save, Search, Star, StickyNote, type LucideIcon,
-  Download, Highlighter, ListChecks,
+  Palette, Plus, Save, Search, Star, type LucideIcon,
+  Download, FileText, Flag, Highlighter, ListChecks,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
@@ -18,7 +18,7 @@ import { TASKS_EVENT } from "./tasks/use-tasks";
 
 export const OPEN_PALETTE = "dashboard:open-palette";
 
-type ItemType = "project" | "area" | "memo" | "notion" | "inbox" | "favorite" | "newsletter" | "news" | "event" | "highlight";
+type ItemType = "project" | "area" | "task" | "milestone" | "doc" | "notion" | "inbox" | "favorite" | "newsletter" | "news" | "event" | "highlight";
 interface SearchItem { type: ItemType; id: string; title: string; subtitle?: string; href: string; external?: boolean }
 
 interface Row {
@@ -35,7 +35,9 @@ const GROUPS: { type: ItemType; label: string; icon: LucideIcon }[] = [
   { type: "project", label: "Projets", icon: FolderKanban },
   { type: "area", label: "Domaines", icon: Layers },
   { type: "notion", label: "Notions", icon: GraduationCap },
-  { type: "memo", label: "Mémos", icon: StickyNote },
+  { type: "task", label: "Tâches", icon: ListChecks },
+  { type: "milestone", label: "Jalons", icon: Flag },
+  { type: "doc", label: "Docs", icon: FileText },
   { type: "inbox", label: "Inbox", icon: Inbox },
   { type: "favorite", label: "Favoris", icon: Star },
   { type: "newsletter", label: "Newsletters", icon: Mail },
@@ -118,7 +120,6 @@ export function CommandPalette() {
       { key: "a:notion", group: "Actions", icon: GraduationCap, label: "Nouvelle notion", title: "Nouvelle notion", keywords: "notion terme glossaire ajouter",
         run: () => { close(); window.dispatchEvent(new CustomEvent(EVENTS.newNotion, { detail: { term: "" } })); } },
       { key: "a:tache", group: "Actions", icon: ListChecks, label: "Nouvelle tâche", title: "Nouvelle tâche", keywords: "tache todo faire ajouter aujourd'hui", run: () => go("/projets/aujourdhui?nouvelle=1") },
-      { key: "a:memo", group: "Actions", icon: StickyNote, label: "Nouveau mémo", title: "Nouveau mémo", keywords: "memo ajouter retenir", run: () => go("/memo?nouveau=1") },
       { key: "a:projet", group: "Actions", icon: FolderKanban, label: "Nouveau projet", title: "Nouveau projet", keywords: "projet creer", run: () => go("/projets/liste?nouveau=projet") },
     ];
     const others: Action[] = [
@@ -146,7 +147,6 @@ export function CommandPalette() {
       run: c.key === "a:notion"
         ? () => { close(); window.dispatchEvent(new CustomEvent(EVENTS.newNotion, { detail: { term: text } })); }
         : c.key === "a:tache" ? () => addTask(text)
-        : c.key === "a:memo" ? () => go(`/memo?nouveau=1&titre=${encodeURIComponent(text)}`)
         : () => go(`/projets/liste?nouveau=projet&titre=${encodeURIComponent(text)}`),
     }));
 

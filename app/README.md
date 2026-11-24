@@ -154,15 +154,16 @@ Le thème clair/sombre suit le réglage du système ; le bouton en haut à droit
 
 | Adresse | Contenu | État |
 |---|---|---|
-| `/` | Accueil : 01. agenda, 02. à la une (grille d'images), puis projets actifs, à retenir aujourd'hui, mémo, newsletters | ✅ |
+| `/` | Accueil : 01. agenda, 02. à la une (grille d'images), puis projets actifs, à retenir aujourd'hui, aujourd'hui (tâches), newsletters | ✅ |
 | `/projets/aujourdhui` | Tâches du jour (`TACHES.md`) : saisie rapide, en retard / aujourd'hui / demain / cette semaine, historique, rappels par e-mail ; focus de la semaine en haut | ✅ |
 | `/projets/pipeline`, `/projets/liste`, `/projets/domaines` | Projets par étape, liste filtrable, domaines | ✅ |
-| `/projets/<nom>` et `/domaines/<nom>` | Modifier le projet / domaine (champs, sections, actions, journal) | ✅ |
+| `/projets/<nom>` | Projet : étapes, avancement, onglets vue d'ensemble, tâches, jalons, docs, journal | ✅ |
+| `/projets/<nom>/docs/<page>` | Page de docs (sommaire, liens [[…]], images) | ✅ |
+| `/domaines/<nom>` | Modifier le domaine | ✅ |
 | `/news` | Actus : widgets par source ou catégorie, glisser-déposer, masquer, sources gérées depuis l'app | ✅ |
 | `/notions` | Notions : glossaire (« Tout consulter »), gestion, import en masse, impression | ✅ |
 | `/revue` | Revue de la semaine guidée (4 étapes) | ✅ |
 | `/favoris` | Favoris : filtre par type, recherche, note personnelle | ✅ |
-| `/memo` | Choses à retenir (`MEMO.md`) : ajouter, modifier, épingler, filtrer par tag, supprimer | ✅ |
 | `/newsletters` | Dossier « Newsletters » d'Outlook, en lecture seule | ✅ (après configuration) |
 
 ## Calendrier
@@ -240,7 +241,10 @@ Les calendriers abonnés (Outlook, Google, iCloud) restent en lecture seule. Pou
 
 ## Modifier un projet ou un domaine
 
-- Sur la page d'un projet : change le **statut**, la **priorité**, la **prochaine action** et la **deadline** dans la colonne de droite ; clique sur le titre pour le renommer.
+- Sur la page d'un projet : sous le titre, la **frise des étapes** (idée → suivi) se change d'un clic ; puis **statut**, **priorité**, **deadline**, **avancement** (part des jalons atteints) et **dernière activité**. Clique sur le titre pour le renommer.
+- Onglets : **vue d'ensemble** (Objectif, Pourquoi, Critères de réussite, Ressources, Risques, Notes, Liens, prochaine action, prochaines actions avec **Planifier**, début, tags), **tâches** (celles du projet, ajout rapide), **jalons** (datés, à cocher : « Jalon atteint » s'inscrit au journal), **docs**, **journal**.
+- **Docs** : « Créer » une page vide ou depuis un modèle (Brief, Recherche / benchmark, Journal de décisions, Specs, Retour d'expérience). Dans une page : « Modifier », tape `[[` pour lier une autre page ou un projet, colle ou dépose une image (PNG, JPG, WebP, GIF, 5 Mo max), ⌘S enregistre. Sommaire automatique dès 3 titres. Renommer = cliquer sur le titre. Supprimer = la page est rangée dans `docs/_archive/` du projet (jamais effacée).
+- Onglets de **projets** : **pipeline** (une colonne par étape, glisser une carte ou choisir son étape au clavier ; « chronologie » montre les jalons des 3 prochains mois ; « à l'arrêt » = actif sans activité depuis 14 jours), **liste** (filtres statut, priorité, étape, tags ; tri), **domaines**.
 - **Prochaines actions** : ajoute-les en bas, réordonne-les avec ↑ ↓, modifie-les avec le crayon. **Coche une action** : elle disparaît de la liste et s'inscrit dans le **Journal** (« 2026-11-13 — Fait : … »).
 - **Objectif, Notes, Liens** : crayon → éditeur avec onglets « Écrire » et « Aperçu ».
 - **Journal** : choisis la date et ajoute une entrée ; elle se place en haut.

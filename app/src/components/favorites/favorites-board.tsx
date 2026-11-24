@@ -94,7 +94,7 @@ export function FavoritesBoard() {
         <div className="h-40 animate-pulse rounded-2xl bg-surface-2" />
       ) : shown.length === 0 ? (
         <p className="rounded-xl border border-dashed border-border px-4 py-10 text-center text-sm text-muted">
-          {favs.length ? "Aucun favori ne correspond." : "Aucun favori pour l'instant. Clique sur l'étoile d'un article, d'une newsletter, d'une notion, d'un mémo ou d'un projet."}
+          {favs.length ? "Aucun favori ne correspond." : "Aucun favori pour l'instant. Clique sur l'étoile d'un article, d'une newsletter, d'une notion, d'une page de docs ou d'un projet."}
         </p>
       ) : (
         <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-surface">

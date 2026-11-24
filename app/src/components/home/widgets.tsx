@@ -2,7 +2,6 @@ import Link from "next/link";
 import { Card, CardHeader, Empty } from "@/components/ui/card";
 import { DeadlineText, Value } from "@/components/ui/badges";
 import { countInbox, listProjects } from "@/lib/content";
-import { readMemo } from "@/lib/memo";
 import { listNewsletters, OutlookError, type NewsletterSummary } from "@/lib/outlook";
 import { relativeTime } from "@/lib/relative-time";
 import { OutlookState } from "@/components/newsletters/outlook-state";
@@ -88,27 +87,3 @@ export async function NewslettersWidget({ n }: { n?: string }) {
   );
 }
 
-export async function MemoWidget({ n }: { n?: string }) {
-  const { entries } = await readMemo();
-  const pinned = entries.filter((e) => e.pinned).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5);
-  return (
-    <Card className="h-full">
-      <CardHeader n={n} title="Mémo" href="/memo" />
-      {pinned.length === 0 ? (
-        <Empty>Aucun mémo épinglé. Épingle un mémo pour le retrouver ici.</Empty>
-      ) : (
-        <ol className="divide-y divide-border border-y border-border">
-          {pinned.map((e, i) => (
-            <li key={e.key} className="grid grid-cols-[2.5rem_1fr] gap-x-2 py-3">
-              <span className="label pt-1 text-muted">{num(i)}</span>
-              <Link href={`/memo#memo-${e.id ?? e.key}`} className="min-w-0">
-                <span className="block truncate"><span className="link-underline">{e.title}</span></span>
-                {e.text && <span className="mt-0.5 line-clamp-2 block text-sm text-muted">{e.text.replace(/[#*_>`[\]]/g, "")}</span>}
-              </Link>
-            </li>
-          ))}
-        </ol>
-      )}
-    </Card>
-  );
-}
