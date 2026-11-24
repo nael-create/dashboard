@@ -8,6 +8,8 @@
  * Fond grège chaud / noir chaud, grotesque fine, fils fins, aucun arrondi sur les cartes.
  */
 :root {
+  /* Zoom par défaut du contenu (src/lib/zoom.ts) : 100 % sur téléphone, 90 % sur grand écran. */
+  --zoom-default: 1;
   /* --accent est injectée depuis dashboard.config.ts (voir layout.tsx). */
   --accent: #a3451f;
   --bg: #d6d1c5;
@@ -212,3 +214,10 @@ mark.hl { color: #111; }
 .hl-swatch { display: block; box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.15); }
 @keyframes hl-flash { 0%, 100% { box-shadow: none; } 40% { box-shadow: 0 0 0 4px var(--accent); } }
 .hl-flash { animation: hl-flash 1.6s var(--ease) 2; }
+
+@media (min-width: 1024px) {
+  :root { --zoom-default: 0.9; }
+}
+@media print {
+  :root { --zoom-default: 1; }
+}

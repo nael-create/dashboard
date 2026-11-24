@@ -1,30 +1,40 @@
 /**
- * Zoom du dashboard (bouton « − 100 % + » de l'en-tête), indépendant du zoom du navigateur.
- * Appliqué avec la propriété CSS `zoom` sur le conteneur #zoom-root (en-tête + page), via la variable
- * --zoom posée sur <html> avant l'affichage (pas de saut). Mémorisé dans ce navigateur (confort).
+ * Zoom du contenu (bouton « − 90 % + » de l'en-tête), indépendant du zoom du navigateur.
+ * Appliqué avec la propriété CSS `zoom` sur le conteneur #zoom-root (le CONTENU de la page seulement :
+ * l'en-tête garde toujours sa taille), via la variable --zoom posée sur <html> avant l'affichage.
+ * Valeur par défaut : --zoom-default (globals.css) = 90 % sur grand écran, 100 % sur téléphone.
+ * Mémorisé dans ce navigateur (confort).
  * Les fenêtres flottantes (barre de surlignage, popovers) sont hors du conteneur : `viewportFactor()`
  * convertit les mesures faites dans le conteneur, quel que soit le navigateur.
  */
 
-export const ZOOM_LEVELS = [0.8, 0.9, 1, 1.1, 1.25];
+export const ZOOM_LEVELS = [0.75, 0.8, 0.9, 1, 1.1, 1.25];
 export const ZOOM_KEY = "dashboard.zoom";
 export const ZOOM_EVENT = "dashboard:zoom";
 
 /** Script exécuté dans <head> avant l'affichage : reprend le zoom mémorisé. */
 export const ZOOM_INIT_SCRIPT = `try{var z=parseFloat(localStorage.getItem(${JSON.stringify(ZOOM_KEY)}));if(z>=0.5&&z<=2)document.documentElement.style.setProperty("--zoom",String(z))}catch(e){}`;
 
+/** Zoom par défaut de cet écran (variable CSS --zoom-default : 0,9 sur grand écran, 1 sur téléphone). */
+export function defaultZoom(): number {
+  if (typeof document === "undefined") return 1;
+  const d = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--zoom-default"));
+  return d >= 0.5 && d <= 2 ? d : 1;
+}
+
 export function getZoom(): number {
   if (typeof document === "undefined") return 1;
   const z = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--zoom"));
-  return z >= 0.5 && z <= 2 ? z : 1;
+  return z >= 0.5 && z <= 2 ? z : defaultZoom();
 }
 
 export function setZoom(z: number) {
   const clamped = Math.min(Math.max(z, ZOOM_LEVELS[0]), ZOOM_LEVELS[ZOOM_LEVELS.length - 1]);
-  if (clamped === 1) document.documentElement.style.removeProperty("--zoom");
+  const isDefault = Math.abs(clamped - defaultZoom()) < 0.001;
+  if (isDefault) document.documentElement.style.removeProperty("--zoom");
   else document.documentElement.style.setProperty("--zoom", String(clamped));
   try {
-    if (clamped === 1) localStorage.removeItem(ZOOM_KEY);
+    if (isDefault) localStorage.removeItem(ZOOM_KEY);
     else localStorage.setItem(ZOOM_KEY, String(clamped));
   } catch {
     /* stockage indisponible : le zoom vaut pour cette page seulement */
