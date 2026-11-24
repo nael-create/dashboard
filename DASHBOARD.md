@@ -11,7 +11,8 @@ Dernière mise à jour : 2026-11-24
 
 | Projet | Priorité | Statut | Prochaine action | Deadline |
 |--------|----------|--------|------------------|----------|
-| [Medtech](projects/medtech/README.md) | P3 | active | TODO: fill in | — |
+
+_Aucun projet actif._
 
 ## En pause / idées
 
