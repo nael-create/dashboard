@@ -8,7 +8,13 @@ import { btnGhost, btnPrimary } from "@/components/ui/forms";
 export const UPDATE_EVENT = "dashboard:update";
 
 type Last = { result: "ok" | "blocked" | "network" | "auth" | "other"; message: string; checkedAt: string } | null;
-type State = { service: boolean; behind: number | null; last?: Last };
+type State = {
+  service: boolean; behind: number | null; last?: Last;
+  versions?: { running: string | null; latest: string | null; mode: "production" | "developpement" };
+};
+
+const fmtVersion = (iso: string | null | undefined) =>
+  iso ? new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(iso)) : "inconnue";
 type Phase = "idle" | "confirm" | "restarting" | "slow" | "error";
 
 /** Attend que le serveur se soit arrêté puis soit revenu (au plus ~4 minutes). */
@@ -137,6 +143,13 @@ export function UpdateButton() {
                       : "Impossible de vérifier GitHub pour le moment. Tu peux quand même relancer le dashboard."}{" "}
                   Le dashboard va se relancer et préparer la nouvelle version (1 à 2 minutes). Ton contenu n&apos;est pas touché.
                 </p>
+                {state?.versions && (
+                  <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 border-t border-border pt-3 text-[12px] text-muted">
+                    <dt>En service</dt><dd>version du {fmtVersion(state.versions.running)}{state.versions.mode === "developpement" ? " (mode développement)" : ""}</dd>
+                    <dt>Sur GitHub</dt><dd>version du {fmtVersion(state.versions.latest)}</dd>
+                    {!state.service && <><dt>Relance</dt><dd>manuelle : ferme la fenêtre du Terminal du dashboard puis double-clique sur « Lancer le dashboard »</dd></>}
+                  </dl>
+                )}
                 <div className="mt-5 flex justify-end gap-2">
                   <button type="button" className={btnGhost} onClick={() => setPhase("idle")}>Annuler</button>
                   <button type="button" className={btnPrimary} onClick={start} autoFocus>Mettre à jour</button>
