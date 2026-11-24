@@ -42,8 +42,6 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
       <body className="min-h-dvh font-sans">
         <ThemeProvider nonce={nonce}>
           <FavoritesProvider>
-          {/* Conteneur zoomable : en-tête + page (les fenêtres flottantes restent hors zoom). */}
-          <div id="zoom-root" style={{ zoom: "var(--zoom, 1)" } as CSSProperties}>
           <SiteHeader
             title={config.title}
             actions={
@@ -58,7 +56,9 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
             mobileExtras={<><ThemeToggle /><span className="label text-muted">Thème</span><ZoomControl className="label ml-auto" /></>}
             zoom={<ZoomControl className="-ml-1.5 mt-1" />}
           />
-          <main className="mx-auto max-w-[1600px] px-4 pb-24 pt-8 sm:px-6 sm:pt-14 print:max-w-none print:p-0">{children}</main>
+          {/* Conteneur zoomable : le contenu seulement (l'en-tête et les fenêtres flottantes restent à leur taille). */}
+          <div id="zoom-root" style={{ zoom: "var(--zoom, var(--zoom-default, 1))" } as CSSProperties}>
+            <main className="mx-auto max-w-[1600px] px-4 pb-24 pt-8 sm:px-6 sm:pt-14 print:max-w-none print:p-0">{children}</main>
           </div>
           <Shortcuts />
           <CommandPalette />
