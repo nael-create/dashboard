@@ -1,6 +1,6 @@
 ---
 title: Medtech
-status: idea          # idea | active | paused | done | dropped
+status: active        # idea | active | paused | done | dropped
 priority: P3          # P1 | P2 | P3
 created: 2026-11-14
 updated: 2026-11-14
