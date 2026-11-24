@@ -4,8 +4,8 @@ export interface Chip { value: string; label: string; count?: number }
 
 /** Filtres sous forme de liens (fonctionnent sans JavaScript, et l'URL reste partageable). */
 export function FilterChips({
-  label, param, chips, current, otherParams,
-}: { label: string; param: string; chips: Chip[]; current: string; otherParams: Record<string, string> }) {
+  label, param, chips, current, otherParams, base = "/projets/liste",
+}: { label: string; param: string; chips: Chip[]; current: string; otherParams: Record<string, string>; base?: string }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
       <span className="w-20 shrink-0 text-xs font-medium uppercase tracking-wide text-muted">{label}</span>
@@ -17,7 +17,7 @@ export function FilterChips({
         return (
           <Link
             key={c.value}
-            href={qs ? `/projets?${qs}` : "/projets"}
+            href={qs ? `${base}?${qs}` : base}
             scroll={false}
             aria-current={active ? "true" : undefined}
             className={`rounded-full border px-3 py-1 text-[12px] uppercase tracking-[0.04em] transition-colors ${

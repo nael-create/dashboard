@@ -11,7 +11,7 @@ import { readVersioned, updateFile } from "./content-file";
 import { regenerateDashboard } from "./dashboard-md";
 import { todayISO } from "./dates";
 import {
-  actions, addAction, addJournal, checkAction, editAction, journal, moveAction, parseDoc, sectionText,
+  actions, addAction, addJournal, checkAction, editAction, journal, moveAction, parseDoc, removeAction, sectionText,
   serializeDoc, setField, setSectionText, type Doc,
 } from "./markdown-doc";
 import { detectSensitive } from "./secrets";
@@ -77,9 +77,12 @@ export type EditOp =
   | { op: "section"; name: string; text: string }
   | { op: "action-add"; text: string }
   | { op: "action-check"; index: number; text: string }
+  | { op: "action-remove"; index: number; text: string }
   | { op: "action-edit"; index: number; text: string; newText: string }
   | { op: "action-move"; index: number; text: string; dir: -1 | 1 }
   | { op: "journal-add"; text: string; date?: string };
+
+export const RESERVED_SLUGS = new Set(["aujourdhui", "pipeline", "liste", "domaines"]);
 
 const ARCHIVE_STATUSES = new Set(["done", "dropped"]);
 
@@ -132,6 +135,9 @@ function apply(kind: Kind, d: Doc, op: EditOp, today: string) {
     case "action-check":
       checkAction(d, op.index, op.text, today);
       return;
+    case "action-remove":
+      removeAction(d, op.index, op.text);
+      return;
     case "action-edit":
       checkText(op.newText);
       editAction(d, op.index, op.text, oneLine(op.newText));
@@ -170,7 +176,8 @@ export async function createEntry(kind: Kind, title: string): Promise<string> {
   const base = slugify(clean);
   if (!base) throw new UserError("Ce titre ne permet pas de créer un nom de dossier (utilise des lettres ou des chiffres).");
   const rootDir = path.join(/*turbopackIgnore: true*/ CONTENT_DIR, ROOT[kind]);
-  const exists = (n: string) => fs.access(/*turbopackIgnore: true*/ path.join(rootDir, n)).then(() => true, () => false);
+  // Noms réservés aux onglets de /projets (aujourdhui, pipeline, liste, domaines).
+  const exists = (n: string) => (kind === "project" && RESERVED_SLUGS.has(n) ? Promise.resolve(true) : fs.access(/*turbopackIgnore: true*/ path.join(rootDir, n)).then(() => true, () => false));
   let slug = base;
   for (let n = 2; await exists(slug); n++) slug = `${base}-${n}`;
 

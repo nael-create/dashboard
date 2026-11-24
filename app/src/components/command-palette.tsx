@@ -3,7 +3,7 @@
 import {
   ArrowRight, CalendarCheck, CalendarDays, CornerDownLeft, FolderKanban, GraduationCap, Inbox, Layers, Mail, Newspaper,
   Palette, Plus, Save, Search, Star, StickyNote, type LucideIcon,
-  Download, Highlighter,
+  Download, Highlighter, ListChecks,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
@@ -14,6 +14,7 @@ import { NAV_ITEMS } from "@/lib/navigation";
 import { EVENTS } from "@/lib/shortcuts";
 import { SAVE_EVENT } from "./save-button";
 import { UPDATE_EVENT } from "./update-button";
+import { TASKS_EVENT } from "./tasks/use-tasks";
 
 export const OPEN_PALETTE = "dashboard:open-palette";
 
@@ -96,6 +97,19 @@ export function CommandPalette() {
     }
   }, [close]);
 
+  /** Tâche depuis le texte tapé (même analyseur que la saisie rapide : « demain 14h #projet »…). */
+  const addTask = useCallback(async (text: string) => {
+    try {
+      const r = await apiJson<{ task: { title: string; date: string; time: string | null } }>("/api/tasks", "POST", { action: "quick", text });
+      window.dispatchEvent(new Event(TASKS_EVENT));
+      setFlash({ ok: true, text: `Tâche ajoutée : « ${r.task.title} » · ${r.task.date}${r.task.time ? ` ${r.task.time}` : ""}` });
+      setQ("");
+      setTimeout(close, 1100);
+    } catch (e) {
+      setFlash({ ok: false, text: e instanceof Error ? e.message : String(e) });
+    }
+  }, [close]);
+
   const rows = useMemo((): Row[] => {
     const text = q.trim();
     type Action = Row & { label: string; keywords: string };
@@ -103,8 +117,9 @@ export function CommandPalette() {
     const creations: Action[] = [
       { key: "a:notion", group: "Actions", icon: GraduationCap, label: "Nouvelle notion", title: "Nouvelle notion", keywords: "notion terme glossaire ajouter",
         run: () => { close(); window.dispatchEvent(new CustomEvent(EVENTS.newNotion, { detail: { term: "" } })); } },
+      { key: "a:tache", group: "Actions", icon: ListChecks, label: "Nouvelle tâche", title: "Nouvelle tâche", keywords: "tache todo faire ajouter aujourd'hui", run: () => go("/projets/aujourdhui?nouvelle=1") },
       { key: "a:memo", group: "Actions", icon: StickyNote, label: "Nouveau mémo", title: "Nouveau mémo", keywords: "memo ajouter retenir", run: () => go("/memo?nouveau=1") },
-      { key: "a:projet", group: "Actions", icon: FolderKanban, label: "Nouveau projet", title: "Nouveau projet", keywords: "projet creer", run: () => go("/projets?nouveau=projet") },
+      { key: "a:projet", group: "Actions", icon: FolderKanban, label: "Nouveau projet", title: "Nouveau projet", keywords: "projet creer", run: () => go("/projets/liste?nouveau=projet") },
     ];
     const others: Action[] = [
       { key: "a:save", group: "Actions", icon: Save, label: "Sauvegarder", title: "Sauvegarder", keywords: "git github commit envoyer", run: () => { close(); window.dispatchEvent(new Event(SAVE_EVENT)); } },
@@ -130,8 +145,9 @@ export function CommandPalette() {
       title: `${c.label} : ${text}`,
       run: c.key === "a:notion"
         ? () => { close(); window.dispatchEvent(new CustomEvent(EVENTS.newNotion, { detail: { term: text } })); }
+        : c.key === "a:tache" ? () => addTask(text)
         : c.key === "a:memo" ? () => go(`/memo?nouveau=1&titre=${encodeURIComponent(text)}`)
-        : () => go(`/projets?nouveau=projet&titre=${encodeURIComponent(text)}`),
+        : () => go(`/projets/liste?nouveau=projet&titre=${encodeURIComponent(text)}`),
     }));
 
     const results: Row[] = [];
@@ -148,7 +164,7 @@ export function CommandPalette() {
     // Actions reconnues regroupées (« Actions » puis « Aller à ») pour n'afficher chaque groupe qu'une fois.
     const groupedNamed = [...named.filter((a) => a.group === "Actions"), ...named.filter((a) => a.group !== "Actions")];
     return [...groupedNamed.map(strip), ...results, ...prefilled, inboxRow];
-  }, [q, items, theme, setTheme, go, close, addToInbox]);
+  }, [q, items, theme, setTheme, go, close, addToInbox, addTask]);
 
   useEffect(() => setActive(0), [q]);
   useEffect(() => {
@@ -167,6 +183,10 @@ export function CommandPalette() {
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       setActive((a) => Math.max(0, a - 1));
+    } else if (e.key === "Enter" && e.shiftKey && rows[0]?.key === "a:inbox" && q.trim()) {
+      // Texte qui ne correspond à rien : Maj+Entrée crée une tâche (aujourd'hui par défaut), Entrée l'envoie à l'inbox.
+      e.preventDefault();
+      addTask(q.trim());
     } else if (e.key === "Enter") {
       e.preventDefault();
       rows[active]?.run();
@@ -225,7 +245,7 @@ export function CommandPalette() {
         </ul>
         <p className="flex flex-wrap gap-x-4 gap-y-1 border-t border-border px-4 py-2 text-[11px] text-muted">
           <span>↑ ↓ pour naviguer</span><span>Entrée pour valider</span><span>? pour l&apos;aide des raccourcis</span>
-          <span className="ml-auto inline-flex items-center gap-1"><Plus className="size-3" aria-hidden /> Texte inconnu + Entrée = inbox</span>
+          <span className="ml-auto inline-flex items-center gap-1"><Plus className="size-3" aria-hidden /> Texte inconnu : Entrée = inbox · Maj+Entrée = tâche</span>
         </p>
       </div>
     </div>

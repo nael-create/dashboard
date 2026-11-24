@@ -11,7 +11,6 @@ export const HEADER_ITEMS: { href: string; label: string }[] = [
   { href: "/", label: "Accueil" },
   { href: "/projets", label: "Projets" },
   { href: "/notions", label: "Notions" },
-  { href: "/memo", label: "Mémo" },
   { href: "/newsletters", label: "Newsletters" },
   { href: "/surlignages", label: "Surlignages" },
   { href: "/news", label: "News" },
@@ -20,7 +19,9 @@ export const HEADER_ITEMS: { href: string; label: string }[] = [
 ];
 
 function isActive(pathname: string, href: string) {
-  return href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
+  if (href === "/") return pathname === "/";
+  if (href === "/projets" && pathname.startsWith("/domaines/")) return true;
+  return pathname === href || pathname.startsWith(`${href}/`);
 }
 
 /** Heure locale (fuseau de l'ordinateur), mise à jour chaque minute. */

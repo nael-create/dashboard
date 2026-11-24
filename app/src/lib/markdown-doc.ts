@@ -202,6 +202,13 @@ export function checkAction(d: Doc, index: number, expected: string, date: strin
   addJournal(d, date, `Fait : ${item.text}`);
 }
 
+/** Retire une prochaine action sans l'inscrire au journal (« Planifier » : elle devient une tâche datée). */
+export function removeAction(d: Doc, index: number, expected: string) {
+  const item = itemAt(d, index, expected);
+  d.lines.splice(item.line, 1);
+  return item.text;
+}
+
 /** Entrées du journal (« - YYYY-MM-DD — texte »). */
 export function journal(d: Doc): { date: string; text: string }[] {
   const s = findSection(d, "Journal");
