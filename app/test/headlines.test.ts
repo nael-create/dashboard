@@ -27,11 +27,13 @@ describe("alternance des sources", () => {
 describe("mise en page sans trou", () => {
   const sum = (n: number) => gridLayout(n).reduce((s, c) => s + Number(c.span.split("-").pop()), 0);
   it("chaque rangée fait 12 colonnes", () => {
-    for (let n = 1; n <= 12; n++) expect(sum(n) % 12, `n=${n}`).toBe(0);
+    for (let n = 1; n <= 16; n++) expect(sum(n) % 12, `n=${n}`).toBe(0);
   });
   it("première rangée dominante : deux grandes images", () => {
     expect(gridLayout(10).slice(0, 2)).toEqual([{ span: "lg:col-span-6", big: true }, { span: "lg:col-span-6", big: true }]);
-    expect(gridLayout(10).slice(2).every((c) => !c.big && c.span === "lg:col-span-3")).toBe(true);
+    expect(gridLayout(14).slice(2).every((c) => !c.big && c.span === "lg:col-span-2")).toBe(true);
+    expect(gridLayout(8).slice(2).map((c) => c.span)).toEqual(Array(6).fill("lg:col-span-2"));
+    expect(gridLayout(10).slice(2).map((c) => c.span)).toEqual([...Array(6).fill("lg:col-span-2"), ...Array(2).fill("lg:col-span-6")]);
     expect(gridLayout(7).slice(2).map((c) => c.span)).toEqual(["lg:col-span-4", "lg:col-span-4", "lg:col-span-4", "lg:col-span-6", "lg:col-span-6"]);
   });
   it("peu de sujets : pleine largeur, moitiés ou tiers", () => {

@@ -11,8 +11,8 @@ import type { Article } from "@/lib/rss";
  * Une image qui ne se charge pas retire simplement le sujet (jamais d'image cassée ni de carte texte).
  */
 export function HeadlineCard({
-  article, image, index, big, sourceName,
-}: { article: Article; image: string; index: number; big: boolean; sourceName: string }) {
+  article, image, index, big, small = false, sourceName,
+}: { article: Article; image: string; index: number; big: boolean; small?: boolean; sourceName: string }) {
   const [broken, setBroken] = useState(false);
   if (broken) return null;
   const n = String(index + 1).padStart(2, "0");
@@ -31,11 +31,11 @@ export function HeadlineCard({
             className="absolute inset-0 size-full object-cover transition-transform duration-700 ease-[var(--ease)] group-hover:scale-[1.03]"
           />
         </div>
-        <h3 className={`mt-3 leading-snug ${big ? "text-[clamp(1.1rem,1.6vw,1.4rem)] font-light tracking-[-0.025em]" : "text-[15px] font-normal tracking-[-0.01em]"}`}>
+        <h3 className={`leading-snug ${big ? "mt-3 text-[clamp(1.1rem,1.6vw,1.4rem)] font-light tracking-[-0.025em]" : small ? "mt-2 line-clamp-3 text-[14px] font-normal tracking-[-0.01em] lg:text-[13px]" : "mt-3 text-[15px] font-normal tracking-[-0.01em]"}`}>
           <span className="link-underline">{article.title}</span>
         </h3>
       </a>
-      <p className="label mt-3 flex items-center gap-2 text-muted">
+      <p className={`label flex items-center gap-2 text-muted ${small ? "mt-2 lg:gap-1.5 lg:text-[10px]" : "mt-3"}`}>
         <span>{n}.</span>
         <span className="truncate">{sourceName}</span>
         {article.date && (

@@ -7,7 +7,7 @@ import { gridLayout, interleave } from "@/lib/headlines";
 import { HeadlineCard } from "./headline-card";
 import { AutoRefresh } from "./auto-refresh";
 
-const COUNT = 10;
+const COUNT = 14; // 2 grands + 2 rangées de 6
 /** Sujets examinés par source (image du flux, sinon og:image, mise en cache). */
 const PER_SOURCE = 14;
 
@@ -62,10 +62,10 @@ export async function HeadlinesGrid() {
   return (
     <div>
       <AutoRefresh minutes={5} />
-      <ol className="grid grid-cols-1 gap-x-2 gap-y-8 sm:grid-cols-2 lg:grid-cols-12">
+      <ol className="grid grid-cols-1 gap-x-2 gap-y-8 sm:grid-cols-2 lg:grid-cols-12 lg:gap-y-6">
         {items.map((it, i) => (
           <li key={it.id} className={`${items.length === 1 ? "sm:col-span-2" : ""} ${cells[i].span}`}>
-            <HeadlineCard article={it} image={it.image} index={i} big={cells[i].big} sourceName={names.get(it.sourceId) ?? it.publisher} />
+            <HeadlineCard article={it} image={it.image} index={i} big={cells[i].big} small={cells[i].span === "lg:col-span-2"} sourceName={names.get(it.sourceId) ?? it.publisher} />
           </li>
         ))}
       </ol>
