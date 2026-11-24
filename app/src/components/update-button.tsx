@@ -52,8 +52,14 @@ export function UpdateButton() {
 
   useEffect(() => {
     check();
-    const t = setInterval(() => check(), 30 * 60_000);
-    return () => clearInterval(t);
+    // Vérifie aussi au retour sur l'onglet (GitHub est interrogé au plus toutes les 10 min côté serveur).
+    const t = setInterval(() => check(), 10 * 60_000);
+    const vis = () => document.visibilityState === "visible" && check();
+    document.addEventListener("visibilitychange", vis);
+    return () => {
+      clearInterval(t);
+      document.removeEventListener("visibilitychange", vis);
+    };
   }, [check]);
 
   const start = useCallback(async () => {

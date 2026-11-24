@@ -142,6 +142,13 @@ export function RemindersPanel({ api }: { api: TasksApi }) {
               : status ? "Aucun passage pour l'instant." : ""}
           </span>
         </div>
+        {run && run.status === "completed" && run.conclusion !== "success" && (
+          <p className="text-[12px] leading-relaxed text-amber-800 dark:text-amber-300">
+            Le dernier passage a échoué. Le plus souvent : les secrets <code>RESEND_API_KEY</code> et <code>REMINDER_TO</code> ne sont pas
+            encore dans GitHub (dépôt → Settings → Secrets and variables → Actions), ou <code>REMINDER_TO</code> n&apos;est pas l&apos;adresse
+            du compte Resend. Le détail est dans le lien ci-dessus. Guide : app/README.md, « Rappels par e-mail ».
+          </p>
+        )}
         {msg && <p role="status" className={`text-[13px] ${msg.ok ? "text-emerald-700 dark:text-emerald-400" : "text-rose-700 dark:text-rose-400"}`}>{msg.text}</p>}
       </div>
     </details>
