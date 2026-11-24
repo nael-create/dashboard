@@ -397,3 +397,71 @@ async function doSave(confirmOtherBranch: boolean): Promise<SaveResult> {
 }
 
 
+
+/* ------------------------------------------------------------------ */
+/* Synchronisation automatique de TACHES.md (section 21)                */
+/* ------------------------------------------------------------------ */
+
+const TASKS_PATH = "TACHES.md";
+
+export type TaskSyncResult =
+  | { kind: "ok"; committed: boolean }
+  | { kind: "skipped"; message: string }
+  | { kind: "error"; message: string; committed: boolean };
+
+let syncing: Promise<TaskSyncResult> | null = null;
+
+/**
+ * Commite TACHES.md SEUL (commit limité à ce chemin : rien d'autre n'est emporté) puis envoie sur GitHub,
+ * avec les mêmes garanties que « Sauvegarder » : arguments fixes, contrôle des secrets, pull --rebase
+ * --autostash, jamais de push forcé, conflit → rebase annulé, commit local gardé. Seulement sur main.
+ */
+export async function syncTasksFile(): Promise<TaskSyncResult> {
+  while (running) await running.catch(() => null);
+  if (!syncing) syncing = doSyncTasks().finally(() => (syncing = null));
+  return syncing;
+}
+
+async function doSyncTasks(): Promise<TaskSyncResult> {
+  if ((await git(["rev-parse", "--is-inside-work-tree"])).code !== 0) return { kind: "skipped", message: "Le dossier n'est pas un dépôt git." };
+  if (await rebaseInProgress()) return { kind: "skipped", message: "Une opération git est en cours (fusion ou rebase)." };
+  const branch = (await git(["rev-parse", "--abbrev-ref", "HEAD"])).stdout.trim();
+  if (branch !== "main") return { kind: "skipped", message: `Pas de synchro automatique hors de « main » (branche actuelle : ${branch}). Utilise « Sauvegarder ».` };
+
+  let committed = false;
+  const changed = (await git(["status", "--porcelain", "-z", "--", TASKS_PATH])).stdout.trim().length > 0;
+  if (changed) {
+    const add = await git(["add", "--", TASKS_PATH]);
+    if (add.code !== 0) return { kind: "error", message: `Préparation impossible : ${add.stderr.trim().slice(0, 200)}`, committed: false };
+    const diff = (await git(["diff", "--cached", "--no-color", "--no-ext-diff", "-U0", "--", TASKS_PATH])).stdout;
+    const secrets = findSecrets(diff);
+    if (secrets.length) {
+      await git(["reset", "-q", "--", TASKS_PATH]);
+      return { kind: "error", committed: false, message: `Synchro annulée par sécurité : ${secrets.map((s) => s.reason).join(" ; ")}. Retire l'information de TACHES.md.` };
+    }
+    const commit = await git(["commit", "-q", "--no-verify", "--only", "-F", "-", "--", TASKS_PATH], "Tâches : TACHES.md mis à jour\n");
+    if (commit.code !== 0) {
+      await git(["reset", "-q", "--", TASKS_PATH]);
+      return { kind: "error", committed: false, message: /Please tell me who you are|user\.email|user\.name/i.test(commit.stderr) ? "git ne connaît pas encore ton nom et ton e-mail (voir app/README.md)." : `Le commit a échoué : ${commit.stderr.trim().slice(0, 200)}` };
+    }
+    committed = true;
+  }
+
+  const upstream = await git(["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}"]);
+  if (upstream.code !== 0) return { kind: "error", committed, message: "Pas de branche GitHub associée à main : utilise « Sauvegarder » une première fois." };
+  const ahead = Number.parseInt((await git(["rev-list", "--count", "@{upstream}..HEAD"])).stdout.trim(), 10) || 0;
+  if (!committed && ahead === 0) return { kind: "ok", committed: false };
+
+  const pull = await git(["pull", "--rebase", "--autostash", "--no-edit", "--quiet"], undefined, 120_000);
+  if (pull.code !== 0) {
+    if (await rebaseInProgress()) {
+      await git(["rebase", "--abort"]);
+      return { kind: "error", committed, message: "Conflit avec GitHub sur TACHES.md : rien n'a été envoyé, tes tâches sont intactes. Utilise « Sauvegarder » pour voir le détail." };
+    }
+    return { kind: "error", committed, message: explainPush(pull.stderr) };
+  }
+  const push = await git(["push", "--quiet"], undefined, 120_000);
+  if (push.code !== 0) return { kind: "error", committed, message: explainPush(push.stderr) };
+  await writePushCheck("ok");
+  return { kind: "ok", committed };
+}

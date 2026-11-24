@@ -9,7 +9,7 @@ Les mots « DOIT », « NE DOIT PAS », « DEVRAIT », « PEUT » ont le sens de
 ## 1. Contraintes générales
 
 - Tous les fichiers de **contenu personnel** DOIVENT être du Markdown simple (`.md`) : pas de base de données, pas de JSON. (Exception technique : `archive/.gitkeep`.)
-- Le code de l'application web vit **uniquement** dans `app/` (voir section 9). Hors de `app/`, aucun script ni dépendance, à une exception près : le lanceur macOS `Lancer le dashboard.command` à la racine (exécutable, voir `app/README.md`).
+- Le code de l'application web vit **uniquement** dans `app/` (voir section 9). Hors de `app/`, aucun script ni dépendance, à deux exceptions près : le lanceur macOS `Lancer le dashboard.command` à la racine (exécutable, voir `app/README.md`) et le workflow `.github/workflows/rappels.yml` (section 21), qui exécute un script de `app/`.
 - Les fichiers DOIVENT rester lisibles et modifiables à la main dans n'importe quel éditeur de texte.
 - Noms de fichiers et de dossiers : minuscules, kebab-case (ex. `projects/side-app/`).
   - **Exceptions autorisées** : les fichiers de revue `reviews/YYYY-Www.md` (ex. `2026-W46.md`, avec `W` majuscule, semaine ISO 8601) ; les fichiers racine imposés `CLAUDE.md`, `DASHBOARD.md`, `INBOX.md` et les `README.md` ; les préfixes `_` des templates (`_template`) ; le contenu de `app/`, qui suit les conventions de Next.js (`[slug]`, `next.config.ts`, `README.md`…) ; `.gitignore` ; le lanceur macOS `Lancer le dashboard.command` (nom imposé par le propriétaire).
@@ -32,6 +32,7 @@ TACHES.md               # Tâches datées et réglages des rappels (voir section
 SURLIGNAGES.md          # Passages surlignés dans les newsletters (voir section 19)
 .gitignore              # Secrets et fichiers générés
 Lancer le dashboard.command  # Lanceur macOS en double-clic (doit rester exécutable)
+.github/workflows/rappels.yml # Rappels par e-mail des tâches (voir section 21)
 app/                    # Application web (code uniquement, voir section 9)
 projects/               # Un dossier par projet en cours
   _template/README.md
@@ -390,3 +391,15 @@ autosync: yes             # envoi automatique de TACHES.md sur GitHub
 - **Projets** : cocher une tâche liée ajoute `- YYYY-MM-DD — Fait : …` en haut du Journal du projet (et met `updated` à jour) ; « Planifier » sur une prochaine action la retire du README (sans entrée au journal) et crée une tâche datée liée.
 - **Palette** : « Nouvelle tâche » (reprend le texte tapé, même analyseur) ; sur un texte qui ne correspond à rien, **Maj+Entrée** crée une tâche (Entrée l'envoie toujours à l'inbox).
 - Pas de secrets dans TACHES.md (même contrôle que le mémo).
+
+## 21. Rappels par e-mail (GitHub Actions + Resend)
+
+- **Exception explicite et unique à la règle « pas de notifications »** : les e-mails de rappel des tâches sont les seules notifications du dashboard. Aucune autre (navigateur, push, son, alerte) ne DOIT être ajoutée.
+- Workflow `.github/workflows/rappels.yml` : toutes les heures (`7 * * * *`) et à la demande (`workflow_dispatch`, case « mail de test »). Il lit `TACHES.md` sur `main` et exécute `node --experimental-strip-types app/scripts/send-reminders.ts` (aucune dépendance installée ; le script n'importe que `app/src/lib/tasks-core.ts` et `app/src/lib/reminders-core.ts`, qui DOIVENT rester sans dépendance, imports relatifs en `.ts`, sans syntaxe TypeScript non effaçable).
+- Envoi par l'API Resend (offre gratuite : expéditeur `onboarding@resend.dev`, destinataire = adresse du compte Resend uniquement), en-tête `Idempotency-Key`. **Secrets GitHub Actions uniquement** : `RESEND_API_KEY` et `REMINDER_TO` ; le workflow n'envoie JAMAIS ailleurs qu'à `REMINDER_TO`. L'adresse et la clé ne DOIVENT jamais apparaître dans le dépôt (ni TACHES.md, ni code, ni `.env`). Secrets absents : le passage horaire s'arrête sans erreur (pas de mail d'échec de GitHub) ; le mail de test, lui, échoue en expliquant.
+- Règles (`app/src/lib/reminders-core.ts`, tests `app/test/reminders.test.ts`) : récapitulatif du soir (`evening_digest`, 18:00 par défaut : non faites d'aujourd'hui + en retard), du matin (`morning_digest`, 08:00, seulement si `morning_enabled: yes`, désactivé par défaut : tâches du jour), rappel d'une tâche (`⏰` à l'heure, `⏰-30m` avant) au premier passage horaire à partir de ce moment et au plus 6 h après (sinon sauté) ; heures lues dans le fuseau `timezone` de TACHES.md. **3 mails par jour au plus** (une place gardée pour le soir), aucun mail s'il n'y a rien à dire, plusieurs rappels d'un même passage regroupés en un mail. Français, HTML sobre au style du dashboard + texte brut, un lien par tâche vers `http://127.0.0.1:3000/projets/aujourdhui`.
+- **Anti-doublon** : clé par mail (`evening:<jour>`, `morning:<jour>`, `task:<id>:<date>T<heure>:<rappel>` — un report réarme le rappel), gardée dans `sent.json` sur la branche dédiée **`rappels-etat`** (un commit par changement, jamais de push forcé ; choisie plutôt que le cache d'Actions, effacé après 7 jours sans accès), jamais dans TACHES.md ; clés oubliées après 14 jours.
+- **Synchro automatique** (`app/src/lib/task-sync.ts`, `syncTasksFile` dans `app/src/lib/git.ts`, tests dans `app/test/git.test.ts`) : une minute après la dernière modification d'une tâche, commit limité à `TACHES.md` (`git commit --only`), contrôle des secrets, `pull --rebase --autostash`, `push` ; jamais de push forcé ; conflit → `rebase --abort` ; seulement sur `main` ; échec → message discret et nouvel essai 5 min plus tard. Activée par défaut, `autosync: no` la coupe. État en mémoire (« synchronisé il y a X min »).
+- Panneau « rappels par e-mail » (`app/src/components/tasks/reminders-panel.tsx`, route `app/src/app/api/tasks/reminders/`) : activer, heures, matin, synchro, « Envoyer un mail de test » et dernier passage via **GitHub CLI** (`app/src/lib/gh.ts` : `gh workflow run rappels.yml --ref main -f test=true`, `gh run list`, sans shell, arguments fixes).
+- Consommation estimée : ≈ 720 min/mois (1 min par passage). Dépôt public : gratuit et illimité ; s'il devient privé, ≈ 36 % des 2 000 min gratuites — fréquence horaire conservée.
+- Guide de mise en place en français : `app/README.md`, « Rappels par e-mail ».

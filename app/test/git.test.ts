@@ -110,3 +110,53 @@ describe("bouton Sauvegarder", () => {
     expect(["app/src/a.ts", "app/data/news.local.json", ".env.local", "projects/.env", "docs/x.md"].some(G.isContentPath)).toBe(false);
   });
 });
+
+describe("synchro automatique de TACHES.md", () => {
+  it("ne commite et n'envoie que TACHES.md, même si d'autres fichiers sont modifiés ou préparés", async () => {
+    sh(A, "checkout", "-q", "main");
+    sh(A, "pull", "-q", "--rebase");
+    write(A, "TACHES.md", "# Tâches\n\n- [ ] 2026-11-24 Appeler la banque id:t-20261124-1\n");
+    write(A, "NOTIONS.md", read("NOTIONS.md") + "\n## Autre\nadded: 2026-11-24\n\nx\n");
+    write(A, "INBOX.md", "# Inbox\n");
+    sh(A, "add", "INBOX.md");
+    const res = await G.syncTasksFile();
+    expect(res).toEqual({ kind: "ok", committed: true });
+    expect(sh(A, "show", "--name-only", "--format=%s", "HEAD").trim().split("\n").filter(Boolean)).toEqual(["Tâches : TACHES.md mis à jour", "TACHES.md"]);
+    expect(sh(remote, "log", "-1", "--format=%s", "main").trim()).toBe("Tâches : TACHES.md mis à jour");
+    const st = sh(A, "status", "--porcelain");
+    expect(st).toContain(" M NOTIONS.md");
+    expect(st).toContain("A  INBOX.md");
+    sh(A, "reset", "-q");
+    fs.rmSync(path.join(A, "INBOX.md"));
+    sh(A, "checkout", "-q", "--", "NOTIONS.md");
+  });
+
+  it("récupère d'abord les modifications de GitHub (rebase), sans push forcé", async () => {
+    sh(B, "pull", "-q", "--rebase");
+    write(B, "NEWS.md", "# News\n");
+    sh(B, "add", "NEWS.md");
+    sh(B, "commit", "-qm", "ailleurs");
+    sh(B, "push", "-q");
+    write(A, "TACHES.md", read("TACHES.md") + "- [ ] 2026-11-25 Deuxième id:t-20261124-2\n");
+    expect(await G.syncTasksFile()).toEqual({ kind: "ok", committed: true });
+    expect(sh(remote, "log", "-2", "--format=%s", "main").trim().split("\n")).toEqual(["Tâches : TACHES.md mis à jour", "ailleurs"]);
+  });
+
+  it("refuse un secret dans TACHES.md (rien n'est commité)", async () => {
+    const before = sh(A, "rev-parse", "HEAD");
+    write(A, "TACHES.md", read("TACHES.md") + "- [ ] 2026-11-25 mot de passe : hunter22 id:t-20261124-3\n");
+    const res = await G.syncTasksFile();
+    expect(res).toMatchObject({ kind: "error", committed: false });
+    expect(sh(A, "rev-parse", "HEAD")).toBe(before);
+    expect(sh(A, "diff", "--cached", "--name-only").trim()).toBe("");
+    sh(A, "checkout", "-q", "--", "TACHES.md");
+  });
+
+  it("hors de main : rien n'est fait", async () => {
+    sh(A, "checkout", "-q", "-b", "essai-sync");
+    write(A, "TACHES.md", read("TACHES.md") + "- [ ] 2026-11-26 Trois id:t-20261124-4\n");
+    expect((await G.syncTasksFile()).kind).toBe("skipped");
+    sh(A, "checkout", "-q", "--", "TACHES.md");
+    sh(A, "checkout", "-q", "main");
+  });
+});

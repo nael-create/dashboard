@@ -155,7 +155,8 @@ Le thème clair/sombre suit le réglage du système ; le bouton en haut à droit
 | Adresse | Contenu | État |
 |---|---|---|
 | `/` | Accueil : 01. agenda, 02. à la une (grille d'images), puis projets actifs, à retenir aujourd'hui, mémo, newsletters | ✅ |
-| `/projets` | Focus de la semaine, projets et domaines, filtres, « Nouveau projet » / « Nouveau domaine » | ✅ |
+| `/projets/aujourdhui` | Tâches du jour (`TACHES.md`) : saisie rapide, en retard / aujourd'hui / demain / cette semaine, historique, rappels par e-mail ; focus de la semaine en haut | ✅ |
+| `/projets/pipeline`, `/projets/liste`, `/projets/domaines` | Projets par étape, liste filtrable, domaines | ✅ |
 | `/projets/<nom>` et `/domaines/<nom>` | Modifier le projet / domaine (champs, sections, actions, journal) | ✅ |
 | `/news` | Actus : widgets par source ou catégorie, glisser-déposer, masquer, sources gérées depuis l'app | ✅ |
 | `/notions` | Notions : glossaire (« Tout consulter »), gestion, import en masse, impression | ✅ |
@@ -245,6 +246,52 @@ Les calendriers abonnés (Outlook, Google, iCloud) restent en lecture seule. Pou
 - **Journal** : choisis la date et ajoute une entrée ; elle se place en haut.
 - **Terminé / Abandonné** : une confirmation s'affiche, puis le dossier est déplacé dans `archive/`. Il n'y a pas de bouton de suppression : on archive.
 - Chaque modification met à jour la date `updated` et le fichier `DASHBOARD.md`, et apparaît dans le compteur du bouton **Sauvegarder**.
+
+## Tâches du jour (`TACHES.md`)
+
+Onglet **projets → aujourd'hui**. Tape une tâche comme tu la dirais, puis **Entrée** :
+
+- « Appeler la banque demain 14h #medtech » → demain à 14:00, liée au projet medtech ;
+- « Sport tous les lundis 7h » → chaque lundi à 7:00 (la suivante est créée quand tu coches) ;
+- « Rendu 25/11 », « Dentiste jeudi 9h30 pendant 1h », « Loyer tous les mois le 1er » ;
+- ajoute « ⏰ » pour un rappel par e-mail à l'heure, « ⏰-30m » pour 30 minutes avant.
+
+Sous le champ, un **aperçu** montre ce qui a été compris (date, heure, projet…) avant d'enregistrer. Si la date est douteuse, le texte reste dans le titre : corrige la date avec « ⋯ → Choisir une date ».
+
+Sur chaque tâche : la case coche, « ⋯ » (ou un appui long sur téléphone) ouvre Aujourd'hui / Demain / Choisir une date / Modifier / Abandonner / Supprimer. Au clavier : **Espace** coche, **⌥↑ / ⌥↓** déplace, **Entrée** modifie ; à la souris, glisse-dépose. Les tâches en retard proposent « Reporter à aujourd'hui », « Reporter à demain » ou « Abandonner ». Le lien **historique** montre les tâches faites et abandonnées, semaine par semaine.
+
+Cocher une tâche liée à un projet ajoute « Fait : … » au journal du projet. Sur la page d'un projet, l'icône calendrier d'une prochaine action (**Planifier**) la transforme en tâche datée. Depuis n'importe où : **⌘K** puis « Nouvelle tâche », ou tape le texte puis **Maj+Entrée**.
+
+## Rappels par e-mail
+
+Les seules notifications du dashboard. GitHub vérifie `TACHES.md` **toutes les heures** (à la minute 7) et t'envoie :
+
+- le **récapitulatif du soir** (18:00 par défaut) : ce qui reste aujourd'hui et ce qui est en retard ;
+- le **récapitulatif du matin** (08:00, désactivé par défaut) : les tâches du jour ;
+- le **rappel d'une tâche** marquée « ⏰ » ou « ⏰-30m », au premier passage horaire après l'heure prévue (donc jusqu'à une heure plus tard).
+
+Jamais plus de 3 mails par jour, aucun s'il n'y a rien à dire, jamais deux fois le même rappel. Les réglages sont dans le panneau **rappels par e-mail** de l'onglet « aujourd'hui » (ils sont écrits dans l'en-tête de `TACHES.md` ; ton adresse et la clé n'y sont jamais).
+
+Pourquoi Resend : offre gratuite (3 000 mails par mois, 100 par jour), et sans posséder de nom de domaine il peut envoyer depuis `onboarding@resend.dev`, mais **uniquement à l'adresse de ton compte Resend** — exactement notre cas. Note : les titres de tes tâches passent par Resend pour l'envoi.
+
+### Mise en place (une seule fois, ≈ 10 minutes)
+
+1. **Compte Resend** : va sur resend.com, crée un compte **avec l'adresse où tu veux recevoir les rappels**, confirme l'e-mail.
+2. **Clé d'API** : dans Resend, menu **API Keys** → **Create API Key** → nom « dashboard », permission **Sending access** → **Add**. Copie la clé (elle commence par `re_` ; elle ne s'affiche qu'une fois).
+3. **Secrets GitHub** : sur github.com, ouvre le dépôt `dashboard` → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**, deux fois :
+   - nom `RESEND_API_KEY`, valeur : la clé `re_…` ;
+   - nom `REMINDER_TO`, valeur : ton adresse (la même que celle du compte Resend).
+   Ne mets ces valeurs nulle part ailleurs (ni dans un fichier, ni dans le dashboard).
+4. **Activer le workflow** : onglet **Actions** du dépôt. Si GitHub demande d'autoriser les workflows, clique sur le bouton vert. Le workflow **Rappels** apparaît dans la liste de gauche ; s'il est marqué « disabled », ouvre-le puis **Enable workflow**.
+5. **Mail de test** : dans le dashboard, onglet **projets → aujourd'hui**, panneau **rappels par e-mail** → **Envoyer un mail de test** (le dashboard utilise GitHub CLI, déjà connecté sur ton Mac). Le mail arrive en 1 à 2 minutes ; regarde aussi dans les indésirables la première fois. Sans le dashboard : onglet **Actions** → **Rappels** → **Run workflow**, coche « Envoyer un mail de test », **Run workflow**.
+
+### Bon à savoir
+
+- Les rappels lisent `TACHES.md` **sur GitHub**. La **synchronisation automatique** (activée par défaut) envoie `TACHES.md` — et seulement lui — une minute après chaque modification (« synchronisé il y a X min » dans le panneau). Désactivée, seule la version envoyée avec « Sauvegarder » compte. Elle ne fonctionne que sur la branche `main`.
+- L'état « déjà envoyé » est gardé sur une branche à part, `rappels-etat` (fichier `sent.json`) : il ne touche jamais `TACHES.md` et survit d'un passage à l'autre (le cache de GitHub Actions, lui, peut être effacé au bout de 7 jours).
+- Consommation : un passage dure moins d'une minute, soit environ 720 minutes par mois. Le dépôt étant public, les minutes de GitHub Actions sont gratuites et illimitées ; s'il devenait privé, cela resterait sous les 2 000 minutes gratuites par mois (environ un tiers).
+- GitHub met en pause les workflows programmés d'un dépôt public après 60 jours sans activité ; la synchronisation des tâches suffit à l'éviter. S'il est en pause : **Actions → Rappels → Enable workflow**.
+- En cas de souci, le panneau affiche le dernier passage (lien vers le détail sur GitHub). « 403 » dans le détail : `REMINDER_TO` n'est pas l'adresse du compte Resend.
 
 ## Sauvegarder (envoyer ton contenu sur GitHub)
 
@@ -375,6 +422,8 @@ Comment le vérifier, sans risque :
 | `app/data/calendars.local.json` | liens d'abonnement aux calendriers (phase 3) |
 
 Ces fichiers sont listés dans le `.gitignore` à la racine du dépôt.
+
+La clé Resend et l'adresse de réception des rappels ne sont **sur aucun fichier** : uniquement dans les secrets GitHub Actions (`RESEND_API_KEY`, `REMINDER_TO`).
 
 ## Sécurité et déploiement
 

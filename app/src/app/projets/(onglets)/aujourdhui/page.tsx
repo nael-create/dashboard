@@ -11,9 +11,7 @@ export default async function TodayTab() {
   return (
     <div className="grid gap-8">
       <FocusCard compact />
-      <div className="max-w-3xl">
-        <TasksToday projects={projects} />
-      </div>
+      <TasksToday projects={projects} withSettings />
     </div>
   );
 }

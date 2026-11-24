@@ -7,13 +7,14 @@ import { longDay, relativeDay } from "@/lib/task-format";
 import { Notice } from "@/components/ui/notice";
 import { TaskQuickAdd, type ProjectRef } from "./task-quick-add";
 import { TaskRow } from "./task-row";
-import { useTasks, type TasksApi } from "./use-tasks";
+import { RemindersPanel } from "./reminders-panel";
+import { useTasks } from "./use-tasks";
 
 /**
  * Onglet « aujourd'hui » de /projets : saisie rapide, sections en retard / aujourd'hui / demain /
  * cette semaine (vides masquées, sauf « aujourd'hui »), progression discrète, historique par semaine.
  */
-export function TasksToday({ projects, settingsSlot }: { projects: ProjectRef[]; settingsSlot?: (api: TasksApi) => React.ReactNode }) {
+export function TasksToday({ projects, withSettings = false }: { projects: ProjectRef[]; withSettings?: boolean }) {
   const api = useTasks();
   const [history, setHistory] = useState(false);
 
@@ -39,7 +40,8 @@ export function TasksToday({ projects, settingsSlot }: { projects: ProjectRef[];
   const progress = s ? todayProgress(s.tasks, s.today) : { done: 0, total: 0 };
 
   return (
-    <div className="space-y-8">
+    <div className={withSettings ? "grid gap-12 lg:grid-cols-12" : ""}>
+    <div className={`space-y-8 ${withSettings ? "lg:col-span-8" : ""}`}>
       <div>
         {s ? <TaskQuickAdd api={api} projects={projects} today={s.today} /> : <div className="h-[42px] border border-border bg-surface" />}
         {api.error && <div className="mt-3"><Notice>{api.error}</Notice></div>}
@@ -101,7 +103,12 @@ export function TasksToday({ projects, settingsSlot }: { projects: ProjectRef[];
         </>
       )}
 
-      {s && settingsSlot?.(api)}
+    </div>
+      {withSettings && s && (
+        <aside className="lg:col-span-4">
+          <div className="lg:sticky lg:top-6"><RemindersPanel api={api} /></div>
+        </aside>
+      )}
     </div>
   );
 }
