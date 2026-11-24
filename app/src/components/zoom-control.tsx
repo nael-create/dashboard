@@ -1,11 +1,21 @@
 "use client";
 
 import { Minus, Plus } from "lucide-react";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { defaultZoom, getZoom, setZoom, stepZoom, ZOOM_EVENT, ZOOM_LEVELS } from "@/lib/zoom";
+import { applyPageZoom, defaultZoom, getZoom, setZoom as setPageZoom, stepZoom, ZOOM_EVENT, ZOOM_LEVELS } from "@/lib/zoom";
 
-/** Zoom du contenu : « − », le pourcentage (clic = retour à la taille par défaut), « + ». L'en-tête ne change pas. */
+/**
+ * Zoom du contenu de la page affichée : « − », le pourcentage (clic = retour à la taille par défaut), « + ».
+ * Chaque page garde le sien ; l'en-tête ne change pas.
+ */
 export function ZoomControl({ className = "" }: { className?: string }) {
+  const pathname = usePathname();
+  const setZoom = (z: number) => setPageZoom(z, pathname);
+  // Changement de page : on applique le zoom retenu pour la nouvelle page.
+  useEffect(() => {
+    applyPageZoom(pathname);
+  }, [pathname]);
   const [zoom, setLocal] = useState(1);
   const [base, setBase] = useState(1);
   useEffect(() => {
@@ -20,7 +30,7 @@ export function ZoomControl({ className = "" }: { className?: string }) {
 
   const btn = "grid size-7 place-items-center rounded-full text-muted transition-colors hover:bg-surface-2 hover:text-text disabled:opacity-30";
   return (
-    <span role="group" aria-label="Zoom du dashboard" className={`inline-flex items-center gap-0.5 ${className}`}>
+    <span role="group" aria-label="Zoom du dashboard" title="Zoom de cette page (chaque page garde le sien)" className={`inline-flex items-center gap-0.5 ${className}`}>
       <button type="button" className={btn} onClick={() => setZoom(stepZoom(zoom, -1))} disabled={zoom <= ZOOM_LEVELS[0]} aria-label="Réduire le zoom" title="Réduire">
         <Minus className="size-3.5" aria-hidden />
       </button>
