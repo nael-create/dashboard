@@ -6,25 +6,25 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { UserError } from "./api";
-import { CONTENT_DIR, isValidSlug, type Kind } from "./content";
+import { CONTENT_DIR, isValidSlug, parseTags, STAGES, type Kind } from "./content";
 import { readVersioned, updateFile } from "./content-file";
 import { regenerateDashboard } from "./dashboard-md";
 import { todayISO } from "./dates";
 import {
   actions, addAction, addJournal, addMilestone, checkAction, editAction, editMilestone, journal, milestones, moveAction, parseDoc,
   removeAction, removeMilestone, sectionText, setMilestoneDone,
-  serializeDoc, setField, setSectionText, type Doc,
+  serializeDoc, setField, setSectionText, ensureSectionBefore, findSection, type Doc,
 } from "./markdown-doc";
 import { detectSensitive } from "./secrets";
 import { slugify } from "./slug";
 
 export const ROOT: Record<Kind, string> = { project: "projects", area: "areas" };
 export const SECTIONS: Record<Kind, string[]> = {
-  project: ["Objectif", "Notes", "Liens"],
+  project: ["Objectif", "Pourquoi", "Critères de réussite", "Ressources", "Risques", "Notes", "Liens"],
   area: ["Rôle", "Standards à maintenir", "Notes"],
 };
 const FIELDS: Record<Kind, string[]> = {
-  project: ["title", "status", "priority", "next_action", "deadline"],
+  project: ["title", "status", "priority", "next_action", "deadline", "stage", "started", "tags"],
   area: ["title", "status", "priority"],
 };
 
@@ -47,6 +47,8 @@ export interface EditableEntry {
   sections: Record<string, string>;
   actions: { text: string; done: boolean }[];
   journal: { date: string; text: string }[];
+  /** Projets : jalons (## Jalons), dans l'ordre du fichier. */
+  milestones: { date: string; text: string; done: boolean }[];
   /** Corps complet (affichage en lecture seule des sections non éditables). */
   body: string;
 }
@@ -70,7 +72,7 @@ export async function readEditable(kind: Kind, slug: string): Promise<EditableEn
   const sections: Record<string, string> = {};
   for (const name of SECTIONS[kind]) sections[name] = sectionText(d, name) ?? "";
   const body = d.fm ? d.lines.slice(d.fm.end + 1).join("\n") : cur.text;
-  return { kind, slug, version: cur.version, fields, sections, actions: actions(d).map(({ text, done }) => ({ text, done })), journal: journal(d), body };
+  return { kind, slug, version: cur.version, fields, sections, actions: actions(d).map(({ text, done }) => ({ text, done })), journal: journal(d), milestones: milestones(d).map(({ date, text, done }) => ({ date, text, done })), body };
 }
 
 export type EditOp =
@@ -86,6 +88,9 @@ export type EditOp =
   | { op: "milestone-check"; index: number; text: string; done: boolean }
   | { op: "milestone-edit"; index: number; text: string; date: string; newText: string }
   | { op: "milestone-remove"; index: number; text: string };
+
+/** Ordre habituel des sections d'un projet (les sections ajoutées s'y insèrent). */
+const SECTION_ORDER = ["Objectif", "Pourquoi", "Critères de réussite", "Ressources", "Risques", "Prochaines actions", "Notes", "Liens", "Jalons", "Journal"];
 
 export const RESERVED_SLUGS = new Set(["aujourdhui", "pipeline", "liste", "domaines"]);
 
@@ -108,6 +113,8 @@ export async function editEntry(kind: Kind, slug: string, version: string, op: E
       throw new UserError(e instanceof Error ? e.message : String(e), 409);
     }
     setField(d, "updated", today);
+    // Projets écrits avant les étapes : « stage » est ajouté à la première modification.
+    if (kind === "project" && !/^stage\s*:/m.test(d.fm ? d.lines.slice(d.fm.start + 1, d.fm.end).join("\n") : "")) setField(d, "stage", STAGES[0].id);
     return { text: serializeDoc(d) };
   });
 
@@ -124,13 +131,18 @@ function apply(kind: Kind, d: Doc, op: EditOp, today: string) {
         if (!FIELDS[kind].includes(k)) throw new UserError(`Champ non modifiable : ${k}.`);
         if (/[\r\n]/.test(v)) throw new UserError("Une valeur doit tenir sur une ligne.");
         checkText(v);
-        setField(d, k, k === "title" || k === "next_action" ? v.trim() || "TODO: fill in" : v.trim());
+        setField(d, k, normalizeField(k, v));
       }
       return;
     case "section":
       if (!SECTIONS[kind].includes(op.name)) throw new UserError("Section non modifiable.");
       if (/^#{1,2}\s/m.test(op.text)) throw new UserError("Le texte ne peut pas contenir de titres « # » ou « ## » (utilise « ### »).");
       checkText(op.text);
+      if (!findSection(d, op.name)) {
+        // Nouvelle section : à sa place dans l'ordre habituel (avant la première section qui la suit).
+        const later = SECTION_ORDER.slice(SECTION_ORDER.indexOf(op.name) + 1).find((n) => findSection(d, n));
+        if (later) ensureSectionBefore(d, op.name, later);
+      }
       setSectionText(d, op.name, op.text);
       return;
     case "action-add":
@@ -174,6 +186,19 @@ function apply(kind: Kind, d: Doc, op: EditOp, today: string) {
   }
 }
 
+/** Valeurs contrôlées : étape connue, dates ISO (ou vide), tags « a, b ». */
+function normalizeField(k: string, v: string): string {
+  const t = v.trim();
+  if (k === "title" || k === "next_action") return t || "TODO: fill in";
+  if (k === "stage") {
+    if (!STAGES.some((s) => s.id === t)) throw new UserError("Étape inconnue.");
+    return t;
+  }
+  if (k === "deadline" || k === "started") return t ? isoDate(t) : "";
+  if (k === "tags") return parseTags(t).join(", ");
+  return t;
+}
+
 function isoDate(v: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(v) || Number.isNaN(Date.parse(`${v}T00:00:00Z`))) throw new UserError("Date invalide.");
   return v;
@@ -210,7 +235,11 @@ export async function createEntry(kind: Kind, title: string): Promise<string> {
   for (let n = 2; await exists(slug); n++) slug = `${base}-${n}`;
 
   const tplDir = path.join(/*turbopackIgnore: true*/ rootDir, "_template");
-  await fs.cp(/*turbopackIgnore: true*/ tplDir, path.join(/*turbopackIgnore: true*/ rootDir, slug), { recursive: true, errorOnExist: true });
+  await fs.cp(/*turbopackIgnore: true*/ tplDir, path.join(/*turbopackIgnore: true*/ rootDir, slug), {
+    recursive: true, errorOnExist: true,
+    // Les modèles de pages de docs restent dans _template (ils servent à « Nouvelle page »).
+    filter: (src) => !src.split(path.sep).includes("docs-templates"),
+  });
 
   const today = todayISO();
   await updateFile(readmePath(kind, slug), undefined, (text) => {
@@ -220,6 +249,8 @@ export async function createEntry(kind: Kind, title: string): Promise<string> {
     setField(d, "priority", "P3");
     setField(d, "created", today);
     setField(d, "updated", today);
+    // Projets écrits avant les étapes : « stage » est ajouté à la première modification.
+    if (kind === "project" && !/^stage\s*:/m.test(d.fm ? d.lines.slice(d.fm.start + 1, d.fm.end).join("\n") : "")) setField(d, "stage", STAGES[0].id);
     const h1 = d.lines.findIndex((l) => /^#\s/.test(l));
     if (h1 >= 0) d.lines[h1] = `# ${clean}`;
     // Date réelle de création dans le journal du template.

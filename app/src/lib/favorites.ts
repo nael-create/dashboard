@@ -3,8 +3,8 @@
  *
  *   ## 2026-11-13 — Titre
  *   id: fav-20261113-1
- *   type: article            ← article | newsletter | notion | memo | project | highlight
- *   ref: https://…           ← lien (article, newsletter) ou référence interne (notion:…, memo:…, project:…, highlight:…)
+ *   type: article            ← article | newsletter | notion | doc | project | highlight (memo : ancien type, affiché « Élément supprimé »)
+ *   ref: https://…           ← lien (article, newsletter) ou référence interne (notion:…, doc:<projet>/<page>, project:…, highlight:…)
  *   source: FT World
  *   published: 2026-11-12    ← date de l'article / de la newsletter (facultatif)
  *   note: Ma note courte     ← facultatif
@@ -16,13 +16,12 @@ import path from "node:path";
 import { UserError } from "./api";
 import { CONTENT_DIR, isValidSlug } from "./content";
 import { joinLines, readVersioned, splitLines, updateFile } from "./content-file";
-import { readMemo } from "./memo";
 import { readNotions } from "./notions";
 import { readHighlights } from "./highlights";
 import { detectSensitive } from "./secrets";
 
 export const FAVORITES_FILE = "FAVORIS.md";
-export const FAVORITE_TYPES = ["article", "newsletter", "notion", "memo", "project", "highlight"] as const;
+export const FAVORITE_TYPES = ["article", "newsletter", "notion", "doc", "project", "highlight", "memo"] as const;
 export type FavoriteType = (typeof FAVORITE_TYPES)[number];
 
 export interface Favorite {
@@ -104,6 +103,8 @@ function validRef(type: FavoriteType, ref: string): boolean {
       return false;
     }
   }
+  if (type === "memo") return false; // le mémo n'existe plus : plus de nouveaux favoris de ce type
+  if (type === "doc") return /^doc:[a-z0-9]+(?:-[a-z0-9]+)*\/[a-z0-9]+(?:-[a-z0-9]+)*$/.test(ref);
   return new RegExp(`^${type}:[A-Za-z0-9_-]+$`).test(ref);
 }
 
@@ -181,15 +182,16 @@ export interface ResolvedFavorite extends Omit<Favorite, "start" | "end"> {
   archived: boolean;
 }
 
+const fileExists = (rel: string) =>
+  fs.stat(/*turbopackIgnore: true*/ path.join(CONTENT_DIR, rel)).then((s) => s.isFile(), () => false);
 const dirExists = (rel: string) =>
   fs.stat(/*turbopackIgnore: true*/ path.join(CONTENT_DIR, rel)).then((s) => s.isDirectory(), () => false);
 
 export async function resolveFavorites(): Promise<{ favorites: ResolvedFavorite[]; version: string }> {
-  const [{ favorites, version }, { notions }, { entries }, { highlights }] = await Promise.all([readFavorites(), readNotions(), readMemo(), readHighlights()]);
+  const [{ favorites, version }, { notions }, { highlights }] = await Promise.all([readFavorites(), readNotions(), readHighlights()]);
   const highlightIds = new Set(highlights.map((h) => h.id));
   const notionIds = new Set(notions.filter((n) => n.definition.trim()).map((n) => n.id));
   const allNotionIds = new Set(notions.map((n) => n.id));
-  const memoIds = new Set(entries.map((e) => e.id ?? e.key));
   const out: ResolvedFavorite[] = [];
   for (const { start: _s, end: _e, ...f } of favorites) {
     const [, target] = f.ref.split(/:(.*)/s);
@@ -203,8 +205,11 @@ export async function resolveFavorites(): Promise<{ favorites: ResolvedFavorite[
       href = notionIds.has(target) ? `/notions#notion-${target}` : `/notions?onglet=gerer`;
     } else if (f.type === "highlight" && highlightIds.has(target)) {
       href = `/surlignages#${target}`;
-    } else if (f.type === "memo" && memoIds.has(target)) {
-      href = `/memo#memo-${target}`;
+    } else if (f.type === "doc" && /^[a-z0-9-]+\/[a-z0-9-]+$/.test(target)) {
+      // Page de docs : projects/<projet>/docs/<page>.md ; projet archivé → « Archivé ».
+      const [p, d] = target.split("/");
+      if (await fileExists(`projects/${p}/docs/${d}.md`)) href = `/projets/${p}/docs/${d}`;
+      else if (await fileExists(`archive/${p}/docs/${d}.md`)) archived = true;
     } else if (f.type === "project" && isValidSlug(target)) {
       if (await dirExists(`projects/${target}`)) href = `/projets/${target}`;
       else if (await dirExists(`archive/${target}`)) archived = true;

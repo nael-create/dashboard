@@ -23,15 +23,16 @@ export interface Editable {
   sections: Record<string, string>;
   actions: { text: string; done: boolean }[];
   journal: { date: string; text: string }[];
+  milestones?: { date: string; text: string; done: boolean }[];
   body: string;
 }
 
-const STATUSES: [string, string][] = [["idea", "Idée"], ["active", "Actif"], ["paused", "En pause"], ["done", "Terminé"], ["dropped", "Abandonné"]];
-const PRIORITIES = ["P1", "P2", "P3"];
-const KNOWN = new Set(["Objectif", "Prochaines actions", "Notes", "Liens", "Journal", "Rôle", "Standards à maintenir"]);
-const isTodo = (v?: string) => !v || v.trim() === "TODO: fill in";
+export const STATUSES: [string, string][] = [["idea", "Idée"], ["active", "Actif"], ["paused", "En pause"], ["done", "Terminé"], ["dropped", "Abandonné"]];
+export const PRIORITIES = ["P1", "P2", "P3"];
+const KNOWN = new Set(["Objectif", "Pourquoi", "Critères de réussite", "Ressources", "Risques", "Prochaines actions", "Notes", "Liens", "Jalons", "Journal", "Rôle", "Standards à maintenir"]);
+export const isTodo = (v?: string) => !v || v.trim() === "TODO: fill in";
 
-type Change = Record<string, unknown> & { op: string };
+export type Change = Record<string, unknown> & { op: string };
 
 export function EntryEditor({ initial, star }: { initial: Editable; star?: ReactNode }) {
   const router = useRouter();
@@ -197,7 +198,7 @@ export function EntryEditor({ initial, star }: { initial: Editable; star?: React
 }
 
 /** Champ d'une ligne modifiable sur place (Entrée ou sortie du champ pour enregistrer). */
-function InlineText({
+export function InlineText({
   value, label, onSave, className = "", boxed = false,
 }: { value: string; label: string; onSave: (v: string) => Promise<boolean>; className?: string; boxed?: boolean }) {
   const [v, setV] = useState(isTodo(value) ? "" : value);
@@ -224,7 +225,7 @@ function InlineText({
   );
 }
 
-function SectionEditor({ name, text, onSave }: { name: string; text: string; onSave: (t: string) => Promise<boolean> }) {
+export function SectionEditor({ name, text, onSave }: { name: string; text: string; onSave: (t: string) => Promise<boolean> }) {
   const [editing, setEditing] = useState(false);
   return (
     <section>
@@ -248,7 +249,7 @@ function SectionEditor({ name, text, onSave }: { name: string; text: string; onS
   );
 }
 
-function Actions({ items, change, plan }: {
+export function Actions({ items, change, plan }: {
   items: { text: string; done: boolean }[];
   change: (c: Change) => Promise<boolean>;
   plan?: (index: number, text: string, date: string, time: string | null) => Promise<boolean>;
@@ -305,7 +306,7 @@ function Actions({ items, change, plan }: {
   );
 }
 
-function Journal({ entries, change }: { entries: { date: string; text: string }[]; change: (c: Change) => Promise<boolean> }) {
+export function Journal({ entries, change }: { entries: { date: string; text: string }[]; change: (c: Change) => Promise<boolean> }) {
   const [text, setText] = useState("");
   const [date, setDate] = useState(() => new Date().toLocaleDateString("en-CA"));
   return (
@@ -333,7 +334,7 @@ function Journal({ entries, change }: { entries: { date: string; text: string }[
 }
 
 /** Sections ajoutées à la main (hors modèle) : affichées en lecture seule. */
-function extraSections(body: string): [string, string][] {
+export function extraSections(body: string): [string, string][] {
   const out: [string, string][] = [];
   const parts = body.split(/^## /m).slice(1);
   for (const p of parts) {

@@ -8,7 +8,7 @@ Les mots « DOIT », « NE DOIT PAS », « DEVRAIT », « PEUT » ont le sens de
 
 ## 1. Contraintes générales
 
-- Tous les fichiers de **contenu personnel** DOIVENT être du Markdown simple (`.md`) : pas de base de données, pas de JSON. (Exception technique : `archive/.gitkeep`.)
+- Tous les fichiers de **contenu personnel** DOIVENT être du Markdown simple (`.md`) : pas de base de données, pas de JSON. (Exceptions : `archive/.gitkeep` ; les images des pages de docs, `projects/<projet>/assets/*.png|jpg|webp|gif`, section 22.)
 - Le code de l'application web vit **uniquement** dans `app/` (voir section 9). Hors de `app/`, aucun script ni dépendance, à deux exceptions près : le lanceur macOS `Lancer le dashboard.command` à la racine (exécutable, voir `app/README.md`) et le workflow `.github/workflows/rappels.yml` (section 21), qui exécute un script de `app/`.
 - Les fichiers DOIVENT rester lisibles et modifiables à la main dans n'importe quel éditeur de texte.
 - Noms de fichiers et de dossiers : minuscules, kebab-case (ex. `projects/side-app/`).
@@ -36,6 +36,9 @@ Lancer le dashboard.command  # Lanceur macOS en double-clic (doit rester exécut
 app/                    # Application web (code uniquement, voir section 9)
 projects/               # Un dossier par projet en cours
   _template/README.md
+  _template/docs-templates/   # Modèles de pages de docs (section 22)
+  <projet>/docs/        # Pages de docs du projet (section 22) ; docs/_archive/ = pages supprimées
+  <projet>/assets/      # Images des pages de docs
 areas/                  # Responsabilités continues sans date de fin (finances, santé…)
   _template/README.md
 archive/                # Projets terminés ou abandonnés, déplacés tels quels
@@ -59,8 +62,13 @@ Frontmatter YAML obligatoire (toute valeur contenant « : » DOIT être entre gu
 | `updated` | `YYYY-MM-DD` |
 | `next_action` | texte |
 | `deadline` | `YYYY-MM-DD` ou vide (optionnel) |
+| `stage` | étape : `idee` \| `recherche` \| `conception` \| `realisation` \| `lancement` \| `suivi` (liste dans `dashboard.config.ts`, `projectStages`) ; absente = `idee`, ajoutée par l'app à la première modification |
+| `started` | `YYYY-MM-DD` ou vide (optionnel) : début réel |
+| `tags` | `a, b` (optionnel, minuscules) |
 
 Sections obligatoires, dans cet ordre : `## Objectif`, `## Prochaines actions` (liste de cases à cocher), `## Notes`, `## Liens`, `## Journal` (entrées datées, ordre antichronologique : la plus récente en haut).
+
+Sections facultatives (modèle et page projet) : `## Pourquoi`, `## Critères de réussite`, `## Ressources`, `## Risques` (après Objectif), `## Jalons` (avant Journal : `- [ ] YYYY-MM-DD — Titre`, `[x]` = atteint, ordre chronologique). Une section ajoutée par l'app se place dans cet ordre : Objectif, Pourquoi, Critères de réussite, Ressources, Risques, Prochaines actions, Notes, Liens, Jalons, Journal.
 
 ## 4. Domaines — `areas/<nom-du-domaine>/README.md`
 
@@ -126,7 +134,8 @@ Séparation stricte :
   | `FAVORIS.md` | 10 | favoris (ajout / retrait par l'étoile, note personnelle, retrait d'un élément supprimé) |
   | `SURLIGNAGES.md` | 19 | surlignages (ajout depuis la lecture d'une newsletter, couleur, note, suppression avec confirmation) |
   | `TACHES.md` | 20 | tâches (ajout, modification, cochage, report, abandon, suppression avec confirmation, ordre) et réglages des rappels (frontmatter) |
-  | `projects/*/README.md`, `areas/*/README.md` | 9 | frontmatter, sections, actions, journal ; création depuis `_template` |
+  | `projects/*/README.md`, `areas/*/README.md` | 9, 22 | frontmatter (dont `stage`, `started`, `tags`), sections, actions, jalons, journal ; création depuis `_template` (sans `docs-templates/`) |
+  | `projects/*/docs/*.md`, `projects/*/assets/*` | 22 | pages de docs (création, titre, texte, ordre, « Nouvelle décision », suppression = déplacement dans `docs/_archive/`) ; images collées ou déposées |
   | `archive/` | 9 | déplacement d'un projet passé à `done` / `dropped` (après confirmation) |
   | `DASHBOARD.md` | 9 | régénéré entièrement après chaque modification de projet / domaine (et de revue ou d'inbox) |
 
@@ -268,7 +277,7 @@ Définition (une ou plusieurs lignes).
 ## 14. Modifier projets et domaines depuis l'app
 
 - Code : `app/src/lib/markdown-doc.ts` (modifications ligne par ligne) et `app/src/lib/entries-edit.ts`.
-- Projet : titre, statut, priorité, `next_action`, `deadline` (sélecteurs et calendrier) ; sections Objectif, Notes, Liens (éditeur « Écrire / Aperçu ») ; prochaines actions (ajout, modification, ↑/↓) ; journal (entrée datée ajoutée en haut).
+- Projet (page `/projets/<nom>`, `app/src/components/projects/project-view.tsx`) : en-tête (titre, statut, **étapes cliquables**, priorité, deadline, avancement = % de jalons atteints, dernière activité = max de `updated`, du journal et des tâches liées faites) ; onglets `?onglet=` « vue d'ensemble » (Objectif, Pourquoi, Critères de réussite, Ressources, Risques, Notes, Liens avec l'éditeur « Écrire / Aperçu » ; prochaine action, prochaines actions avec « Planifier », début, tags), « tâches » (tâches liées, saisie rapide pré-liée), « jalons » (ajout, cochage → `Jalon atteint : …` au journal, modification, suppression avec confirmation), « docs » (section 22), « journal » (ajout rapide, plus récent en haut).
 - Cocher une prochaine action la retire de la liste et ajoute `- YYYY-MM-DD — Fait : …` en haut du Journal.
 - Domaine : titre, statut, priorité ; sections Rôle, Standards à maintenir, Notes.
 - Chaque modification met `updated` à la date du jour et régénère DASHBOARD.md. Les commentaires du frontmatter (ex. `# idea | active…`) et les sections ajoutées à la main sont conservés (ces dernières affichées en lecture seule).
@@ -281,14 +290,14 @@ Définition (une ou plusieurs lignes).
 ```markdown
 ## 2026-11-13 — Titre
 id: fav-20261113-1
-type: article                # article | newsletter | notion | memo | project | highlight
-ref: https://…               # lien, ou référence interne : notion:<id>, memo:<id>, project:<dossier>, highlight:<id>
+type: article                # article | newsletter | notion | doc | project | highlight
+ref: https://…               # lien, ou référence interne : notion:<id>, doc:<projet>/<page>, project:<dossier>, highlight:<id>
 source: FT World
 published: 2026-11-12        # facultatif
 note: Note personnelle courte  # facultatif
 ```
 
-- Étoile sur les articles (widgets et listes), newsletters (liste et lecture), notions, mémos, projets et surlignages ; page `/favoris` (filtre par type, recherche, note). Pas de widget de favoris sur l'accueil.
+- Étoile sur les articles (widgets et listes), newsletters (liste et lecture), notions, pages de docs (type « Doc », qui remplace « Mémo »), projets et surlignages ; les anciens favoris `memo` s'affichent « Élément supprimé » (retrait possible, plus d'ajout) ; page `/favoris` (filtre par type, recherche, note). Pas de widget de favoris sur l'accueil.
 - **Articles : titre, URL, source, date uniquement. Newsletters : objet, expéditeur, date et lien Outlook web uniquement. Jamais le texte d'un article ni le corps d'un e-mail.**
 - Références internes vérifiées à l'affichage : cible disparue → « Élément supprimé » avec bouton de retrait ; projet archivé → « Archivé ».
 - L'étoile ajoute / retire un bloc sur le contenu du moment (rien d'autre n'est réécrit) ; la note suit la règle « fichier inchangé depuis la lecture ».
@@ -404,3 +413,12 @@ autosync: yes             # envoi automatique de TACHES.md sur GitHub
 - Panneau « rappels par e-mail » (`app/src/components/tasks/reminders-panel.tsx`, route `app/src/app/api/tasks/reminders/`) : activer, heures, matin, synchro, « Envoyer un mail de test » et dernier passage via **GitHub CLI** (`app/src/lib/gh.ts` : `gh workflow run rappels.yml --ref main -f test=true`, `gh run list`, sans shell, arguments fixes).
 - Consommation estimée : ≈ 720 min/mois (1 min par passage). Dépôt public : gratuit et illimité ; s'il devient privé, ≈ 36 % des 2 000 min gratuites — fréquence horaire conservée.
 - Guide de mise en place en français : `app/README.md`, « Rappels par e-mail ».
+
+## 22. Pipeline, liste et pages de docs des projets
+
+- **Pipeline** (`/projets/pipeline`, `app/src/components/projects/pipeline-board.tsx`, données `app/src/lib/project-board.ts`, indicateurs `app/src/lib/project-stats.ts`) : une colonne par étape, une carte par projet actif ou en pause (titre, priorité, deadline, barre d'avancement des jalons, prochaine tâche liée sinon `next_action`). Glisser une carte ou utiliser son menu « étape » (clavier) écrit `stage`. Bascules `?termines=1` (projets de `archive/`, lecture seule, pâlis) et `?chronologie=1` (jalons des 3 prochains mois, une ligne par projet). « à l'arrêt » : projet actif sans activité depuis `stalledDays` jours (dashboard.config.ts, 14) — simple mention, aucune alerte.
+- **Liste** (`/projets/liste`) : filtres statut, priorité, étape, tags (`?statut=`, `?priorite=`, `?etape=`, `?tag=`) et tri priorité / deadline / dernière activité (`?tri=`). **Domaines** (`/projets/domaines`) : inchangés.
+- **Pages de docs** (`app/src/lib/docs.ts`, routes `app/src/app/api/projects/[slug]/docs/` et `/assets/`, page `/projets/<projet>/docs/<page>`, `app/src/components/projects/doc-page.tsx`) : `projects/<projet>/docs/<page>.md` avec frontmatter `title`, `created`, `updated`, `order`, puis Markdown libre. Créer (vide ou depuis un modèle de `projects/_template/docs-templates/` : Brief, Recherche / benchmark, Journal de décisions, Specs, Retour d'expérience), renommer (le titre ; le nom de fichier reste, les liens tiennent), réordonner (glisser ou ↑/↓), modifier (« Écrire / Aperçu », ⌘S), **supprimer = ranger dans `docs/_archive/` après confirmation, jamais effacer**. Journal de décisions : « Nouvelle décision » ajoute un bloc daté en tête de `## Décisions`.
+- Sommaire automatique dès 3 titres `##`/`###`. Liens `[[page]]`, `[[projet]]`, `[[projet/page]]`, `[[cible|texte]]` (`app/src/lib/wiki-links.ts`), autocomplétion après « [[ » ; lien cassé = visible, rouge pointillé, sans erreur.
+- Images collées, déposées ou choisies : `projects/<projet>/assets/<horodatage>-<nom>.<ext>`, **5 Mo max, PNG/JPG/WebP/GIF vérifiés par leur signature** (jamais de SVG), insérées en `![](../assets/…)`, servies par `/api/projects/<projet>/assets/<fichier>` (type fixé, `nosniff`, CSP `default-src 'none'`). Images distantes non chargées dans les docs.
+- Pages de docs dans la palette et les favoris (type « Doc »). Pas de secrets (même contrôle que le mémo). Tests : `app/test/docs.test.ts`, `app/test/milestones.test.ts`.

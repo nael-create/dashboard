@@ -68,3 +68,14 @@ describe("calques du calendrier", () => {
     expect(ev[0]).toMatchObject({ calendarId: "jalons", allDay: true, start: "2026-11-26", end: "2026-11-27", title: "Prototype · Alpha" });
   });
 });
+
+describe("indicateurs de projet", async () => {
+  const { projectStats } = await import("@/lib/project-stats");
+  const tasks = parseTasksFile(`- [x] 2026-11-20 A #alpha id:t-1 ✓2026-11-21\n- [ ] 2026-11-28 B #alpha id:t-2\n- [ ] 2026-11-26 10:00 C #alpha id:t-3\n- [ ] 2026-11-25 Autre #beta id:t-4\n`).tasks;
+  it("avancement, dernière activité, prochaine tâche, à l'arrêt après 14 jours", () => {
+    const s = projectStats({ slug: "alpha", status: "active", updated: "2026-11-10", journalTop: "2026-11-15" }, [{ done: true }, { done: false }, { done: true }], tasks, "2026-11-24", 14);
+    expect(s).toEqual({ progress: { done: 2, total: 3, pct: 67 }, lastActivity: "2026-11-21", nextTask: { title: "C", date: "2026-11-26", time: "10:00" }, stalled: false });
+    expect(projectStats({ slug: "alpha", status: "active", updated: "2026-11-01" }, [], [], "2026-11-24", 14)).toMatchObject({ stalled: true, progress: { pct: null } });
+    expect(projectStats({ slug: "alpha", status: "paused", updated: "2026-01-01" }, [], [], "2026-11-24", 14).stalled).toBe(false);
+  });
+});
