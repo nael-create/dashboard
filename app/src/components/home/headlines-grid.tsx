@@ -7,7 +7,7 @@ import { gridLayout, interleave } from "@/lib/headlines";
 import { HeadlineCard } from "./headline-card";
 import { AutoRefresh } from "./auto-refresh";
 
-const COUNT = 14; // 2 grands + 2 rangées de 6
+const COUNT = 12; // 2 rangées de 6
 /** Sujets examinés par source (image du flux, sinon og:image, mise en cache). */
 const PER_SOURCE = 14;
 
@@ -62,9 +62,9 @@ export async function HeadlinesGrid() {
   return (
     <div>
       <AutoRefresh minutes={5} />
-      <ol className="grid grid-cols-1 gap-x-2 gap-y-8 sm:grid-cols-2 lg:grid-cols-12 lg:gap-y-6">
+      <ol className="grid grid-cols-2 gap-x-2 gap-y-6 md:grid-cols-3 lg:grid-cols-12">
         {items.map((it, i) => (
-          <li key={it.id} className={`${items.length === 1 ? "sm:col-span-2" : ""} ${cells[i].span}`}>
+          <li key={it.id} className={`${items.length === 1 ? "col-span-2 md:col-span-3" : ""} ${cells[i].span}`}>
             <HeadlineCard article={it} image={it.image} index={i} big={cells[i].big} small={cells[i].span === "lg:col-span-2"} sourceName={names.get(it.sourceId) ?? it.publisher} />
           </li>
         ))}
@@ -81,9 +81,8 @@ export async function HeadlinesGrid() {
 /** Squelette affiché pendant le chargement des flux. */
 export function HeadlinesSkeleton() {
   return (
-    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-12" aria-label="Chargement des actus">
-      <div className="aspect-[16/10] max-h-[50vh] animate-pulse bg-surface-2 lg:col-span-6" />
-      <div className="aspect-[16/10] max-h-[50vh] animate-pulse bg-surface-2 lg:col-span-6" />
+    <div className="grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-12" aria-label="Chargement des actus">
+      {Array.from({ length: 6 }, (_, i) => <div key={i} className="aspect-[4/3] animate-pulse bg-surface-2 lg:col-span-2" />)}
     </div>
   );
 }
