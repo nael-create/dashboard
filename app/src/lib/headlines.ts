@@ -3,34 +3,29 @@
  * test/headlines.test.ts.
  *
  * - Seuls les articles AVEC image sont retenus (image du flux, sinon og:image).
- * - Colonne vertébrale : l'ordre éditorial du flux principal (FT International) ; les autres sources
- *   s'intercalent à tour de rôle ; jamais plus de 2 sujets d'affilée de la même source.
- * - Mise en page adaptée au nombre de sujets (aucun trou), première rangée dominante.
+ * - Sources équilibrées (demande du propriétaire) : chaque source active (une par site) fournit un sujet
+ *   à tour de rôle — FT International d'abord, puis les autres —, chacune dans son ordre éditorial ;
+ *   une source épuisée laisse sa place aux autres ; jamais plus de 2 sujets d'affilée de la même source.
+ * - Mise en page adaptée au nombre de sujets (aucun trou), rangées de 6.
  */
 
 export const MAX_RUN = 2;
 
 /**
- * Entrelace la source principale et les autres : principale tant qu'elle n'a pas déjà fourni les
- * `maxRun` derniers sujets, sinon la source suivante (tour de rôle). S'arrête plutôt que d'enchaîner
- * plus de `maxRun` sujets d'une même source.
+ * Tour de rôle équilibré : `first` (FT International) puis chacune des `others`, un sujet chacune, et on
+ * recommence. Une source vide est sautée. S'arrête plutôt que d'enchaîner plus de `maxRun` sujets
+ * d'une même source (quand il ne reste qu'elle).
  */
-export function interleave<T extends { sourceId: string }>(backbone: T[], others: T[][], max: number, maxRun = MAX_RUN): T[] {
-  const main = [...backbone];
-  const queues = others.map((q) => [...q]).filter((q) => q.length);
+export function interleave<T extends { sourceId: string }>(first: T[], others: T[][], max: number, maxRun = MAX_RUN): T[] {
+  const queues = [first, ...others].map((q) => [...q]).filter((q) => q.length);
   const out: T[] = [];
-  let turn = 0;
   const runOf = (sourceId: string) => {
     let n = 0;
     for (let i = out.length - 1; i >= 0 && out[i].sourceId === sourceId; i--) n++;
     return n;
   };
+  let turn = 0;
   while (out.length < max) {
-    if (main.length && runOf(main[0].sourceId) < maxRun) {
-      out.push(main.shift()!);
-      continue;
-    }
-    // Une autre source, à tour de rôle, sans dépasser la limite d'affilée.
     let picked = false;
     for (let k = 0; k < queues.length; k++) {
       const q = queues[(turn + k) % queues.length];
