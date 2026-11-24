@@ -124,15 +124,22 @@ if command -v git >/dev/null 2>&1 && git -C "$ROOT" rev-parse --is-inside-work-t
       write_update_status network "Pas de connexion à GitHub pour le moment. Réessaie plus tard."
     elif echo "$PULL_OUT" | grep -qiE "Not possible to fast-forward|diverge|non-fast-forward"; then
       # Des sauvegardes faites sur ce Mac (pas encore envoyées sur GitHub) + des nouveautés sur GitHub :
-      # on remet tes sauvegardes par-dessus la nouvelle version, comme le fait « Sauvegarder ».
-      # Jamais forcé ; en cas de conflit, tout est remis exactement comme avant.
-      if [ -z "$(git status --porcelain --untracked-files=no 2>/dev/null)" ] && git pull --rebase --quiet origin main >/dev/null 2>&1; then
+      # on remet tes sauvegardes (et tes modifications en cours) par-dessus la nouvelle version, comme
+      # le fait « Sauvegarder ». Seulement si tes modifications en cours ne touchent aucun fichier mis à
+      # jour ; jamais forcé ; en cas de conflit, tout est remis exactement comme avant.
+      MB="$(git merge-base HEAD origin/main 2>/dev/null)"
+      UP_FILES="$(git diff --name-only "$MB" origin/main 2>/dev/null | sort)"
+      DIRTY="$(git status --porcelain --untracked-files=no 2>/dev/null | cut -c4- | sort)"
+      OVERLAP="$(comm -12 <(printf '%s\n' "$UP_FILES") <(printf '%s\n' "$DIRTY") | sed '/^$/d' | head -5 | tr '\n' ' ')"
+      if [ -z "$OVERLAP" ] && git pull --rebase --autostash --quiet origin main >/dev/null 2>&1; then
         echo "✓ Version à jour (tes sauvegardes de ce Mac sont gardées, elles partiront sur GitHub au prochain « Sauvegarder »)"
         write_update_status ok ""
       else
+        CONFLICTS="$(git diff --name-only --diff-filter=U 2>/dev/null | head -5 | tr '\n' ' ')"
         git rebase --abort >/dev/null 2>&1
-        note "Tes sauvegardes de ce Mac et la nouvelle version touchent les mêmes lignes : rien n'a été modifié, le dashboard démarre sur ta version actuelle."
-        write_update_status blocked "Tes modifications sur ce Mac et la nouvelle version touchent les mêmes lignes, ou des modifications ne sont pas encore sauvegardées. Clique sur Sauvegarder, puis réessaie."
+        FILES="${OVERLAP:-$CONFLICTS}"
+        note "Tes modifications de ce Mac et la nouvelle version touchent les mêmes fichiers (${FILES:-inconnus}) : rien n'a été modifié, le dashboard démarre sur ta version actuelle."
+        write_update_status blocked "Tes modifications sur ce Mac et la nouvelle version touchent les mêmes fichiers : ${FILES:-fichiers inconnus}. Rien n'a été modifié. Envoie ce message à Claude."
       fi
     elif echo "$PULL_OUT" | grep -qiE "would be overwritten|local changes"; then
       note "Des modifications locales non sauvegardées touchent des fichiers mis à jour sur GitHub. Rien n'a été effacé ; le dashboard démarre sur ta version actuelle. Clique sur « Sauvegarder », puis relance."
