@@ -2,6 +2,9 @@ import Link from "next/link";
 import { Card, CardHeader, Empty } from "@/components/ui/card";
 import { DeadlineText, Value } from "@/components/ui/badges";
 import { countInbox, listProjects } from "@/lib/content";
+import { todayISO } from "@/lib/dates";
+import { readTasks } from "@/lib/tasks";
+import { nextTask } from "@/lib/tasks-view";
 import { listNewsletters, OutlookError, type NewsletterSummary } from "@/lib/outlook";
 import { relativeTime } from "@/lib/relative-time";
 import { OutlookState } from "@/components/newsletters/outlook-state";
@@ -17,7 +20,8 @@ export function NewsWidget() {
 const num = (i: number) => `${String(i + 1).padStart(2, "0")}.`;
 
 export async function ActiveProjectsWidget({ n }: { n?: string }) {
-  const [projects, inbox] = await Promise.all([listProjects(), countInbox()]);
+  const [projects, inbox, tasks] = await Promise.all([listProjects(), countInbox(), readTasks().then((t) => t.tasks).catch(() => [])]);
+  const today = todayISO();
   const active = projects.filter((p) => p.status === "active");
   return (
     <Card className="h-full">
@@ -39,7 +43,7 @@ export async function ActiveProjectsWidget({ n }: { n?: string }) {
                   <span className="link-underline">{p.title}</span>
                   {p.priority && <span className={`label ml-2 align-middle ${p.priority === "P1" ? "text-accent-text" : "text-muted"}`}>{p.priority}</span>}
                 </span>
-                <span className="col-start-2 text-sm text-muted sm:col-start-auto"><Value text={p.nextAction} /></span>
+                <span className="col-start-2 text-sm text-muted sm:col-start-auto"><Value text={nextTask(tasks, p.slug, today)?.title ?? null} /></span>
                 <span className="label col-start-2 text-muted sm:col-start-auto sm:text-right"><DeadlineText deadline={p.deadline} /></span>
               </Link>
             </li>

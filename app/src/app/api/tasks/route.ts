@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { errorResponse, fail, isSameOrigin, UserError } from "@/lib/api";
-import { listProjects } from "@/lib/content";
+import { listAreas, listProjects } from "@/lib/content";
 import { parseTaskInput } from "@/lib/task-input";
 import { todayISO } from "@/lib/dates";
 import {
@@ -79,7 +79,7 @@ export async function POST(req: Request) {
         break;
       }
       case "quick": {
-        const slugs = (await listProjects()).map((p) => p.slug);
+        const slugs = [...(await listProjects()), ...(await listAreas())].map((p) => p.slug);
         const p = parseTaskInput(b.text, today, slugs);
         if (!p.title) throw new UserError("Il manque le titre de la tâche.");
         const r = await addTask({ title: p.title, date: p.date, time: p.time, duration: p.duration, project: p.project, reminder: p.reminder, recurrence: p.recurrence }, today);

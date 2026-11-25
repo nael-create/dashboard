@@ -214,7 +214,8 @@ export async function deleteTask(version: string, id: string) {
 export async function moveTask(version: string, id: string, dir: -1 | 1) {
   return updateFile(TASKS_FILE, version, (text) => {
     const { file, task } = findTask(text, id);
-    const sameDay = file.tasks.filter((t) => t.date === task.date && t.status === task.status);
+    // Tâches sans date : seulement parmi celles du même projet / domaine (elles ne vivent que sur sa page).
+    const sameDay = file.tasks.filter((t) => t.date === task.date && t.status === task.status && (task.date || t.project === task.project));
     const i = sameDay.findIndex((t) => t.id === id);
     const other = sameDay[i + dir];
     if (!other) return { text: null };
