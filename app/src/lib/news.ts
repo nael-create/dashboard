@@ -15,6 +15,8 @@ export interface NewsWidget {
   domain: string;
   sourceIds: string[];
   visible: boolean;
+  /** Widget texte : montré même sans images (titres seuls), ses articles ne vont pas dans le Fil. */
+  text?: boolean;
   items: NewsArticle[];
 }
 
@@ -72,7 +74,8 @@ export async function buildNews(retryFailed = false): Promise<NewsPayload> {
     // Articles dont on sait qu'ils n'ont pas d'image : marqués ; la page News les montre dans le Fil
     // plutôt que dans les widgets (la page d'un widget, elle, les garde tous).
     const unique: NewsArticle[] = all.map((a) => (noImage(a) ? { ...a, noImage: true } : a));
-    filCandidates.push(...unique.filter((a) => a.noImage).map((a) => ({ a, key })));
+    const text = srcs.some((s) => s.text);
+    if (!text) filCandidates.push(...unique.filter((a) => a.noImage).map((a) => ({ a, key })));
     const first = srcs[0];
     return {
       key,
@@ -81,6 +84,7 @@ export async function buildNews(retryFailed = false): Promise<NewsPayload> {
       domain: feeds.get(first.id)!.siteDomain,
       sourceIds: srcs.map((s) => s.id),
       visible: prefs.get(key) ?? true,
+      ...(text ? { text: true } : {}),
       items: unique.slice(0, 30),
     };
   });

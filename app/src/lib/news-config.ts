@@ -35,6 +35,11 @@ export interface NewsSource {
   color: string;
   enabled: boolean;
   private: boolean;
+  /**
+   * Widget texte (`text: yes`, écrit à la main dans NEWS.md) : affiché même si ses articles n'ont pas
+   * d'image (liste de titres), au lieu d'envoyer ses articles dans le Fil. Ex. Reuters (Google News).
+   */
+  text?: boolean;
 }
 
 export type WidgetMode = "source" | "category";
@@ -76,7 +81,8 @@ function readMeta(lines: string[], b: Block): Record<string, string> {
   const out: Record<string, string> = {};
   for (let i = b.start + 1; i < b.end; i++) {
     const m = lines[i].match(/^([a-z_]+)\s*:\s*(.*?)\s*$/i);
-    if (m) out[m[1].toLowerCase()] = m[2];
+    // « clé: valeur   # commentaire » : le commentaire (précédé d'un espace) est ignoré.
+    if (m) out[m[1].toLowerCase()] = m[2].replace(/\s+#\s.*$/, "");
   }
   return out;
 }
@@ -108,6 +114,7 @@ export function parseNews(text: string): Omit<NewsConfig, "version"> {
         color: /^#[0-9a-f]{6}$/i.test(meta.color ?? "") ? meta.color.toLowerCase() : "#64748b",
         enabled: !/^(no|non|false)$/i.test(meta.enabled ?? "yes"),
         private: false,
+        ...(/^(yes|oui|true)$/i.test(meta.text ?? "") ? { text: true } : {}),
       });
     }
   }

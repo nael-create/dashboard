@@ -45,7 +45,8 @@ export function NewsBoard({ renderActions }: { renderActions?: (a: Article) => R
   };
 
   // Les articles sans image vont dans le « Fil » ; un widget qui n'a que ceux-là n'est montré qu'en mode Organiser.
-  const pictured = (w: NewsWidgetData) => w.items.filter((a) => !a.noImage);
+  // Exception : un widget texte (`text: yes` dans NEWS.md, ex. Reuters) montre ses titres, avec ou sans image.
+  const pictured = (w: NewsWidgetData) => (w.text ? w.items : w.items.filter((a) => !a.noImage));
   const onlyFil = (w: NewsWidgetData) => w.items.length > 0 && pictured(w).length === 0;
   const shown = data ? data.widgets.filter((w) => editing || (w.visible && !onlyFil(w))) : [];
   const sourceOf = new Map(data?.sources.map((s) => [s.id, s]) ?? []);

@@ -20,6 +20,8 @@ export interface NewsWidgetData {
   domain: string;
   sourceIds: string[];
   visible: boolean;
+  /** Widget texte (`text: yes` dans NEWS.md) : titres affichés même sans image. */
+  text?: boolean;
   items: Article[];
 }
 export interface NewsSourceData {
