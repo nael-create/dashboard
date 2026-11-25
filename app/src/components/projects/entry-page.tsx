@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, MoreHorizontal } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { apiJson, isConflict } from "@/lib/client-api";
-import { btnDanger, btnGhost } from "@/components/ui/forms";
+import { btnDanger, btnGhost, btnPrimary } from "@/components/ui/forms";
 import { Notice } from "@/components/ui/notice";
 import { DatePopover } from "@/components/ui/date-popover";
 import { StarButton } from "@/components/favorites/favorites-context";
@@ -109,6 +109,18 @@ export function EntryPage({
     return "Non enregistré.";
   }, [base]);
 
+  /** Ancien format (prochaines actions, jalons, journal…) → tâches et notes du jour, sans rien perdre. */
+  const convert = async () => {
+    setError(null);
+    try {
+      await patch({ op: "migrate" });
+      window.dispatchEvent(new Event(TASKS_EVENT));
+      await reload();
+    } catch (err) {
+      setError({ text: err instanceof Error ? err.message : String(err), conflict: isConflict(err) });
+    }
+  };
+
   const title = e.fields.title && e.fields.title !== "TODO: fill in" ? e.fields.title : e.slug;
   const progress = tasks.state ? entryTasks(tasks.state.tasks, e.slug, tasks.state.today).progress : null;
 
@@ -179,9 +191,7 @@ export function EntryPage({
         {ask === "delete" && <DeleteProject slug={e.slug} title={title} version={() => versionRef.current} onCancel={() => setAsk(null)} onError={(t) => { setAsk(null); setError({ text: t, conflict: true }); }} />}
       </header>
 
-      {e.legacy && (
-        <div className="mt-6"><Notice>Ce fichier est encore à l&apos;ancien format (sections, jalons ou journal). Lance la migration décrite dans <code>app/README.md</code> pour le convertir sans rien perdre.</Notice></div>
-      )}
+      {e.legacy && <ConvertNotice onConvert={convert} />}
 
       <div className="mt-10 grid gap-12 lg:grid-cols-12">
         <div className="min-w-0 lg:col-span-7">
@@ -213,6 +223,22 @@ export function EntryPage({
         <p className="text-xs text-muted">Source : <code className="break-all">{isProject ? "projects" : "areas"}/{e.slug}/README.md</code> · tâches dans <code>TACHES.md</code> (#{e.slug})</p>
       </footer>
     </article>
+  );
+}
+
+function ConvertNotice({ onConvert }: { onConvert: () => Promise<void> }) {
+  const [busy, setBusy] = useState(false);
+  return (
+    <div className="mt-6 border border-accent/60 bg-accent-soft p-4 text-sm">
+      <p className="font-medium">Ce projet est encore à l&apos;ancien format (prochaines actions, jalons, journal ou sections).</p>
+      <p className="mt-1 text-muted">
+        La conversion ne perd rien : prochaines actions → tâches sans date, jalons → tâches datées, journal → notes du jour,
+        sections remplies → note « Ancien contenu : … ». Clique ensuite sur « Sauvegarder ».
+      </p>
+      <button type="button" className={`${btnPrimary} mt-3`} disabled={busy} onClick={async () => { setBusy(true); await onConvert(); setBusy(false); }}>
+        {busy ? "Conversion…" : "Convertir au nouveau format"}
+      </button>
+    </div>
   );
 }
 

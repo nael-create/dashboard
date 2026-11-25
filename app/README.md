@@ -263,6 +263,8 @@ cd app && node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACK
 
 (sans `--dry-run` pour l'appliquer).
 
+Plus simple : la page d'un projet encore à l'ancien format affiche **Convertir au nouveau format** (même conversion, pour ce projet seulement).
+
 ## Tâches du jour (`TACHES.md`)
 
 Onglet **projets → aujourd'hui**. Tape une tâche comme tu la dirais, puis **Entrée** :

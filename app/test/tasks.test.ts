@@ -142,6 +142,25 @@ describe("TACHES.md", () => {
     expect(cur.tasks.map((t) => [t.title, t.id])).toEqual([["A", cur.tasks[0].id], ["B", removed.id], ["C", cur.tasks[2].id]]);
   });
 
+  it("Convertir un projet à l'ancien format depuis sa page : tâches ajoutées, notes du jour, idempotent", async () => {
+    const { readEditable } = await import("@/lib/entries-edit");
+    const { migrateEntry } = await import("@/lib/entry-migration");
+    await tasks.addTask({ title: "Écrire le brief", date: null, project: "alpha" }, TUE); // déjà là : pas de doublon
+    let e = (await readEditable("project", "alpha"))!;
+    expect(e.legacy).toBe(true);
+    const res = await migrateEntry("project", "alpha", e.version);
+    expect(res.tasks).toBe(1);
+    const list = (await tasks.readTasks()).tasks.filter((t) => t.project === "alpha");
+    expect(list.map((t) => [t.title, t.date])).toEqual([["Écrire le brief", null], ["Appeler le labo", null]]);
+    e = (await readEditable("project", "alpha"))!;
+    expect(e.legacy).toBe(false);
+    expect(e.notes.find((n) => n.date === "2026-11-01")?.text).toMatch(/^Création\n\n\*\*Ancien contenu/);
+    expect(e.notes.some((n) => n.text.includes("**Ancien contenu : Objectif**\n\nTest."))).toBe(true);
+    const again = await migrateEntry("project", "alpha", e.version);
+    expect(again.tasks).toBe(0);
+    await expect(migrateEntry("project", "alpha", "ancienne")).rejects.toThrow(/modifié ailleurs/);
+  });
+
   it("déplacer, placer, reporter, abandonner, supprimer", async () => {
     for (const t of ["A", "B", "C"]) await tasks.addTask({ title: t, date: TUE }, TUE);
     let cur = await tasks.readTasks();

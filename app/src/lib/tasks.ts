@@ -259,3 +259,22 @@ export async function updateTaskSettings(version: string, patch: Partial<TaskSet
     return { text: joinLines([...formatSettings(settings), ...body]) };
   });
 }
+
+/** Ajoute des tâches à la fin du fichier (migration d'un projet à l'ancien format), avec de nouveaux identifiants. */
+export async function appendTasks(list: Pick<Task, "status" | "date" | "title" | "project" | "closedOn">[], today: string) {
+  if (!list.length) return null;
+  // Titres repris tels quels du README (déjà publié) : seulement raccourcis et débarrassés des marqueurs réservés.
+  list = list.map((t) => ({ ...t, title: t.title.replace(/(^|\s)(id:\S*|[✓✗]\d{4}-\d{2}-\d{2}|🔁\S*|⏱\S*)/g, " ").replace(/\s+/g, " ").trim().slice(0, 300) || "Sans titre" }));
+  return updateFile(TASKS_FILE, undefined, (text, exists) => {
+    const lines = baseLines(text, exists);
+    while (lines.length && !lines[lines.length - 1].trim()) lines.pop();
+    const all: Pick<Task, "id">[] = [...parseTasksFile(lines.join("\n")).tasks];
+    if (!/^- \[[ xX-]\] /.test(lines[lines.length - 1] ?? "")) lines.push("");
+    for (const t of list) {
+      const id = nextTaskId(all, today);
+      all.push({ id });
+      lines.push(formatTaskLine({ ...t, id, time: null, duration: null, reminder: null, recurrence: null }));
+    }
+    return { text: joinLines(lines) };
+  });
+}

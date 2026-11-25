@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { errorResponse, fail, isSameOrigin } from "@/lib/api";
 import { deleteProject, editEntry, projectContents, readEditable } from "@/lib/entries-edit";
+import { migrateEntry } from "@/lib/entry-migration";
 
 export const dynamic = "force-dynamic";
 const KINDS = { project: "project", area: "area" } as const;
@@ -9,6 +10,7 @@ type Ctx = { params: Promise<{ kind: string; slug: string }> };
 
 const opSchema = z.discriminatedUnion("op", [
   z.object({ op: z.literal("fields"), fields: z.record(z.string(), z.string().max(300)) }),
+  z.object({ op: z.literal("migrate") }),
   z.object({ op: z.literal("note"), date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), text: z.string().max(20_000, "Note trop longue.") }),
 ]);
 const schema = z.object({ version: z.string(), confirmArchive: z.boolean().default(false), change: opSchema });
@@ -35,7 +37,10 @@ export async function PATCH(req: Request, { params }: Ctx) {
   const parsed = schema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return fail(parsed.error.issues[0]?.message ?? "Données invalides.");
   try {
-    return NextResponse.json(await editEntry(kind, slug, parsed.data.version, parsed.data.change, parsed.data.confirmArchive));
+    const { version, change, confirmArchive } = parsed.data;
+    // Projet / domaine encore à l'ancien format : conversion (tâches dans TACHES.md, notes du jour).
+    if (change.op === "migrate") return NextResponse.json(await migrateEntry(kind, slug, version));
+    return NextResponse.json(await editEntry(kind, slug, version, change, confirmArchive));
   } catch (e) {
     return errorResponse(e);
   }
