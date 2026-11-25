@@ -13,3 +13,4 @@ autosync: yes             # envoi automatique de TACHES.md sur GitHub
 > [x] = faite (✓date), [-] = abandonnée (✗date). Pas de mots de passe ni de codes : ce fichier est sur GitHub.
 
 - [ ] 2026-11-25 se former, avoir les bases (Chat/tik tok/ ytb) #e-com id:t-20261125-1
+- [-] 2026-11-25 se former #e-com id:t-20261125-2 ✗2026-11-25
