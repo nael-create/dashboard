@@ -56,36 +56,3 @@ prefix: eut-elle être citée par les IA ?
 suffix: LIRE L’ARTICLE LE DÉCRYPTAGE Mar
 
 > Pour être citée par ChatGPT, Gemini, Claude ou Perplexity, une marque doit fournir aux modèles des preuves vérifiables, des données exclusives et une présence régulière dans des sources fiables. Pour Paul Saussié, expert SEO, le Generative Engine Optimization (GEO) s’imposera en 2027 comme un levier d’acquisition à part entière.
-
-## 2026-11-17 — 17.11 - Instinct, Corgi Café, Waymo… : 3 choses qui illustrent la folie de l’IA à San Francisco
-id: hl-20261117-4
-color: green
-from: Maddyness <maddynews@maddyness.com>
-received: 2026-11-17T06:32:03Z
-link: https://outlook.live.com/owa/?ItemID=AQMkADAwATM0MDAAMi1iMTkyLWRmYzgtMDACLTAwCgBGAAADjag9On9BREWadZaPR1fT5wcAPxXKHL1DEkudvWqA0nzFugAAAgEMAAAAPxXKHL1DEkudvWqA0nzFugAAACS5j3oAAAA%3D&exvsurl=1&viewmodel=ReadMessageItem
-prefix: finale de la Startup World Cup,
-suffix: . Voici trois choses aperçues du
-
-> nous avons passé une semaine dans la ville californienne
-
-## 2026-11-17 — 17.11 - Instinct, Corgi Café, Waymo… : 3 choses qui illustrent la folie de l’IA à San Francisco
-id: hl-20261117-3
-color: yellow
-from: Maddyness <maddynews@maddyness.com>
-received: 2026-11-17T06:32:03Z
-link: https://outlook.live.com/owa/?ItemID=AQMkADAwATM0MDAAMi1iMTkyLWRmYzgtMDACLTAwCgBGAAADjag9On9BREWadZaPR1fT5wcAPxXKHL1DEkudvWqA0nzFugAAAgEMAAAAPxXKHL1DEkudvWqA0nzFugAAACS5j3oAAAA%3D&exvsurl=1&viewmodel=ReadMessageItem
-prefix: finale de la Startup World Cup,
-suffix: . Voici trois choses aperçues du
-
-> nous avons passé une semaine dans la ville californienne
-
-## 2026-11-17 — 17.11 - Instinct, Corgi Café, Waymo… : 3 choses qui illustrent la folie de l’IA à San Francisco
-id: hl-20261117-2
-color: green
-from: Maddyness <maddynews@maddyness.com>
-received: 2026-11-17T06:32:03Z
-link: https://outlook.live.com/owa/?ItemID=AQMkADAwATM0MDAAMi1iMTkyLWRmYzgtMDACLTAwCgBGAAADjag9On9BREWadZaPR1fT5wcAPxXKHL1DEkudvWqA0nzFugAAAgEMAAAAPxXKHL1DEkudvWqA0nzFugAAACS5j3oAAAA%3D&exvsurl=1&viewmodel=ReadMessageItem
-prefix: finale de la Startup World Cup,
-suffix: ons passé une semaine dans la vi
-
-> nous av

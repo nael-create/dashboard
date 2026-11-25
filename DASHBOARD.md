@@ -1,7 +1,7 @@
 # Dashboard
 
 <!-- Fichier généré à partir du frontmatter des projets/domaines, des revues et de INBOX.md. Ne pas éditer à la main. -->
-Dernière mise à jour : 2026-11-24
+Dernière mise à jour : 2026-11-25
 
 ## Focus de la semaine
 
@@ -16,7 +16,7 @@ _Aucun projet actif._
 
 ## En pause / idées
 
-_Aucun._
+- [E-com](projects/e-com/README.md) — idée
 
 ## Domaines
 
