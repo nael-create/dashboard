@@ -28,22 +28,21 @@ interface Payload {
 export interface CalendarHandlers {
   onSlot?: (day: string, minutes: number | null) => void;
   onEvent?: (ev: DisplayEvent, day: string) => void;
-  /** Tâche ou jalon : cocher / décocher. */
+  /** Tâche : cocher / décocher. */
   onToggle?: (ev: DisplayEvent) => void;
 }
 
-const isChecked = (ev: DisplayEvent) => !!(ev.task?.done || ev.milestone?.done);
+const isChecked = (ev: DisplayEvent) => !!ev.task?.done;
 const doneCls = (ev: DisplayEvent) => (isChecked(ev) ? "line-through opacity-60" : "");
 
-/** Case à cocher d'une tâche ou d'un jalon, à côté de son titre (jamais dans un autre bouton). */
+/** Case à cocher d'une tâche, à côté de son titre (jamais dans un autre bouton). */
 function EventCheck({ ev, onToggle, className = "" }: { ev: DisplayEvent; onToggle?: CalendarHandlers["onToggle"]; className?: string }) {
-  if (!(ev.task || ev.milestone) || !onToggle) return null;
+  if (!ev.task || !onToggle) return null;
   const done = isChecked(ev);
-  const what = ev.task ? "la tâche" : "le jalon";
   return (
     <button
       type="button" role="checkbox" aria-checked={done}
-      aria-label={`${done ? "Décocher" : "Cocher"} ${what} « ${ev.milestone?.text ?? ev.title} »`}
+      aria-label={`${done ? "Décocher" : "Cocher"} la tâche « ${ev.title} »`}
       onClick={(e) => {
         e.stopPropagation();
         onToggle(ev);
@@ -170,7 +169,7 @@ export function CalendarWidget({ initialToday }: { initialToday?: string }) {
           else {
             const cal = data?.calendars.find((c) => c.id === ev.calendarId);
             const link = ev.task ? { href: `/projets/aujourdhui#task-${ev.task.id}`, label: "Ouvrir dans projets → aujourd'hui" }
-              : ev.milestone ? { href: `/projets/${ev.milestone.project}?onglet=jalons`, label: `Ouvrir les jalons de « ${ev.milestone.projectTitle} »` }
+              : ev.deadline ? { href: `/projets/${ev.deadline.project}`, label: `Ouvrir le projet « ${ev.deadline.projectTitle} »` }
               : undefined;
             setDialog({ mode: "view", event: ev, day, calendarName: cal?.name ?? "Calendrier", color: cal?.color ?? "var(--muted)", link });
           }
@@ -178,20 +177,16 @@ export function CalendarWidget({ initialToday }: { initialToday?: string }) {
         onToggle: (ev) => toggleItem(ev),
       }
     : {};
-  /** Coche / décoche une tâche (TACHES.md) ou un jalon (README du projet), avec la version lue juste avant. */
+  /** Coche / décoche une tâche (TACHES.md), avec la version lue juste avant. */
   const toggleItem = async (ev: DisplayEvent) => {
-    const done = !(ev.task?.done || ev.milestone?.done);
+    const done = !ev.task?.done;
     // Affichage immédiat, puis rechargement.
-    setData((d) => d && { ...d, events: d.events.map((e) => (e.id !== ev.id ? e : e.task ? { ...e, task: { ...e.task, done } } : e.milestone ? { ...e, milestone: { ...e.milestone, done } } : e)) });
+    setData((d) => d && { ...d, events: d.events.map((e) => (e.id !== ev.id ? e : e.task ? { ...e, task: { ...e.task, done } } : e)) });
     try {
       if (ev.task) {
         const { version } = await apiJson<{ version: string }>("/api/tasks");
         await apiJson("/api/tasks", "POST", { action: "status", version, id: ev.task.id, status: done ? "done" : "todo" });
         window.dispatchEvent(new Event("tasks-changed"));
-      } else if (ev.milestone) {
-        const base = `/api/entries/project/${ev.milestone.project}`;
-        const { version } = await apiJson<{ version: string }>(base);
-        await apiJson(base, "PATCH", { version, change: { op: "milestone-check", index: ev.milestone.index, text: ev.milestone.text, done } });
       }
     } catch (e) {
       setFatal(e instanceof Error ? e.message : String(e));

@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { errorResponse } from "@/lib/api";
-import { listAreas, listProjects } from "@/lib/content";
+import { listWithBody } from "@/lib/content";
+import { dayNotes } from "@/lib/daily-notes";
+import { longDate } from "@/lib/fr-dates";
+import { parseDoc } from "@/lib/markdown-doc";
 import { readFavorites } from "@/lib/favorites";
 import { readInbox } from "@/lib/inbox";
 import { listAllDocs } from "@/lib/docs";
-import { listMilestones } from "@/lib/milestones";
 import { readTasks } from "@/lib/tasks";
 import { readNotions } from "@/lib/notions";
 import { readAgenda } from "@/lib/agenda";
@@ -15,7 +17,7 @@ import { cachedArticles, byDateDesc, dedupe } from "@/lib/rss";
 export const dynamic = "force-dynamic";
 
 export interface SearchItem {
-  type: "project" | "area" | "task" | "milestone" | "doc" | "notion" | "inbox" | "favorite" | "newsletter" | "news" | "event" | "highlight";
+  type: "project" | "area" | "task" | "note" | "doc" | "notion" | "inbox" | "favorite" | "newsletter" | "news" | "event" | "highlight";
   id: string;
   title: string;
   subtitle?: string;
@@ -29,24 +31,30 @@ export interface SearchItem {
  */
 export async function GET() {
   try {
-    const [projects, areas, notions, inbox, favorites, agenda, highlights, tasks, milestones, docs] = await Promise.all([
-      listProjects(), listAreas(), readNotions(), readInbox(), readFavorites(), readAgenda(), readHighlights(),
-      readTasks().then((t) => t.tasks).catch(() => []), listMilestones().catch(() => []), listAllDocs().catch(() => []),
+    const [projects, areas, notions, inbox, favorites, agenda, highlights, tasks, docs] = await Promise.all([
+      listWithBody("project"), listWithBody("area"), readNotions(), readInbox(), readFavorites(), readAgenda(), readHighlights(),
+      readTasks().then((t) => t.tasks).catch(() => []), listAllDocs().catch(() => []),
     ]);
-    const projectTitle = new Map(projects.map((p) => [p.slug, p.title]));
+    const projectTitle = new Map([...areas, ...projects].map((p) => [p.slug, p.title]));
+    const entryHref = (slug: string) => (projects.some((p) => p.slug === slug) ? `/projets/${slug}` : areas.some((a) => a.slug === slug) ? `/domaines/${slug}` : null);
+    // Notes du jour des projets et domaines : une entrée par jour avec du texte (premiers mots en titre).
+    const notes = [...projects, ...areas].flatMap((e) => dayNotes(parseDoc(e.body)).filter((n) => n.text.trim()).map((n) => ({
+      type: "note" as const, id: `${e.slug}:${n.date}`,
+      title: n.text.replace(/[*_#>`[\]]/g, "").replace(/\s+/g, " ").trim().slice(0, 120),
+      subtitle: `${longDate(n.date)} · ${e.title}`,
+      href: e.kind === "project" ? `/projets/${e.slug}` : `/domaines/${e.slug}`,
+    })));
     const items: SearchItem[] = [
       ...projects.map((p) => ({ type: "project" as const, id: p.slug, title: p.title, subtitle: [p.status, p.priority].filter(Boolean).join(" · "), href: `/projets/${p.slug}` })),
       ...areas.map((a) => ({ type: "area" as const, id: a.slug, title: a.title, href: `/domaines/${a.slug}` })),
       // Tâches à faire (toutes) et faites récemment (les 200 dernières lignes du fichier).
       ...tasks.filter((t) => t.status === "todo").concat(tasks.filter((t) => t.status !== "todo").slice(-200)).map((t) => ({
         type: "task" as const, id: t.id, title: t.title,
-        subtitle: [t.date + (t.time ? ` ${t.time}` : ""), t.status === "done" ? "faite" : t.status === "dropped" ? "abandonnée" : "", t.project ? projectTitle.get(t.project) ?? `#${t.project}` : ""].filter(Boolean).join(" · "),
-        href: t.status === "todo" ? `/projets/aujourdhui#task-${t.id}` : "/projets/aujourdhui?vue=historique",
+        subtitle: [t.date ? t.date + (t.time ? ` ${t.time}` : "") : "sans date", t.status === "done" ? "faite" : t.status === "dropped" ? "abandonnée" : "", t.project ? projectTitle.get(t.project) ?? `#${t.project}` : ""].filter(Boolean).join(" · "),
+        // Tâche datée → onglet « aujourd'hui » ; sans date → page de son projet / domaine.
+        href: (!t.date && t.project && entryHref(t.project)) || (t.status === "todo" ? `/projets/aujourdhui#task-${t.id}` : "/projets/aujourdhui?vue=historique"),
       })),
-      ...milestones.map((m) => ({
-        type: "milestone" as const, id: `${m.project}:${m.index}`, title: m.text,
-        subtitle: [m.date, m.projectTitle, m.done ? "atteint" : ""].filter(Boolean).join(" · "), href: `/projets/${m.project}?onglet=jalons`,
-      })),
+      ...notes,
       ...docs.map((d) => ({
         type: "doc" as const, id: `${d.project}/${d.slug}`, title: d.title, subtitle: projectTitle.get(d.project) ?? d.project, href: `/projets/${d.project}/docs/${d.slug}`,
       })),

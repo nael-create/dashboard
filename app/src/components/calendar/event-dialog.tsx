@@ -5,6 +5,11 @@ import { useEffect, useRef, useState } from "react";
 import { apiJson, isConflict } from "@/lib/client-api";
 import { fmtLongDay, timeLabel, type DisplayEvent } from "@/lib/calendar-view";
 import { btnDanger, btnGhost, btnPrimary, field, iconBtn } from "@/components/ui/forms";
+import { DateField, TimeField } from "@/components/ui/date-field";
+import { taskPresets } from "@/lib/fr-dates";
+
+/** Date du jour du navigateur (raccourcis du sélecteur de date). */
+const browserToday = () => new Intl.DateTimeFormat("en-CA").format(new Date());
 
 export type EventDialogState =
   | { mode: "create"; date: string; minutes: number | null }
@@ -164,10 +169,10 @@ export function EventDialog({
               <input value={form.title} onChange={(e) => set({ title: e.target.value })} required maxLength={160} autoFocus
                 placeholder="Titre" aria-label="Titre" className={`${field} text-lg`} />
               <div className="grid grid-cols-2 gap-3">
-                <label className="col-span-2 block text-sm sm:col-span-1">
+                <div className="col-span-2 block text-sm sm:col-span-1">
                   <span className="label mb-1 block text-muted">Date</span>
-                  <input type="date" value={form.date} onChange={(e) => set({ date: e.target.value })} required className={field} />
-                </label>
+                  <DateField value={form.date} onChange={(d) => set({ date: d })} today={browserToday()} presets={taskPresets(browserToday())} label="Date" required />
+                </div>
                 <label className="col-span-2 flex items-center gap-2 self-end pb-2 text-sm sm:col-span-1">
                   <input type="checkbox" checked={form.allDay} onChange={(e) => set({ allDay: e.target.checked })} className="size-4 accent-[var(--accent)]" />
                   {kind === "task" ? "Sans heure" : "Toute la journée"}
@@ -175,18 +180,18 @@ export function EventDialog({
                 {!form.allDay && kind === "task" && (
                   <label className="col-span-2 block text-sm sm:col-span-1">
                     <span className="label mb-1 block text-muted">Heure</span>
-                    <input type="time" value={form.startTime} onChange={(e) => set({ startTime: e.target.value })} required className={field} />
+                    <TimeField value={form.startTime} onChange={(t) => set({ startTime: t })} label="Heure (24 h)" required />
                   </label>
                 )}
                 {!form.allDay && kind === "event" && (
                   <>
                     <label className="block text-sm">
                       <span className="label mb-1 block text-muted">Début</span>
-                      <input type="time" value={form.startTime} onChange={(e) => set({ startTime: e.target.value })} required className={field} />
+                      <TimeField value={form.startTime} onChange={(t) => set({ startTime: t })} label="Début (24 h)" required />
                     </label>
                     <label className="block text-sm">
                       <span className="label mb-1 block text-muted">Fin</span>
-                      <input type="time" value={form.endTime} onChange={(e) => set({ endTime: e.target.value })} required className={field} />
+                      <TimeField value={form.endTime} onChange={(t) => set({ endTime: t })} label="Fin (24 h)" required />
                     </label>
                   </>
                 )}
@@ -201,10 +206,10 @@ export function EventDialog({
                   <Repeat className="size-3.5 text-muted" aria-hidden /> Chaque semaine
                 </label>
                 {form.weekly && (
-                  <label className="flex items-center gap-2 text-muted">
+                  <div className="flex items-center gap-2 text-muted">
                     jusqu&apos;au
-                    <input type="date" value={form.until} min={form.date} onChange={(e) => set({ until: e.target.value })} aria-label="Fin de la répétition (facultatif)" className={`${field} w-auto py-1`} />
-                  </label>
+                    <DateField value={form.until} onChange={(d) => set({ until: d })} today={browserToday()} label="Fin de la répétition (facultatif)" className="min-w-56" />
+                  </div>
                 )}
               </div>
               </>}

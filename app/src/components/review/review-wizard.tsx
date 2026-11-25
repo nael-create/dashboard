@@ -6,6 +6,8 @@ import { useCallback, useEffect, useState } from "react";
 import { apiJson } from "@/lib/client-api";
 import { btnDanger, btnGhost, btnPrimary, field, iconBtn } from "@/components/ui/forms";
 import { Notice } from "@/components/ui/notice";
+import { DateField } from "@/components/ui/date-field";
+import { taskPresets } from "@/lib/fr-dates";
 
 interface InboxItem { index: number; raw: string; date: string | null; text: string }
 interface Payload {
@@ -261,13 +263,13 @@ function InboxStep({ data, log, onProcessed }: { data: Payload; log: string[]; o
               <select value={project} onChange={(e) => setProject(e.target.value)} aria-label="Projet" className={`${field} w-auto min-w-48`}>
                 {data.projects.map((p) => <option key={p.slug} value={p.slug}>{p.title}</option>)}
               </select>
-              <button type="button" className={btnPrimary} disabled={busy || !project} onClick={() => act("project")}>Ajouter comme action</button>
+              <button type="button" className={btnPrimary} disabled={busy || !project} onClick={() => act("project")}>Ajouter comme tâche du projet</button>
               <button type="button" className={btnGhost} onClick={() => setChoosing(false)}>Annuler</button>
               {!data.projects.length && <p className="w-full text-sm text-muted">Aucun projet : crée-en un depuis la page Projets.</p>}
             </div>
           ) : dating ? (
             <div className="mt-4 flex flex-wrap items-center gap-2">
-              <input type="date" value={taskDate} onChange={(e) => setTaskDate(e.target.value)} aria-label="Date de la tâche" className={`${field} w-auto`} />
+              <DateField value={taskDate} onChange={setTaskDate} today={data.today} presets={taskPresets(data.today)} label="Date de la tâche" required className="min-w-64" />
               <button type="button" className={btnPrimary} disabled={busy || !taskDate} onClick={() => act("task")}>Créer la tâche</button>
               <button type="button" className={btnGhost} onClick={() => setDating(false)}>Annuler</button>
             </div>
@@ -303,7 +305,7 @@ function FocusStep({ options, focus, onChange }: { options: Payload["focusOption
   const toggle = (t: string) => onChange(focus.includes(t) ? focus.filter((f) => f !== t) : full ? focus : [...focus, t]);
   return (
     <div>
-      <p className="mb-4 text-sm text-muted">Jusqu&apos;à 3 éléments, parmi les prochaines actions des projets actifs ou en texte libre. Ils deviennent le « Focus de la semaine ».</p>
+      <p className="mb-4 text-sm text-muted">Jusqu&apos;à 3 éléments, parmi les tâches à faire des projets actifs ou en texte libre. Ils deviennent le « Focus de la semaine ».</p>
       {focus.length > 0 && (
         <ol className="mb-4 space-y-1.5">
           {focus.map((f, i) => (
@@ -330,7 +332,7 @@ function FocusStep({ options, focus, onChange }: { options: Payload["focusOption
           })}
         </ul>
       ) : (
-        <p className="mb-4 text-sm italic text-muted">Aucune prochaine action dans les projets actifs.</p>
+        <p className="mb-4 text-sm italic text-muted">Aucune tâche à faire dans les projets actifs.</p>
       )}
       <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); if (free.trim() && !full) { onChange([...focus, free.trim()]); setFree(""); } }}>
         <input value={free} onChange={(e) => setFree(e.target.value)} disabled={full} placeholder={full ? "3 éléments maximum" : "Ou écris un focus libre…"} aria-label="Focus libre" className={field} />

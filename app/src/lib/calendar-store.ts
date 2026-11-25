@@ -24,7 +24,7 @@ const layerSchema = z.object({ color: z.string().regex(HEX_COLOR), visible: z.bo
 const optionsSchema = z.object({
   /** Affiche comme un seul bloc les événements consécutifs identiques (affichage uniquement). */
   mergeAdjacent: z.boolean().default(true),
-  /** Calques intégrés « Tâches » et « Jalons » : couleur et visibilité (voir calendar-layers.ts). */
+  /** Calques intégrés « Tâches » et « Deadlines » : couleur et visibilité (voir calendar-layers.ts). */
   layers: z.record(z.string(), layerSchema).optional(),
 });
 export type LayerSettings = z.infer<typeof layerSchema>;

@@ -6,7 +6,8 @@ import { apiJson } from "@/lib/client-api";
 import type { RemindersStatus } from "@/lib/gh";
 import type { TaskSyncStatus } from "@/lib/task-sync";
 import type { TaskSettings } from "@/lib/tasks-core";
-import { btnGhost, field } from "@/components/ui/forms";
+import { btnGhost } from "@/components/ui/forms";
+import { TimeField } from "@/components/ui/date-field";
 import type { TasksApi } from "./use-tasks";
 
 function ago(iso: string | null, now: number): string {
@@ -94,12 +95,12 @@ export function RemindersPanel({ api }: { api: TasksApi }) {
         <div className="grid gap-4">
           <label className="grid gap-1">
             <span className="label text-muted">récapitulatif du soir</span>
-            <input type="time" value={settings.eveningDigest} onChange={(e) => e.target.value && set({ eveningDigest: e.target.value })} className={`${field} max-w-[11rem]`} disabled={!settings.reminders} />
+            <TimeField value={settings.eveningDigest} onChange={(t) => t && set({ eveningDigest: t })} label="Heure du récapitulatif du soir (24 h)" className="max-w-[11rem]" disabled={!settings.reminders} required />
           </label>
           <div className="grid gap-1">
             <span className="label text-muted">récapitulatif du matin</span>
             <div className="flex flex-wrap items-center gap-3">
-              <input type="time" value={settings.morningDigest} onChange={(e) => e.target.value && set({ morningDigest: e.target.value })} className={`${field} max-w-[11rem]`} disabled={!settings.reminders || !settings.morningEnabled} aria-label="Heure du récapitulatif du matin" />
+              <TimeField value={settings.morningDigest} onChange={(t) => t && set({ morningDigest: t })} label="Heure du récapitulatif du matin (24 h)" className="max-w-[11rem]" disabled={!settings.reminders || !settings.morningEnabled} required />
               <Toggle label="Activé" checked={settings.morningEnabled} onChange={(v) => set({ morningEnabled: v })} disabled={!settings.reminders} />
             </div>
           </div>

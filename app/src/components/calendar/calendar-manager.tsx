@@ -7,7 +7,7 @@ export interface PublicCalendar {
   id: string; name: string; color: string; host: string; timeZone: string | null;
   /** Calendrier intégré « Perso » (AGENDA.md) : nom et couleur modifiables, jamais supprimé. */
   editable?: boolean;
-  /** Calque intégré « Tâches » ou « Jalons » : couleur et visibilité réglables. */
+  /** Calque intégré « Tâches » ou « Deadlines » : couleur et visibilité réglables. */
   layer?: boolean;
   hidden?: boolean;
 }
@@ -121,7 +121,7 @@ function ColorPicker({ value, onChange, label }: { value: string; onChange: (c: 
   );
 }
 
-/** Calque intégré (Tâches, Jalons) : couleur et « Afficher ». */
+/** Calque intégré (Tâches, Deadlines) : couleur et « Afficher ». */
 function LayerRow({ cal, onChanged }: { cal: PublicCalendar; onChanged: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
