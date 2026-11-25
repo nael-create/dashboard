@@ -68,6 +68,13 @@ describe("NEWS.md", () => {
     expect(text).toContain("## Ordre des widgets\n\n- [ ] cat:Marchés\n");
     expect(text).toContain("widgets: category");
   });
+  it("widget texte : « text: yes » (commentaire ignoré), absent par défaut", () => {
+    const { sources } = parseNews("## Reuters\nid: reuters\nurl: https://news.google.com/rss/x\nenabled: yes   # actif\ntext: yes   # titres sans image\n\n## Autre\nurl: https://ex.test/rss\ncolor: #123456\n");
+    expect(sources[0]).toMatchObject({ id: "reuters", enabled: true, text: true });
+    expect(sources[1].text).toBeUndefined();
+    expect(sources[1].color).toBe("#123456");
+  });
+
   it("détecte les liens contenant une clé personnelle", () => {
     expect(looksPersonal("https://www.ft.com/myft/following/0f1e2d3c-aaaa-bbbb-cccc-1234567890ab.rss")).toBe(true);
     expect(looksPersonal("https://exemple.fr/rss?token=abcdef123456")).toBe(true);

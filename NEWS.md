@@ -54,6 +54,7 @@ url: https://news.google.com/rss/search?q=when:24h+site:reuters.com&ceid=US:en&h
 category: Monde
 color: #f97316
 enabled: yes
+text: yes                    # widget texte : titres affichés même sans image (Google News)
 
 ## Reuters Business
 id: reuters-business
@@ -61,6 +62,7 @@ url: https://news.google.com/rss/search?q=when:24h+site:reuters.com/business&cei
 category: Business
 color: #6366f1
 enabled: yes
+text: yes                    # widget texte : titres affichés même sans image (Google News)
 
 ## Reuters Markets
 id: reuters-markets
