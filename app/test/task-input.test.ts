@@ -67,3 +67,16 @@ describe("saisie rapide en français", () => {
     expect(parseTaskInput("Lire le 45/13", TUE).ambiguous).toBe(true);
   });
 });
+
+describe("saisie : « dans N jours » et tâches sans date", () => {
+  const TUE = "2026-11-24";
+  it("dans 3 jours, dans une semaine, dans 2 semaines", () => {
+    expect(parseTaskInput("Relancer Paul dans 3 jours", TUE).date).toBe("2026-11-27");
+    expect(parseTaskInput("Bilan dans une semaine", TUE)).toMatchObject({ date: "2026-12-01", title: "Bilan" });
+    expect(parseTaskInput("Bilan dans 2 semaines", TUE).date).toBe("2026-12-08");
+  });
+  it("sans date reconnue et sans date par défaut : tâche sans date (heure et rappel ignorés)", () => {
+    expect(parseTaskInput("Choisir les photos", TUE, [], null)).toMatchObject({ title: "Choisir les photos", date: null });
+    expect(parseTaskInput("Appeler vendredi", TUE, [], null).date).toBe("2026-11-27");
+  });
+});

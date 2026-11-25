@@ -6,7 +6,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import matter from "gray-matter";
-import config from "@config";
 
 // Annotations turbopackIgnore : ces fichiers sont lus à l'exécution, ils ne doivent jamais être
 // embarqués dans une compilation (ni le contenu personnel, ni data/calendars.local.json).
@@ -27,11 +26,6 @@ export const STATUS_LABELS: Record<Status, string> = {
 
 export type Kind = "project" | "area";
 
-/** Étapes des projets (dashboard.config.ts) ; la première est la valeur par défaut. */
-export const STAGES = config.projectStages;
-export const stageOf = (v: string | null | undefined) => (STAGES.some((s) => s.id === v) ? (v as string) : STAGES[0].id);
-export const stageLabel = (id: string) => STAGES.find((s) => s.id === id)?.label ?? id;
-
 /** Tags : « a, b » ou liste YAML [a, b] ; minuscules, sans « # ». */
 export function parseTags(v: unknown): string[] {
   const list = Array.isArray(v) ? v.map(String) : typeof v === "string" ? v.split(",") : [];
@@ -46,11 +40,8 @@ export interface Entry {
   priority: Priority | null;
   created: string | null;
   updated: string | null;
-  nextAction: string | null;
   deadline: string | null;
-  /** Projets : étape (dashboard.config.ts, première par défaut), début, tags. */
-  stage: string;
-  started: string | null;
+  /** Tags (facultatifs, écrits à la main). La « prochaine action » n'est plus stockée : voir `nextTask` (tasks-view.ts). */
   tags: string[];
   /** Problème de lecture du frontmatter, affiché tel quel dans l'interface. */
   error: string | null;
@@ -90,7 +81,7 @@ async function readEntry(kind: Kind, slug: string, root: string = ROOTS[kind]): 
 
   const base: EntryWithBody = {
     kind, slug, title: slug, status: null, priority: null, created: null,
-    updated: null, nextAction: null, deadline: null, stage: STAGES[0].id, started: null, tags: [], error: null, body: raw,
+    updated: null, deadline: null, tags: [], error: null, body: raw,
   };
 
   try {
@@ -108,10 +99,7 @@ async function readEntry(kind: Kind, slug: string, root: string = ROOTS[kind]): 
       priority,
       created: asString(data.created),
       updated: asString(data.updated),
-      nextAction: asString(data.next_action),
       deadline: asString(data.deadline),
-      stage: stageOf(asString(data.stage)),
-      started: asString(data.started),
       tags: parseTags(data.tags),
       error: problems.length ? problems.join(", ") : null,
       body: content,

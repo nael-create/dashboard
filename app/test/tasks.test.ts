@@ -72,7 +72,7 @@ describe("TACHES.md", () => {
     await expect(tasks.setTaskStatus(version, list[0].id, "done", TUE)).rejects.toThrow(/modifié ailleurs/);
   });
 
-  it("cocher une tâche liée à un projet ajoute « Fait : … » en haut du journal", async () => {
+  it("cocher une tâche liée à un projet ajoute « ✓ … » à la note du jour", async () => {
     await tasks.addTask({ title: "Envoyer le devis", date: TUE, project: "alpha" }, TUE);
     const { version, tasks: list } = await tasks.readTasks();
     await tasks.setTaskStatus(version, list[0].id, "done", TUE);
@@ -80,8 +80,8 @@ describe("TACHES.md", () => {
     expect(after.tasks[0]).toMatchObject({ status: "done", closedOn: TUE });
     expect(fs.readFileSync(file, "utf8")).toContain("- [x] 2026-11-24 Envoyer le devis #alpha id:t-20261124-1 ✓2026-11-24");
     const md = fs.readFileSync(readme, "utf8");
-    expect(md).toMatch(/## Journal\n\n- 2026-11-24 — Fait : Envoyer le devis\n- 2026-11-01 — Création/);
-    expect(md).toContain("updated: 2026-11-24");
+    expect(md).toMatch(/## Notes\n\n### 2026-11-24\n\n✓ Envoyer le devis\n/);
+    expect(md).not.toContain("updated: 2026-11-01");
   });
 
   it("une tâche récurrente cochée crée l'occurrence suivante", async () => {
@@ -109,16 +109,37 @@ describe("TACHES.md", () => {
     expect(res.result?.next?.date).toBe("2027-02-28");
   });
 
-  it("Planifier : la prochaine action quitte le README (sans journal) et devient une tâche liée", async () => {
-    const { readEditable } = await import("@/lib/entries-edit");
-    const e = await readEditable("project", "alpha");
-    await tasks.planProjectAction("alpha", e!.version, 1, "Appeler le labo", { date: "2026-11-25", time: "10:00" }, TUE);
-    const md = fs.readFileSync(readme, "utf8");
-    expect(md).not.toContain("Appeler le labo");
-    expect(md).toContain("- [ ] Écrire le brief");
-    expect(md).not.toContain("Fait : Appeler le labo");
+  it("tâche sans date : seulement liée à un projet ou domaine existant ; jamais dans « aujourd'hui »", async () => {
+    await expect(tasks.addTask({ title: "Libre", date: null }, TUE)).rejects.toThrow(/projet/);
+    await expect(tasks.addTask({ title: "Fantôme", date: null, project: "inconnu" }, TUE)).rejects.toThrow();
+    await tasks.addTask({ title: "Choisir le papier", date: null, project: "alpha", time: "10:00", recurrence: { kind: "daily" } }, TUE);
+    const t = fs.readFileSync(file, "utf8");
+    expect(t).toMatch(/^- \[ \] Choisir le papier #alpha id:t-20261124-\d+$/m);
     const { tasks: list } = await tasks.readTasks();
-    expect(list[0]).toMatchObject({ title: "Appeler le labo", date: "2026-11-25", time: "10:00", project: "alpha" });
+    expect(list[0]).toMatchObject({ title: "Choisir le papier", date: null, time: null, recurrence: null, project: "alpha" });
+    const g = groupTasks(list, TUE);
+    expect([...g.overdue, ...g.today, ...g.tomorrow, ...g.week, ...g.later]).toHaveLength(0);
+  });
+
+  it("cocher une tâche liée l'inscrit dans la note du jour du projet ; décocher la retire", async () => {
+    await tasks.addTask({ title: "Relire le devis", date: null, project: "alpha" }, TUE);
+    let cur = await tasks.readTasks();
+    await tasks.setTaskStatus(cur.version, cur.tasks[0].id, "done", TUE);
+    expect(fs.readFileSync(readme, "utf8")).toContain(`### ${TUE}\n\n✓ Relire le devis`);
+    cur = await tasks.readTasks();
+    await tasks.setTaskStatus(cur.version, cur.tasks[0].id, "todo", TUE);
+    expect(fs.readFileSync(readme, "utf8")).not.toContain("✓ Relire le devis");
+  });
+
+  it("annuler une suppression remet la tâche à sa place", async () => {
+    for (const t of ["A", "B", "C"]) await tasks.addTask({ title: t, date: TUE }, TUE);
+    let cur = await tasks.readTasks();
+    const removed = cur.tasks[1];
+    await tasks.deleteTask(cur.version, removed.id);
+    cur = await tasks.readTasks();
+    await tasks.restoreTask(removed);
+    cur = await tasks.readTasks();
+    expect(cur.tasks.map((t) => [t.title, t.id])).toEqual([["A", cur.tasks[0].id], ["B", removed.id], ["C", cur.tasks[2].id]]);
   });
 
   it("déplacer, placer, reporter, abandonner, supprimer", async () => {

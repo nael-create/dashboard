@@ -5,13 +5,15 @@ import { listProjects } from "@/lib/content";
 import { parseTaskInput } from "@/lib/task-input";
 import { todayISO } from "@/lib/dates";
 import {
-  addTask, deleteTask, moveTask, placeTask, planProjectAction, rollRecurring, setTaskStatus, updateTask, updateTaskSettings,
+  addTask, deleteTask, moveTask, placeTask, restoreTask, rollRecurring, setTaskStatus, updateTask, updateTaskSettings,
 } from "@/lib/tasks";
 import { scheduleTaskSync, taskSyncStatus } from "@/lib/task-sync";
 
 export const dynamic = "force-dynamic";
 
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date invalide.");
+/** Date de tâche : null = sans date (tâche d'un projet / domaine). */
+const taskDate = date.nullable();
 const time = z.string().regex(/^\d{2}:\d{2}$/, "Heure invalide.").nullable();
 const recurrence = z.union([
   z.object({ kind: z.literal("daily") }),
@@ -20,7 +22,7 @@ const recurrence = z.union([
 ]).nullable();
 const fields = {
   title: z.string().max(300, "Titre trop long."),
-  date,
+  date: taskDate,
   time: time.optional(),
   duration: z.number().int().min(1).max(1440).nullable().optional(),
   project: z.string().max(80).nullable().optional(),
@@ -38,8 +40,9 @@ const schema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("move"), version: z.string(), id, dir: z.union([z.literal(-1), z.literal(1)]) }),
   z.object({ action: z.literal("place"), version: z.string(), id, before: id.nullable() }),
   z.object({
-    action: z.literal("plan"), slug: z.string().max(80), projectVersion: z.string(), index: z.number().int().min(0),
-    text: z.string().max(300), date, time: time.optional(),
+    action: z.literal("restore"), task: z.object({
+      ...fields, id, status: z.enum(["todo", "done", "dropped"]), closedOn: date.nullable(), line: z.number().int().min(0),
+    }),
   }),
   z.object({
     action: z.literal("settings"), version: z.string(), settings: z.object({
@@ -100,9 +103,14 @@ export async function POST(req: Request) {
       case "place":
         out = { version: (await placeTask(b.version, b.id, b.before)).version };
         break;
-      case "plan":
-        out = await planProjectAction(b.slug, b.projectVersion, b.index, b.text, { date: b.date, time: b.time }, today);
+      case "restore": {
+        const t = b.task;
+        out = { version: (await restoreTask({
+          id: t.id, status: t.status, date: t.date, time: t.time ?? null, duration: t.duration ?? null, title: t.title, project: t.project ?? null,
+          reminder: t.reminder ?? null, recurrence: t.recurrence ?? null, closedOn: t.closedOn, line: t.line,
+        })).version };
         break;
+      }
       case "settings":
         out = { version: (await updateTaskSettings(b.version, b.settings)).version };
         break;

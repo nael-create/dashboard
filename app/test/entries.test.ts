@@ -17,62 +17,64 @@ const today = todayISO();
 const readme = (rel: string) => fs.readFileSync(path.join(dir, rel), "utf8");
 
 describe("édition des projets et domaines", () => {
-  it("crée un projet depuis le template (titre seul, idea/P3, le reste TODO)", async () => {
-    const slug = await E.createEntry("project", "Site perso : refonte");
+  it("crée un projet depuis le modèle simplifié (titre seul, idea/P3, deadline facultative)", async () => {
+    const slug = await E.createEntry("project", "Site perso : refonte", "2026-12-07");
     expect(slug).toBe("site-perso-refonte");
     const t = readme("projects/site-perso-refonte/README.md");
     expect(t).toContain('title: "Site perso : refonte"');
-    expect(t).toMatch(/status: idea\s+# idea \| active/); // commentaire du template conservé
+    expect(t).toMatch(/status: idea\s+# idea \| active/); // commentaire du modèle conservé
     expect(t).toMatch(/priority: P3\s+#/);
     expect(t).toContain(`created: ${today}`);
-    expect(t).toContain('next_action: "TODO: fill in"');
+    expect(t).toContain("deadline: 2026-12-07");
+    expect(t).not.toMatch(/next_action|stage|## Objectif|## Journal/);
     expect(t).toContain("# Site perso : refonte");
-    expect(t).toContain(`- ${today} — Création du projet.`);
+    expect(t).toContain("## Notes");
     expect(await E.createEntry("project", "Site perso : refonte")).toBe("site-perso-refonte-2");
     const area = await E.createEntry("area", "Santé");
     expect(readme(`areas/${area}/README.md`)).toMatch(/status: active/);
-    // DASHBOARD.md régénéré
     expect(readme("DASHBOARD.md")).toContain("- [Site perso : refonte](projects/site-perso-refonte/README.md) — idée");
     expect(readme("DASHBOARD.md")).toContain("- [Santé](areas/sante/README.md)");
   });
 
-  it("actions : ajout (remplace TODO), modification, ordre, cocher → journal daté", async () => {
+  it("notes du jour : écrire, modifier, vider ; updated mis à jour ; version périmée refusée", async () => {
     const slug = "site-perso-refonte";
     let e = (await E.readEditable("project", slug))!;
-    expect(e.actions).toEqual([{ text: "TODO: fill in", done: false }]);
-    await E.editEntry("project", slug, e.version, { op: "action-add", text: "Choisir un thème" });
+    expect(e.notes).toEqual([]);
+    expect(e.legacy).toBe(false);
+    await E.editEntry("project", slug, e.version, { op: "note", date: "2026-11-20", text: "Maquette **validée**." });
     e = (await E.readEditable("project", slug))!;
-    await E.editEntry("project", slug, e.version, { op: "action-add", text: "Écrire la page À propos" });
+    await E.editEntry("project", slug, e.version, { op: "note", date: "2026-11-24", text: "Appel avec le graphiste." });
     e = (await E.readEditable("project", slug))!;
-    expect(e.actions.map((a) => a.text)).toEqual(["Choisir un thème", "Écrire la page À propos"]);
-    await E.editEntry("project", slug, e.version, { op: "action-move", index: 1, text: "Écrire la page À propos", dir: -1 });
+    expect(e.notes.map((n) => [n.date, n.text])).toEqual([["2026-11-24", "Appel avec le graphiste."], ["2026-11-20", "Maquette **validée**."]]);
+    expect(e.fields.updated).toBe(today);
+    await E.editEntry("project", slug, e.version, { op: "note", date: "2026-11-24", text: "" });
     e = (await E.readEditable("project", slug))!;
-    await E.editEntry("project", slug, e.version, { op: "action-edit", index: 0, text: "Écrire la page À propos", newText: "Écrire la page « À propos »" });
-    e = (await E.readEditable("project", slug))!;
-    await E.editEntry("project", slug, e.version, { op: "action-check", index: 1, text: "Choisir un thème" });
-    e = (await E.readEditable("project", slug))!;
-    expect(e.actions.map((a) => a.text)).toEqual(["Écrire la page « À propos »"]);
-    expect(e.journal[0]).toEqual({ date: today, text: "Fait : Choisir un thème" });
-    expect(e.journal[1].text).toBe("Création du projet.");
-    // Version périmée → refus
-    await expect(E.editEntry("project", slug, "ancienne", { op: "journal-add", text: "x" })).rejects.toThrow(/modifié ailleurs/);
+    expect(e.notes.map((n) => n.date)).toEqual(["2026-11-20"]);
+    await expect(E.editEntry("project", slug, "ancienne", { op: "note", date: today, text: "x" })).rejects.toThrow(/modifié ailleurs/);
   });
 
-  it("champs, sections, journal ; updated mis à jour ; DASHBOARD.md suit", async () => {
+  it("cocher une tâche liée l'inscrit dans la note du jour (et la retire si on décoche)", async () => {
+    await E.recordDone("site-perso-refonte", "2026-11-20", "Choisir un thème", true);
+    await E.recordDone("site-perso-refonte", "2026-11-20", "Choisir un thème", true); // sans doublon
+    let e = (await E.readEditable("project", "site-perso-refonte"))!;
+    expect(e.notes[0]).toEqual({ date: "2026-11-20", text: "Maquette **validée**.", done: ["Choisir un thème"] });
+    await E.recordDone("site-perso-refonte", "2026-11-20", "Choisir un thème", false);
+    e = (await E.readEditable("project", "site-perso-refonte"))!;
+    expect(e.notes[0].done).toEqual([]);
+    expect(await E.entryKindOf("sante")).toBe("area");
+    expect(await E.entryKindOf("inconnu")).toBeNull();
+  });
+
+  it("champs : statut, priorité, deadline validés ; DASHBOARD.md suit", async () => {
     const slug = "site-perso-refonte";
     let e = (await E.readEditable("project", slug))!;
-    await E.editEntry("project", slug, e.version, { op: "fields", fields: { status: "active", priority: "P1", next_action: "Écrire la page « À propos »", deadline: "2026-12-01" } });
-    e = (await E.readEditable("project", slug))!;
-    await E.editEntry("project", slug, e.version, { op: "section", name: "Objectif", text: "Un site **simple**.\n\n- léger\n- rapide" });
-    e = (await E.readEditable("project", slug))!;
-    await E.editEntry("project", slug, e.version, { op: "journal-add", text: "Maquette validée", date: "2026-11-12" });
+    await E.editEntry("project", slug, e.version, { op: "fields", fields: { status: "active", priority: "P1", deadline: "2026-12-01" } });
     e = (await E.readEditable("project", slug))!;
     expect(e.fields).toMatchObject({ status: "active", priority: "P1", deadline: "2026-12-01", updated: today });
-    expect(e.sections.Objectif).toBe("Un site **simple**.\n\n- léger\n- rapide");
-    expect(e.journal[0].text).toBe("Maquette validée");
-    const t = readme(`projects/${slug}/README.md`);
-    expect(t).toContain("## Objectif\n\nUn site **simple**.\n\n- léger\n- rapide\n\n## Pourquoi");
-    expect(readme("DASHBOARD.md")).toContain("| [Site perso : refonte](projects/site-perso-refonte/README.md) | P1 | active | Écrire la page « À propos » | 2026-12-01 |");
+    expect(readme("DASHBOARD.md")).toContain("| [Site perso : refonte](projects/site-perso-refonte/README.md) | P1 | active |");
+    await expect(E.editEntry("project", slug, e.version, { op: "fields", fields: { status: "fini" } })).rejects.toThrow(/Statut/);
+    await expect(E.editEntry("project", slug, e.version, { op: "fields", fields: { next_action: "x" } })).rejects.toThrow(/non modifiable/);
+    await expect(E.editEntry("project", slug, e.version, { op: "fields", fields: { deadline: "01/12/2026" } })).rejects.toThrow(/Date/);
   });
 
   it("done/dropped : confirmation obligatoire puis déplacement dans archive/", async () => {
@@ -87,10 +89,10 @@ describe("édition des projets et domaines", () => {
     expect(readme("DASHBOARD.md")).not.toContain(slug);
   });
 
-  it("refuse les secrets et les titres de section dans le texte", async () => {
+  it("refuse les secrets et les titres de section dans une note", async () => {
     const e = (await E.readEditable("project", "site-perso-refonte"))!;
-    await expect(E.editEntry("project", "site-perso-refonte", e.version, { op: "section", name: "Notes", text: "mdp: hunter2" })).rejects.toThrow(/mot de passe/);
-    await expect(E.editEntry("project", "site-perso-refonte", e.version, { op: "section", name: "Notes", text: "## Pirate" })).rejects.toThrow(/titres/);
+    await expect(E.editEntry("project", "site-perso-refonte", e.version, { op: "note", date: today, text: "mdp: hunter2" })).rejects.toThrow(/mot de passe/);
+    await expect(E.editEntry("project", "site-perso-refonte", e.version, { op: "note", date: today, text: "## Pirate" })).rejects.toThrow(/titres/);
   });
 
   it("guillemets YAML quand il le faut", () => {

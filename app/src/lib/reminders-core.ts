@@ -11,7 +11,7 @@
  * - jamais deux fois le même rappel : clé par mail (jour, ou tâche + date + heure + rappel), gardée
  *   dans l'état `sent` (hors de TACHES.md), oubliée au bout de 14 jours.
  */
-import { addDays, localNow, timeToMinutes, type Task, type TasksFile } from "./tasks-core.ts";
+import { addDays, isDated, localNow, timeToMinutes, type DatedTask, type TasksFile } from "./tasks-core.ts";
 
 export const MAX_PER_DAY = 3;
 /** Fenêtre après l'heure prévue pendant laquelle un rappel est encore envoyé (workflow en retard). */
@@ -47,7 +47,7 @@ export interface Email {
   text: string;
 }
 
-export const taskKey = (t: Task) => `task:${t.id}:${t.date}T${t.time}:${t.reminder}`;
+export const taskKey = (t: DatedTask) => `task:${t.id}:${t.date}T${t.time}:${t.reminder}`;
 
 /** Minutes locales (depuis minuit du jour `today`) d'une date + heure. */
 const minutesFrom = (today: string, date: string, time: string) =>
@@ -60,7 +60,7 @@ export function selectReminders(file: TasksFile, state: SentState, now: Date): E
   const s = file.settings;
   if (!s.reminders) return [];
   const { date: today, minutes } = localNow(s.timezone, now);
-  const todo = file.tasks.filter((t) => t.status === "todo");
+  const todo = file.tasks.filter(isDated).filter((t) => t.status === "todo");
   const out: Email[] = [];
   let count = state.mails.filter((d) => d === today).length;
 
@@ -123,10 +123,10 @@ function longDate(iso: string): string {
   return new Intl.DateTimeFormat("fr-FR", { timeZone: "UTC", weekday: "long", day: "numeric", month: "long" }).format(new Date(Date.UTC(y, m - 1, d)));
 }
 
-const taskLabel = (t: Task, today: string) =>
+const taskLabel = (t: DatedTask, today: string) =>
   `${t.date !== today ? `${longDate(t.date)} · ` : ""}${t.time ? `${t.time} · ` : ""}${t.title}${t.project ? ` (#${t.project})` : ""}`;
 
-function layout(title: string, intro: string, groups: { label: string; tasks: Task[] }[], today: string): { html: string; text: string } {
+function layout(title: string, intro: string, groups: { label: string; tasks: DatedTask[] }[], today: string): { html: string; text: string } {
   const rows = groups
     .filter((g) => g.tasks.length)
     .map((g) => `
@@ -162,7 +162,7 @@ function layout(title: string, intro: string, groups: { label: string; tasks: Ta
 
 const plural = (n: number, one: string, many: string) => `${n} ${n > 1 ? many : one}`;
 
-export function digestEmail(kind: "evening" | "morning", today: string, list: Task[], late: Task[]): Email {
+export function digestEmail(kind: "evening" | "morning", today: string, list: DatedTask[], late: DatedTask[]): Email {
   const title = kind === "evening" ? "ce soir" : "aujourd'hui";
   const intro = kind === "evening"
     ? `${plural(list.length, "tâche reste", "tâches restent")} pour aujourd'hui${late.length ? `, ${plural(late.length, "en retard", "en retard")}` : ""}.`
@@ -174,7 +174,7 @@ export function digestEmail(kind: "evening" | "morning", today: string, list: Ta
   return { kind, keys: [`${kind}:${today}`], subject, html, text };
 }
 
-export function taskEmail(tasks: Task[], today: string): Email {
+export function taskEmail(tasks: DatedTask[], today: string): Email {
   const first = tasks[0];
   const subject = tasks.length === 1 ? `Rappel : ${first.time ? `${first.time} ` : ""}${first.title}` : `Rappels : ${plural(tasks.length, "tâche", "tâches")}`;
   const intro = tasks.length === 1
@@ -186,7 +186,7 @@ export function taskEmail(tasks: Task[], today: string): Email {
 
 export function testEmail(file: TasksFile, now: Date): Email {
   const { date: today } = localNow(file.settings.timezone, now);
-  const list = file.tasks.filter((t) => t.status === "todo" && t.date <= today);
+  const list = file.tasks.filter(isDated).filter((t) => t.status === "todo" && t.date <= today);
   const { html, text } = layout("mail de test", `Les rappels fonctionnent. Voici ce qui reste pour aujourd'hui (${plural(list.length, "tâche", "tâches")}).`, [{ label: "aujourd'hui et en retard", tasks: list }], today);
   return { kind: "test", keys: [], subject: "Test : rappels du tableau de bord", html, text };
 }

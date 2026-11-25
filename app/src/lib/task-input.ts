@@ -1,6 +1,6 @@
 /**
  * Saisie rapide d'une tâche en français : « Appeler la banque demain 14h #medtech ».
- * Reconnaît (et retire du titre) : aujourd'hui, demain, après-demain, un jour de la semaine
+ * Reconnaît (et retire du titre) : aujourd'hui, demain, après-demain, « dans 3 jours / 2 semaines », un jour de la semaine
  * (« lundi » = le prochain lundi, jamais aujourd'hui), une date (25/11, 25/11/2027, 25 nov, 1er décembre),
  * une heure (14h, 14h30, 9:15, à 1h, midi, minuit), une durée (30min, 1h, 1h30 — voir `isDuration`),
  * #projet (s'il existe), une récurrence (tous les jours, chaque lundi, tous les mois le 1er) et ⏰ / ⏰-30m.
@@ -13,7 +13,8 @@ import {
 
 export interface ParsedTask {
   title: string;
-  date: string;
+  /** null = sans date (seulement si `defaultDate` est null et que le texte n'en donne pas). */
+  date: string | null;
   time: string | null;
   duration: number | null;
   project: string | null;
@@ -75,7 +76,11 @@ function isDuration(hours: number, prev: string | undefined, timeAlready: boolea
   return timeAlready || hours < 6;
 }
 
-export function parseTaskInput(input: string, today: string, projects: string[] = []): ParsedTask {
+/**
+ * `defaultDate` : date quand le texte n'en contient pas (aujourd'hui par défaut ; null sur la page d'un
+ * projet ou d'un domaine, où une tâche peut rester sans date).
+ */
+export function parseTaskInput(input: string, today: string, projects: string[] = [], defaultDate: string | null = today): ParsedTask {
   const words = input.replace(/⏰/g, " ⏰").trim().split(/\s+/).filter(Boolean);
   const used = new Set<number>();
   const chips: string[] = [];
@@ -180,6 +185,16 @@ export function parseTaskInput(input: string, today: string, projects: string[] 
       setDate(addDays(today, 1), [i], "demain");
       continue;
     }
+    // « dans 3 jours », « dans une semaine », « dans 2 semaines »
+    if (w === "dans" && next) {
+      const n = /^\d{1,3}$/.test(next) ? Number(next) : next === "un" || next === "une" ? 1 : null;
+      const unit = f[i + 2];
+      if (n !== null && unit && /^(jours?|semaines?|mois)$/.test(unit)) {
+        const days = unit.startsWith("jour") ? n : unit.startsWith("semaine") ? n * 7 : n * 30;
+        setDate(addDays(today, days), [i, i + 1, i + 2], `dans ${n} ${unit}`);
+        continue;
+      }
+    }
     if (w === "apres-demain" || (w === "apres" && next === "demain")) {
       setDate(addDays(today, 2), w === "apres" ? [i, i + 1] : [i], "après-demain");
       continue;
@@ -276,6 +291,10 @@ export function parseTaskInput(input: string, today: string, projects: string[] 
     for (const c of dateChips) chips.splice(chips.indexOf(c), 1);
   }
   const title = words.filter((_, i) => !used.has(i)).join(" ").replace(/\s+([,.;:!?])/g, "$1").trim();
-  return { title, date: date ?? today, time, duration, project, reminder: time ? reminder : null, recurrence, chips, dateChips: ambiguous ? [] : dateChips, ambiguous };
+  const finalDate: string | null = date ?? defaultDate;
+  return {
+    title, date: finalDate, time: finalDate ? time : null, duration, project, reminder: time && finalDate ? reminder : null,
+    recurrence: finalDate ? recurrence : null, chips, dateChips: ambiguous ? [] : dateChips, ambiguous,
+  };
 }
 

@@ -6,27 +6,23 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { UserError } from "./api";
-import { CONTENT_DIR, isValidSlug, parseTags, STAGES, type Kind } from "./content";
+import { CONTENT_DIR, isValidSlug, type Kind } from "./content";
 import { readVersioned, updateFile } from "./content-file";
 import { regenerateDashboard } from "./dashboard-md";
 import { todayISO } from "./dates";
-import {
-  actions, addAction, addJournal, addMilestone, checkAction, editAction, editMilestone, journal, milestones, moveAction, parseDoc,
-  removeAction, removeMilestone, sectionText, setMilestoneDone,
-  serializeDoc, setField, setSectionText, ensureSectionBefore, findSection, type Doc,
-} from "./markdown-doc";
+import { addDone, dayNotes, NOTES_SECTION, removeDone, setDayText } from "./daily-notes";
+import { findSection, parseDoc, sectionText, serializeDoc, setField, type Doc } from "./markdown-doc";
 import { detectSensitive } from "./secrets";
 import { slugify } from "./slug";
 
 export const ROOT: Record<Kind, string> = { project: "projects", area: "areas" };
-export const SECTIONS: Record<Kind, string[]> = {
-  project: ["Objectif", "Pourquoi", "Critères de réussite", "Ressources", "Risques", "Notes", "Liens"],
-  area: ["Rôle", "Standards à maintenir", "Notes"],
-};
+/** Champs modifiables (projets simplifiés : plus d'étape ni de `next_action`, déduite des tâches). */
 const FIELDS: Record<Kind, string[]> = {
-  project: ["title", "status", "priority", "next_action", "deadline", "stage", "started", "tags"],
+  project: ["title", "status", "priority", "deadline"],
   area: ["title", "status", "priority"],
 };
+/** Sections de l'ancien format (affichées en lecture seule si la migration n'est pas passée). */
+const LEGACY_SECTIONS = ["Objectif", "Pourquoi", "Critères de réussite", "Ressources", "Risques", "Prochaines actions", "Liens", "Jalons", "Journal", "Rôle", "Standards à maintenir"];
 
 const readmePath = (kind: Kind, slug: string) => `${ROOT[kind]}/${slug}/README.md`;
 
@@ -44,13 +40,12 @@ export interface EditableEntry {
   slug: string;
   version: string;
   fields: Record<string, string>;
-  sections: Record<string, string>;
-  actions: { text: string; done: boolean }[];
-  journal: { date: string; text: string }[];
-  /** Projets : jalons (## Jalons), dans l'ordre du fichier. */
-  milestones: { date: string; text: string; done: boolean }[];
-  /** Corps complet (affichage en lecture seule des sections non éditables). */
-  body: string;
+  /** Notes du jour (## Notes / ### YYYY-MM-DD), dans l'ordre du fichier (plus récente en haut). */
+  notes: { date: string; text: string; done: string[] }[];
+  /** Autres sections « ## » (écrites à la main ou ancien format) : lecture seule. */
+  extra: [string, string][];
+  /** L'ancien format est encore là (migration à lancer). */
+  legacy: boolean;
 }
 
 export async function readEditable(kind: Kind, slug: string): Promise<EditableEntry | null> {
@@ -69,28 +64,25 @@ export async function readEditable(kind: Kind, slug: string): Promise<EditableEn
       fields[m[1]] = v;
     }
   }
-  const sections: Record<string, string> = {};
-  for (const name of SECTIONS[kind]) sections[name] = sectionText(d, name) ?? "";
-  const body = d.fm ? d.lines.slice(d.fm.end + 1).join("\n") : cur.text;
-  return { kind, slug, version: cur.version, fields, sections, actions: actions(d).map(({ text, done }) => ({ text, done })), journal: journal(d), milestones: milestones(d).map(({ date, text, done }) => ({ date, text, done })), body };
+  const extra: [string, string][] = [];
+  const from = d.fm ? d.fm.end + 1 : 0;
+  for (let i = from; i < d.lines.length; i++) {
+    const m = d.lines[i].match(/^##\s+(.+?)\s*$/);
+    if (!m || m[1] === NOTES_SECTION) continue;
+    const text = sectionText(d, m[1]) ?? "";
+    if (text.trim()) extra.push([m[1], text]);
+  }
+  return {
+    kind, slug, version: cur.version, fields,
+    notes: dayNotes(d).map(({ date, text, done }) => ({ date, text, done })),
+    extra,
+    legacy: LEGACY_SECTIONS.some((n) => findSection(d, n)) || /^(stage|next_action)\s*:/m.test(d.fm ? d.lines.slice(d.fm.start, d.fm.end).join("\n") : ""),
+  };
 }
 
 export type EditOp =
   | { op: "fields"; fields: Record<string, string> }
-  | { op: "section"; name: string; text: string }
-  | { op: "action-add"; text: string }
-  | { op: "action-check"; index: number; text: string }
-  | { op: "action-remove"; index: number; text: string }
-  | { op: "action-edit"; index: number; text: string; newText: string }
-  | { op: "action-move"; index: number; text: string; dir: -1 | 1 }
-  | { op: "journal-add"; text: string; date?: string }
-  | { op: "milestone-add"; date: string; text: string }
-  | { op: "milestone-check"; index: number; text: string; done: boolean }
-  | { op: "milestone-edit"; index: number; text: string; date: string; newText: string }
-  | { op: "milestone-remove"; index: number; text: string };
-
-/** Ordre habituel des sections d'un projet (les sections ajoutées s'y insèrent). */
-const SECTION_ORDER = ["Objectif", "Pourquoi", "Critères de réussite", "Ressources", "Risques", "Prochaines actions", "Notes", "Liens", "Jalons", "Journal"];
+  | { op: "note"; date: string; text: string };
 
 export const RESERVED_SLUGS = new Set(["aujourdhui", "pipeline", "liste", "domaines"]);
 
@@ -107,14 +99,12 @@ export async function editEntry(kind: Kind, slug: string, version: string, op: E
     if (!exists) throw new UserError("Ce fichier n'existe plus (déplacé ou archivé ?). Recharge la page.", 404);
     const d: Doc = parseDoc(text);
     try {
-      apply(kind, d, op, today);
+      apply(kind, d, op);
     } catch (e) {
       if (e instanceof UserError) throw e;
-      throw new UserError(e instanceof Error ? e.message : String(e), 409);
+      throw new UserError(e instanceof Error ? e.message : String(e), 400);
     }
     setField(d, "updated", today);
-    // Projets écrits avant les étapes : « stage » est ajouté à la première modification.
-    if (kind === "project" && !/^stage\s*:/m.test(d.fm ? d.lines.slice(d.fm.start + 1, d.fm.end).join("\n") : "")) setField(d, "stage", STAGES[0].id);
     return { text: serializeDoc(d) };
   });
 
@@ -124,7 +114,7 @@ export async function editEntry(kind: Kind, slug: string, version: string, op: E
   return { version: res.version, archivedTo };
 }
 
-function apply(kind: Kind, d: Doc, op: EditOp, today: string) {
+function apply(kind: Kind, d: Doc, op: EditOp) {
   switch (op.op) {
     case "fields":
       for (const [k, v] of Object.entries(op.fields)) {
@@ -134,68 +124,46 @@ function apply(kind: Kind, d: Doc, op: EditOp, today: string) {
         setField(d, k, normalizeField(k, v));
       }
       return;
-    case "section":
-      if (!SECTIONS[kind].includes(op.name)) throw new UserError("Section non modifiable.");
-      if (/^#{1,2}\s/m.test(op.text)) throw new UserError("Le texte ne peut pas contenir de titres « # » ou « ## » (utilise « ### »).");
+    case "note":
+      if (op.text.length > 20_000) throw new UserError("Note trop longue.");
       checkText(op.text);
-      if (!findSection(d, op.name)) {
-        // Nouvelle section : à sa place dans l'ordre habituel (avant la première section qui la suit).
-        const later = SECTION_ORDER.slice(SECTION_ORDER.indexOf(op.name) + 1).find((n) => findSection(d, n));
-        if (later) ensureSectionBefore(d, op.name, later);
-      }
-      setSectionText(d, op.name, op.text);
-      return;
-    case "action-add":
-      checkText(op.text);
-      addAction(d, oneLine(op.text));
-      return;
-    case "action-check":
-      checkAction(d, op.index, op.text, today);
-      return;
-    case "action-remove":
-      removeAction(d, op.index, op.text);
-      return;
-    case "action-edit":
-      checkText(op.newText);
-      editAction(d, op.index, op.text, oneLine(op.newText));
-      return;
-    case "action-move":
-      moveAction(d, op.index, op.text, op.dir);
-      return;
-    case "journal-add":
-      checkText(op.text);
-      addJournal(d, op.date ?? today, oneLine(op.text));
-      return;
-    case "milestone-add":
-      if (kind !== "project") throw new UserError("Les jalons sont réservés aux projets.");
-      checkText(op.text);
-      addMilestone(d, isoDate(op.date), oneLine(op.text));
-      return;
-    case "milestone-check": {
-      const m = setMilestoneDone(d, op.index, op.text, op.done);
-      // Jalon atteint : entrée datée dans le journal.
-      if (op.done && !m.done) addJournal(d, today, `Jalon atteint : ${m.text}`);
-      return;
-    }
-    case "milestone-edit":
-      checkText(op.newText);
-      editMilestone(d, op.index, op.text, isoDate(op.date), oneLine(op.newText));
-      return;
-    case "milestone-remove":
-      removeMilestone(d, op.index, op.text);
+      setDayText(d, isoDate(op.date), op.text);
   }
 }
 
-/** Valeurs contrôlées : étape connue, dates ISO (ou vide), tags « a, b ». */
+/** Ajoute (ou retire) « ✓ titre » dans la note du jour d'un projet / domaine (tâche liée cochée). Sans échec. */
+export async function recordDone(slug: string, date: string, title: string, done: boolean) {
+  if (!isValidSlug(slug)) return;
+  for (const kind of ["project", "area"] as Kind[]) {
+    const cur = await readVersioned(readmePath(kind, slug));
+    if (!cur.exists) continue;
+    await updateFile(readmePath(kind, slug), undefined, (text, exists) => {
+      if (!exists) return { text: null };
+      const d = parseDoc(text);
+      if (done) addDone(d, date, title);
+      else removeDone(d, date, title);
+      setField(d, "updated", todayISO());
+      return { text: serializeDoc(d) };
+    });
+    await regenerateDashboard();
+    return;
+  }
+}
+
+/** Projet ou domaine existant pour ce nom (pour lier une tâche). */
+export async function entryKindOf(slug: string): Promise<Kind | null> {
+  if (!isValidSlug(slug)) return null;
+  for (const kind of ["project", "area"] as Kind[]) if ((await readVersioned(readmePath(kind, slug))).exists) return kind;
+  return null;
+}
+
+/** Valeurs contrôlées : dates ISO (ou vide). */
 function normalizeField(k: string, v: string): string {
   const t = v.trim();
-  if (k === "title" || k === "next_action") return t || "TODO: fill in";
-  if (k === "stage") {
-    if (!STAGES.some((s) => s.id === t)) throw new UserError("Étape inconnue.");
-    return t;
-  }
-  if (k === "deadline" || k === "started") return t ? isoDate(t) : "";
-  if (k === "tags") return parseTags(t).join(", ");
+  if (k === "title") return t || "TODO: fill in";
+  if (k === "deadline") return t ? isoDate(t) : "";
+  if (k === "status" && !["idea", "active", "paused", "done", "dropped"].includes(t)) throw new UserError("Statut inconnu.");
+  if (k === "priority" && !["P1", "P2", "P3"].includes(t)) throw new UserError("Priorité inconnue.");
   return t;
 }
 
@@ -253,7 +221,7 @@ export async function deleteProject(slug: string, version: string): Promise<{ ti
 }
 
 /** Crée projects/<slug>/ (ou areas/<slug>/) à partir du template ; seul le titre est demandé. */
-export async function createEntry(kind: Kind, title: string): Promise<string> {
+export async function createEntry(kind: Kind, title: string, deadline: string | null = null): Promise<string> {
   const clean = oneLine(title);
   checkText(clean);
   const base = slugify(clean);
@@ -279,12 +247,9 @@ export async function createEntry(kind: Kind, title: string): Promise<string> {
     setField(d, "priority", "P3");
     setField(d, "created", today);
     setField(d, "updated", today);
-    // Projets écrits avant les étapes : « stage » est ajouté à la première modification.
-    if (kind === "project" && !/^stage\s*:/m.test(d.fm ? d.lines.slice(d.fm.start + 1, d.fm.end).join("\n") : "")) setField(d, "stage", STAGES[0].id);
+    if (kind === "project" && deadline) setField(d, "deadline", isoDate(deadline));
     const h1 = d.lines.findIndex((l) => /^#\s/.test(l));
     if (h1 >= 0) d.lines[h1] = `# ${clean}`;
-    // Date réelle de création dans le journal du template.
-    for (let i = 0; i < d.lines.length; i++) d.lines[i] = d.lines[i].replace(/^(\s*[-*]\s+)YYYY-MM-DD(\s+[—–-]\s+)/, `$1${today}$2`);
     return { text: serializeDoc(d) };
   });
   await regenerateDashboard();

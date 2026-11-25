@@ -1,8 +1,9 @@
 /**
  * Regroupements d'affichage des tâches (fonctions pures, testées) : sections du jour, progression,
- * historique par semaine. Aucun score, aucune série : seulement « faites / prévues aujourd'hui ».
+ * historique par semaine, tâches d'un projet / domaine et sa prochaine tâche (« prochaine action »
+ * dérivée, plus stockée). Aucun score, aucune série.
  */
-import { addDays, isoWeekday, weekStart, type Task } from "./tasks-core";
+import { addDays, isDated, isoWeekday, weekStart, type DatedTask, type Task } from "./tasks-core";
 
 export type SectionKey = "overdue" | "today" | "tomorrow" | "week";
 
@@ -23,11 +24,11 @@ export function weekEnd(today: string): string {
  * Ordre dans une journée : celui des lignes du fichier (glisser-déposer, ⌥↑/↓). Une nouvelle tâche
  * avec heure est insérée à sa place horaire parmi celles du même jour (voir `insertionLine`).
  */
-const byDayOrder = (a: Task, b: Task) => a.date.localeCompare(b.date) || a.line - b.line;
+const byDayOrder = (a: DatedTask, b: DatedTask) => a.date.localeCompare(b.date) || a.line - b.line;
 
 /** Ligne où insérer une nouvelle tâche : avant la 1re tâche du même jour plus tardive, sinon fin de fichier. */
-export function insertionLine(tasks: Task[], date: string, time: string | null, fileLength: number): number {
-  if (time) {
+export function insertionLine(tasks: Task[], date: string | null, time: string | null, fileLength: number): number {
+  if (date && time) {
     const later = tasks.filter((t) => t.date === date && t.status === "todo" && t.time && t.time > time).sort((a, b) => a.line - b.line)[0];
     if (later) return later.line;
   }
@@ -35,17 +36,19 @@ export function insertionLine(tasks: Task[], date: string, time: string | null, 
 }
 
 export interface TaskSections {
-  overdue: Task[];
-  today: Task[];
+  overdue: DatedTask[];
+  today: DatedTask[];
   /** Faites (ou abandonnées) aujourd'hui, montrées barrées sous « aujourd'hui ». */
-  todayDone: Task[];
-  tomorrow: Task[];
-  week: Task[];
+  todayDone: DatedTask[];
+  tomorrow: DatedTask[];
+  week: DatedTask[];
   /** Au-delà de « cette semaine » (repliée par défaut). */
-  later: Task[];
+  later: DatedTask[];
 }
 
-export function groupTasks(tasks: Task[], today: string): TaskSections {
+/** Sections de l'onglet « aujourd'hui » : tâches DATÉES seulement (les tâches sans date restent dans leur projet). */
+export function groupTasks(all: Task[], today: string): TaskSections {
+  const tasks = all.filter(isDated);
   const tomorrow = addDays(today, 1);
   const end = weekEnd(today);
   const todo = tasks.filter((t) => t.status === "todo").sort(byDayOrder);
@@ -60,29 +63,48 @@ export function groupTasks(tasks: Task[], today: string): TaskSections {
 }
 
 /** « 3 / 7 » : tâches faites parmi celles prévues aujourd'hui (les abandonnées ne comptent pas). */
-export function todayProgress(tasks: Task[], today: string): { done: number; total: number } {
-  const planned = tasks.filter((t) => t.status !== "dropped" && (t.date === today || (t.status === "done" && t.closedOn === today && t.date < today)));
+export function todayProgress(all: Task[], today: string): { done: number; total: number } {
+  const planned = all.filter(isDated).filter((t) => t.status !== "dropped" && (t.date === today || (t.status === "done" && t.closedOn === today && t.date < today)));
   return { done: planned.filter((t) => t.status === "done").length, total: planned.length };
 }
 
 /** Historique : tâches faites et abandonnées, groupées par semaine (lundi) de fin, plus récentes d'abord. */
 export function historyByWeek(tasks: Task[]): { week: string; tasks: Task[] }[] {
-  const closed = tasks.filter((t) => t.status !== "todo");
+  const closed = tasks.filter((t) => t.status !== "todo" && (t.closedOn || t.date));
   const map = new Map<string, Task[]>();
   for (const t of closed) {
-    const w = weekStart(t.closedOn ?? t.date);
+    const w = weekStart((t.closedOn ?? t.date)!);
     map.set(w, [...(map.get(w) ?? []), t]);
   }
+  const key = (t: Task) => t.closedOn ?? t.date ?? "";
   return [...map.entries()]
     .sort((a, b) => b[0].localeCompare(a[0]))
-    .map(([week, list]) => ({ week, tasks: list.sort((a, b) => (b.closedOn ?? b.date).localeCompare(a.closedOn ?? a.date) || a.line - b.line) }));
+    .map(([week, list]) => ({ week, tasks: list.sort((a, b) => key(b).localeCompare(key(a)) || a.line - b.line) }));
 }
 
-/** Tâches d'un projet : à faire (par date) puis faites récemment. */
-export function projectTasks(tasks: Task[], slug: string) {
-  const mine = tasks.filter((t) => t.project === slug);
-  return {
-    todo: mine.filter((t) => t.status === "todo").sort(byDayOrder),
-    closed: mine.filter((t) => t.status !== "todo").sort((a, b) => (b.closedOn ?? b.date).localeCompare(a.closedOn ?? a.date)),
+/**
+ * Ordre des tâches ouvertes d'un projet / domaine : en retard d'abord, puis par date, puis sans date
+ * (dans l'ordre du fichier, réglable à la main).
+ */
+export function openOrder(today: string) {
+  return (a: Task, b: Task) => {
+    const rank = (t: Task) => (!t.date ? 2 : t.date < today ? 0 : 1);
+    return rank(a) - rank(b) || (a.date && b.date ? a.date.localeCompare(b.date) : 0) || (a.time ?? "").localeCompare(b.time ?? "") || a.line - b.line;
   };
+}
+
+/** Tâches d'un projet / domaine : à faire (voir `openOrder`) puis faites / abandonnées (plus récentes d'abord). */
+export function entryTasks(tasks: Task[], slug: string, today: string) {
+  const mine = tasks.filter((t) => t.project === slug);
+  const key = (t: Task) => t.closedOn ?? t.date ?? "";
+  return {
+    open: mine.filter((t) => t.status === "todo").sort(openOrder(today)),
+    closed: mine.filter((t) => t.status !== "todo").sort((a, b) => key(b).localeCompare(key(a)) || b.line - a.line),
+    progress: { done: mine.filter((t) => t.status === "done").length, total: mine.filter((t) => t.status !== "dropped").length },
+  };
+}
+
+/** « Prochaine action » dérivée : la première tâche ouverte (en retard, puis par date, puis sans date). */
+export function nextTask(tasks: Task[], slug: string, today: string): Task | null {
+  return entryTasks(tasks, slug, today).open[0] ?? null;
 }

@@ -7,7 +7,7 @@ import { UserError } from "./api";
 import { isValidSlug } from "./content";
 import { joinLines, readVersioned, updateFile } from "./content-file";
 import { displayTimeZone } from "./display-tz";
-import { editEntry, readEditable } from "./entries-edit";
+import { entryKindOf, recordDone } from "./entries-edit";
 import { lineSecretReason } from "./secrets";
 import { insertionLine } from "./tasks-view";
 import {
@@ -28,7 +28,8 @@ const HEADER_BODY = [
 
 export interface TaskInput {
   title: string;
-  date: string;
+  /** null = sans date (seulement pour une tâche liée à un projet ou un domaine). */
+  date: string | null;
   time?: string | null;
   duration?: number | null;
   project?: string | null;
@@ -45,7 +46,7 @@ function check(t: Partial<TaskInput>) {
     const reason = lineSecretReason(title);
     if (reason) throw new UserError(`Non enregistré : ${reason}. TACHES.md est publié sur GitHub.`);
   }
-  if (t.date !== undefined && !isValidDate(t.date)) throw new UserError("Date invalide.");
+  if (t.date !== undefined && t.date !== null && !isValidDate(t.date)) throw new UserError("Date invalide.");
   if (t.time && !isValidTime(t.time)) throw new UserError("Heure invalide.");
   if (t.duration !== undefined && t.duration !== null && (t.duration < 1 || t.duration > 24 * 60)) throw new UserError("Durée invalide.");
   if (t.project && !isValidSlug(t.project)) throw new UserError("Projet invalide.");
@@ -84,13 +85,13 @@ export async function readTasks() {
  */
 export async function rollRecurring(today: string) {
   const cur = await readTasks();
-  if (!cur.tasks.some((t) => t.status === "todo" && t.recurrence && t.date < today)) return cur;
+  if (!cur.tasks.some((t) => t.status === "todo" && t.recurrence && t.date && t.date < today)) return cur;
   await updateFile(TASKS_FILE, cur.version, (text) => {
     const file = parseTasksFile(text);
     const lines = [...file.lines];
     const all = [...file.tasks];
     for (const t of file.tasks) {
-      if (t.status !== "todo" || !t.recurrence || t.date >= today) continue;
+      if (t.status !== "todo" || !t.recurrence || !t.date || t.date >= today) continue;
       lines[t.line] = formatTaskLine({ ...t, recurrence: null });
       const next = { ...t, id: nextTaskId(all, today), date: upcoming(t.recurrence, t.date, today), closedOn: null };
       all.push({ ...next, line: -1 });
@@ -107,8 +108,15 @@ const trimEnd = (lines: string[]) => {
   return out;
 };
 
+/** Une tâche sans date doit être liée à un projet ou un domaine existant. */
+async function checkUndated(date: string | null | undefined, project: string | null | undefined) {
+  if (date === null && !project) throw new UserError("Une tâche sans date doit être liée à un projet ou un domaine.");
+  if (date === null && project && !(await entryKindOf(project))) throw new UserError("Projet ou domaine introuvable.");
+}
+
 export async function addTask(input: TaskInput, today: string, version?: string) {
   check(input);
+  await checkUndated(input.date, input.project);
   return updateFile<Task>(TASKS_FILE, version, (text, exists) => {
     const lines = baseLines(text, exists);
     while (lines.length && lines[lines.length - 1] === "") lines.pop();
@@ -116,9 +124,9 @@ export async function addTask(input: TaskInput, today: string, version?: string)
     if (lines.length && !/^- \[[ xX-]\] /.test(lines[lines.length - 1])) lines.push("");
     const file = parseTasksFile(lines.join("\n"));
     const task: Omit<Task, "line"> = {
-      id: nextTaskId(file.tasks, today), status: "todo", date: input.date, time: input.time ?? null,
+      id: nextTaskId(file.tasks, today), status: "todo", date: input.date, time: input.date ? input.time ?? null : null,
       duration: input.duration ?? null, title: input.title.replace(/\s+/g, " ").trim(), project: input.project ?? null,
-      reminder: input.time ? input.reminder ?? null : null, recurrence: input.recurrence ?? null, closedOn: null,
+      reminder: input.time && input.date ? input.reminder ?? null : null, recurrence: input.date ? input.recurrence ?? null : null, closedOn: null,
     };
     const at = insertionLine(file.tasks, task.date, task.time, lines.length);
     lines.splice(at, 0, formatTaskLine(task));
@@ -128,6 +136,10 @@ export async function addTask(input: TaskInput, today: string, version?: string)
 
 export async function updateTask(version: string, id: string, patch: Partial<TaskInput>) {
   check(patch);
+  if (patch.date === null) {
+    const cur = parseTasksFile((await readVersioned(TASKS_FILE)).text).tasks.find((t) => t.id === id);
+    await checkUndated(null, patch.project !== undefined ? patch.project : cur?.project);
+  }
   return updateFile<Task>(TASKS_FILE, version, (text) => {
     const { file, task } = findTask(text, id);
     const merged: Task = {
@@ -135,6 +147,10 @@ export async function updateTask(version: string, id: string, patch: Partial<Tas
       ...Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined)),
       title: patch.title !== undefined ? patch.title.replace(/\s+/g, " ").trim() : task.title,
     };
+    if (!merged.date) {
+      merged.time = null;
+      merged.recurrence = null;
+    }
     if (!merged.time) merged.reminder = null;
     const lines = [...file.lines];
     lines[task.line] = formatTaskLine(merged);
@@ -147,12 +163,14 @@ export async function updateTask(version: string, id: string, patch: Partial<Tas
  * et, pour une tâche récurrente, l'occurrence suivante (la tâche faite perd sa récurrence).
  */
 export async function setTaskStatus(version: string, id: string, status: TaskStatus, today: string) {
+  let before: Task | null = null;
   const res = await updateFile<{ task: Task; next: Task | null }>(TASKS_FILE, version, (text) => {
     const { file, task } = findTask(text, id);
+    before = task;
     const lines = [...file.lines];
     let next: Task | null = null;
     const updated: Task = { ...task, status, closedOn: status === "todo" ? null : today };
-    if (status !== "todo" && task.recurrence && task.status === "todo") {
+    if (status !== "todo" && task.recurrence && task.date && task.status === "todo") {
       updated.recurrence = null;
       next = { ...task, id: nextTaskId(file.tasks, today), date: upcoming(task.recurrence, task.date, today), closedOn: null, line: lines.length };
       lines.push(formatTaskLine(next));
@@ -160,34 +178,27 @@ export async function setTaskStatus(version: string, id: string, status: TaskSta
     lines[task.line] = formatTaskLine(updated);
     return { text: joinLines(lines), result: { task: updated, next } };
   });
+  // Projet / domaine lié : « ✓ titre » dans la note du jour (retiré si la tâche est décochée).
   const { task } = res.result!;
-  if (status === "done" && task.project) await journalForProject(task.project, today, `Fait : ${task.title}`);
+  const prev = before as Task | null;
+  if (task.project) {
+    if (status === "done" && prev?.status !== "done") await recordDone(task.project, today, task.title, true);
+    if (status !== "done" && prev?.status === "done" && prev.closedOn) await recordDone(task.project, prev.closedOn, task.title, false);
+  }
   return res;
 }
 
-/** Ajoute une entrée datée au journal d'un projet (sans échec si le projet n'existe plus). */
-async function journalForProject(slug: string, date: string, text: string) {
-  try {
-    const entry = await readEditable("project", slug);
-    if (!entry) return;
-    await editEntry("project", slug, entry.version, { op: "journal-add", text, date });
-  } catch {
-    /* projet introuvable ou modifié au même moment : la tâche reste cochée */
-  }
-}
-
-/**
- * « Planifier » une prochaine action d'un projet : elle quitte la liste du README (sans entrée au journal)
- * et devient une tâche datée liée au projet. La version du README est vérifiée avant toute écriture.
- */
-export async function planProjectAction(
-  slug: string, projectVersion: string, index: number, text: string, when: { date: string; time?: string | null }, today: string,
-) {
-  const input: TaskInput = { title: text, date: when.date, time: when.time ?? null, project: slug };
-  check(input);
-  const res = await editEntry("project", slug, projectVersion, { op: "action-remove", index, text });
-  const task = await addTask(input, today);
-  return { projectVersion: res.version, task: task.result!, version: task.version };
+/** « Annuler » après une suppression : remet la tâche (même identifiant) à sa ligne d'origine. */
+export async function restoreTask(task: Omit<Task, "line"> & { line: number }) {
+  check({ title: task.title, date: task.date ?? undefined, time: task.time, project: task.project });
+  return updateFile(TASKS_FILE, undefined, (text, exists) => {
+    const lines = baseLines(text, exists);
+    const file = parseTasksFile(lines.join("\n"));
+    if (file.tasks.some((t) => t.id === task.id)) return { text: null };
+    const at = Math.max(file.front.end, Math.min(task.line, lines.length));
+    lines.splice(at, 0, formatTaskLine(task));
+    return { text: joinLines(lines) };
+  });
 }
 
 export async function deleteTask(version: string, id: string) {
