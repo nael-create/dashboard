@@ -147,7 +147,7 @@ export function sortEntries<T extends Entry>(list: T[]): T[] {
 
 export const listProjects = async () => sortEntries(await listEntries("project"));
 
-/** Projets archivés (archive/<nom>/README.md), en lecture seule, avec leur corps (jalons, journal). */
+/** Projets archivés (archive/<nom>/README.md), en lecture seule, avec leur corps. */
 export async function listArchivedProjects(): Promise<EntryWithBody[]> {
   let dirs: string[];
   try {
@@ -159,16 +159,16 @@ export async function listArchivedProjects(): Promise<EntryWithBody[]> {
   return (await Promise.all(dirs.map((d) => readEntry("project", d, "archive")))).filter((e): e is EntryWithBody => e !== null);
 }
 
-/** Projets en cours avec leur corps (pipeline, liste : jalons et journal). */
-export async function listProjectsWithBody(): Promise<EntryWithBody[]> {
+/** Projets en cours (ou domaines) avec leur corps (liste : date de la dernière note du jour). */
+export async function listWithBody(kind: Kind = "project"): Promise<EntryWithBody[]> {
   let dirs: string[];
   try {
-    dirs = (await fs.readdir(/*turbopackIgnore: true*/ path.join(/*turbopackIgnore: true*/ CONTENT_DIR, "projects"), { withFileTypes: true }))
+    dirs = (await fs.readdir(/*turbopackIgnore: true*/ path.join(/*turbopackIgnore: true*/ CONTENT_DIR, ROOTS[kind]), { withFileTypes: true }))
       .filter((d) => d.isDirectory() && isValidSlug(d.name)).map((d) => d.name);
   } catch {
     return [];
   }
-  return sortEntries((await Promise.all(dirs.map((d) => readEntry("project", d)))).filter((e): e is EntryWithBody => e !== null));
+  return sortEntries((await Promise.all(dirs.map((d) => readEntry(kind, d)))).filter((e): e is EntryWithBody => e !== null));
 }
 export const listAreas = async () => sortEntries(await listEntries("area"));
 export const getProject = (slug: string) => readEntry("project", slug);

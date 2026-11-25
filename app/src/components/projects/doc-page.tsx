@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { shortDate } from "@/lib/fr-dates";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ImagePlus, Pencil, Plus, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -21,7 +22,11 @@ const MAX = 5 * 1024 * 1024;
  * (« [[ » propose pages et projets, image collée ou déposée → projects/<projet>/assets/), renommer,
  * « Nouvelle décision » (journal de décisions), supprimer = ranger dans docs/_archive/ après confirmation.
  */
-export function DocPage({ initial, projectTitle, ctx }: { initial: DocPageData; projectTitle: string; ctx: LinkContext }) {
+export function DocPage({ initial, projectTitle, ctx, owner }: {
+  initial: DocPageData; projectTitle: string; ctx: LinkContext;
+  /** Page du projet ou du domaine (lien retour) et dossier (affiché). */
+  owner: { href: string; dir: string };
+}) {
   const router = useRouter();
   const [doc, setDoc] = useState(initial);
   const [editing, setEditing] = useState(false);
@@ -77,7 +82,7 @@ export function DocPage({ initial, projectTitle, ctx }: { initial: DocPageData; 
   const archive = async () => {
     try {
       await apiJson(`${base}?version=${doc.version}`, "DELETE");
-      router.push(`/projets/${doc.project}?onglet=docs`);
+      router.push(owner.href);
       router.refresh();
     } catch (e) {
       fail(e);
@@ -162,8 +167,8 @@ export function DocPage({ initial, projectTitle, ctx }: { initial: DocPageData; 
 
   return (
     <article>
-      <Link href={`/projets/${doc.project}?onglet=docs`} className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-accent-text">
-        <ArrowLeft className="size-4" aria-hidden /> {projectTitle} · docs
+      <Link href={owner.href} className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-accent-text">
+        <ArrowLeft className="size-4" aria-hidden /> {projectTitle}
       </Link>
       {error && (
         <div className="mb-4">
@@ -186,7 +191,7 @@ export function DocPage({ initial, projectTitle, ctx }: { initial: DocPageData; 
           className="-mx-2 w-full bg-transparent px-2 py-1 text-[clamp(2rem,5vw,4rem)] font-light leading-[1.05] tracking-[-0.04em] outline-none hover:bg-surface-2 focus:bg-surface-2"
         />
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
-          <p className="label text-muted">mise à jour {doc.updated ?? "—"} · <code className="normal-case">projects/{doc.project}/docs/{doc.slug}.md</code></p>
+          <p className="label text-muted">mise à jour {doc.updated && /^\d{4}-\d{2}-\d{2}$/.test(doc.updated) ? shortDate(doc.updated) : "—"} · <code className="normal-case">{owner.dir}/docs/{doc.slug}.md</code></p>
           <div className="flex flex-wrap items-center gap-2">
             {isDecisionLog && !editing && (
               <button type="button" className={`${btnGhost} border border-border`} onClick={() => setDecision("")}><Plus className="size-4" aria-hidden /> Nouvelle décision</button>
