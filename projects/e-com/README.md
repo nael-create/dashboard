@@ -1,7 +1,7 @@
 ---
 title: E-com
 status: idea          # idea | active | paused | done | dropped
-priority: P3          # P1 | P2 | P3
+priority: P1          # P1 | P2 | P3
 stage: idee           # idee | recherche | conception | realisation | lancement | suivi (dashboard.config.ts)
 created: 2026-11-25
 updated: 2026-11-25
@@ -53,4 +53,6 @@ TODO: fill in
 
 <!-- Entrées datées, la plus récente en haut. -->
 
+- 2026-11-25 — Fait : se former, avoir les bases (Chat/tik tok/ ytb)
+- 2026-11-25 — début de la formation
 - 2026-11-25 — Création du projet.
