@@ -2,14 +2,14 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { fail, isSameOrigin } from "@/lib/api";
 import { HEX_COLOR, updateStore } from "@/lib/calendar-store";
-import { DEFAULT_LAYERS, MILESTONES_LAYER, TASKS_LAYER } from "@/lib/calendar-layers";
+import { DEADLINES_LAYER, DEFAULT_LAYERS, TASKS_LAYER } from "@/lib/calendar-layers";
 
 export const dynamic = "force-dynamic";
 
 const layer = z.object({ color: z.string().regex(HEX_COLOR, "Couleur invalide.").optional(), visible: z.boolean().optional() });
 const schema = z.object({
   mergeAdjacent: z.boolean().optional(),
-  layer: z.object({ id: z.enum([TASKS_LAYER, MILESTONES_LAYER]), set: layer }).optional(),
+  layer: z.object({ id: z.enum([TASKS_LAYER, DEADLINES_LAYER]), set: layer }).optional(),
 });
 
 /** PATCH /api/calendar-options : réglages d'affichage du calendrier. */

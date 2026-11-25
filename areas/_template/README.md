@@ -8,14 +8,8 @@ updated: YYYY-MM-DD
 
 # TODO: fill in
 
-## Rôle
-
-TODO: fill in
-
-## Standards à maintenir
-
-- TODO: fill in
+<!-- Les tâches du domaine sont dans TACHES.md (marqueur #nom-du-dossier). -->
 
 ## Notes
 
-TODO: fill in
+<!-- Une sous-section par jour, la plus récente en haut : ### YYYY-MM-DD, texte libre, puis « ✓ tâche faite ». -->

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseTasksFile } from "@/lib/tasks-core";
-import { emptyState, markSent, parseState, selectReminders, type SentState } from "@/lib/reminders-core";
+import { deadlineWords, emptyState, markSent, parseState, projectDeadline, selectReminders, type SentState } from "@/lib/reminders-core";
 
 const head = (extra = "") => `---\ntimezone: Asia/Kuala_Lumpur\nreminders: yes\nevening_digest: "18:00"\nmorning_digest: "08:00"\nmorning_enabled: no\n${extra}---\n\n`;
 const file = (lines: string[], extra = "") => parseTasksFile(head(extra) + lines.join("\n") + "\n");
@@ -54,6 +54,31 @@ describe("rappels : sélection", () => {
     expect(m.text).not.toContain("Demain");
     const after = markSent(st, m, kl(D, "18:07"), "Asia/Kuala_Lumpur");
     expect(selectReminders(f, after, kl(D, "19:07"))).toEqual([]);
+  });
+
+  it("soir : projets dont la deadline est dans les 3 jours ou dépassée (même sans tâche) ; tâches sans date ignorées", () => {
+    const g = file([`- [x] ${D} Fini id:t-1 ✓${D}`, "- [ ] Sans date #alpha id:t-2"]);
+    const deadlines = [
+      { slug: "alpha", title: "Alpha", deadline: "2026-11-26" },
+      { slug: "beta", title: "Beta", deadline: "2026-11-20" },
+      { slug: "gamma", title: "Gamma", deadline: "2026-12-20" },
+    ];
+    const [m] = selectReminders(g, emptyState(), kl(D, "18:07"), deadlines);
+    expect(m.kind).toBe("evening");
+    expect(m.subject).toBe("Ce soir : deadlines proches");
+    expect(m.text).toContain("Beta : en retard de 4 jours");
+    expect(m.text).toContain("Alpha : dans 2 jours");
+    expect(m.text).not.toContain("Gamma");
+    expect(m.text).not.toContain("Sans date");
+    expect(m.html).toContain("http://127.0.0.1:3000/projets/alpha");
+    expect(selectReminders(g, emptyState(), kl(D, "18:07"), [deadlines[2]])).toEqual([]);
+    expect(deadlineWords(D, D)).toBe("aujourd'hui");
+  });
+
+  it("lecture de la deadline d'un README (projets clos et sans deadline ignorés)", () => {
+    expect(projectDeadline("a", '---\ntitle: "Site : refonte"\nstatus: active  # x\ndeadline: 2026-12-01  # optionnel\n---\n')).toEqual({ slug: "a", title: "Site : refonte", deadline: "2026-12-01" });
+    expect(projectDeadline("a", "---\ntitle: A\nstatus: done\ndeadline: 2026-12-01\n---\n")).toBeNull();
+    expect(projectDeadline("a", "---\ntitle: A\ndeadline:      # optionnel\n---\n")).toBeNull();
   });
 
   it("aucun mail quand il n'y a rien à dire", () => {

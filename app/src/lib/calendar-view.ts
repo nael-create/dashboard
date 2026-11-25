@@ -21,8 +21,8 @@ export interface ViewEvent {
   editable?: boolean;
   /** Calque « Tâches » : la tâche (case à cocher). */
   task?: { id: string; done: boolean; project: string | null };
-  /** Calque « Jalons » : le jalon d'un projet (case à cocher). */
-  milestone?: { project: string; projectTitle: string; index: number; text: string; done: boolean };
+  /** Calque « Deadlines » : deadline d'un projet (journée entière, lien vers le projet). */
+  deadline?: { project: string; projectTitle: string };
 }
 
 export { addDays };

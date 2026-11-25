@@ -3,7 +3,7 @@
 import {
   ArrowRight, CalendarCheck, CalendarDays, CornerDownLeft, FolderKanban, GraduationCap, Inbox, Layers, Mail, Newspaper,
   Palette, Plus, Save, Search, Star, type LucideIcon,
-  Download, FileText, Flag, Highlighter, ListChecks,
+  Download, FileText, Highlighter, ListChecks, NotebookPen,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
@@ -18,7 +18,7 @@ import { TASKS_EVENT } from "./tasks/use-tasks";
 
 export const OPEN_PALETTE = "dashboard:open-palette";
 
-type ItemType = "project" | "area" | "task" | "milestone" | "doc" | "notion" | "inbox" | "favorite" | "newsletter" | "news" | "event" | "highlight";
+type ItemType = "project" | "area" | "task" | "note" | "doc" | "notion" | "inbox" | "favorite" | "newsletter" | "news" | "event" | "highlight";
 interface SearchItem { type: ItemType; id: string; title: string; subtitle?: string; href: string; external?: boolean }
 
 interface Row {
@@ -36,7 +36,7 @@ const GROUPS: { type: ItemType; label: string; icon: LucideIcon }[] = [
   { type: "area", label: "Domaines", icon: Layers },
   { type: "notion", label: "Notions", icon: GraduationCap },
   { type: "task", label: "Tâches", icon: ListChecks },
-  { type: "milestone", label: "Jalons", icon: Flag },
+  { type: "note", label: "Notes du jour", icon: NotebookPen },
   { type: "doc", label: "Docs", icon: FileText },
   { type: "inbox", label: "Inbox", icon: Inbox },
   { type: "favorite", label: "Favoris", icon: Star },

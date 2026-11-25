@@ -29,6 +29,27 @@ export const serializeDoc = (d: Doc) => {
 /* Frontmatter                                                          */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Valeur d'une ligne de frontmatter « clé: valeur   # commentaire » (lecture simple, sans YAML complet) :
+ * guillemets retirés, commentaire « # » (précédé d'un espace, ou seul) ignoré. « deadline:   # optionnel » → "".
+ */
+export function fmValue(rest: string): string {
+  const t = rest.trim();
+  const q = t.match(/^"((?:[^"\\]|\\.)*)"/);
+  if (q) return q[1].replace(/\\"/g, '"').replace(/\\\\/g, "\\");
+  const sq = t.match(/^'((?:[^']|'')*)'/);
+  if (sq) return sq[1].replace(/''/g, "'");
+  return t.replace(/(?:^|\s)#.*$/, "").trim();
+}
+
+/** Champ du frontmatter (null s'il est absent). */
+export function fmField(text: string, key: string): string | null {
+  const fm = text.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+  if (!fm) return null;
+  const m = fm[1].match(new RegExp(`^${key}[ \\t]*:(.*)$`, "m"));
+  return m ? fmValue(m[1]) : null;
+}
+
 /** Met une valeur YAML entre guillemets quand c'est nécessaire (ex. « TODO: fill in » contient « : »). */
 export function yamlValue(v: string): string {
   if (v === "") return "";
@@ -110,13 +131,15 @@ export function setSectionText(d: Doc, name: string, text: string) {
 }
 
 /* ------------------------------------------------------------------ */
-/* Listes : prochaines actions (cases à cocher) et journal              */
+/* Ancien format (lecture seule, pour la migration) : prochaines        */
+/* actions, journal, jalons                                             */
 /* ------------------------------------------------------------------ */
 
 export interface ListItem { line: number; text: string; done: boolean }
 
 const CHECK = /^(\s*[-*]\s+)\[([ xX])\]\s+(.*)$/;
 
+/** Cases à cocher de « ## Prochaines actions » (ancien format). */
 export function actions(d: Doc, section = "Prochaines actions"): ListItem[] {
   const s = findSection(d, section);
   if (!s) return [];
@@ -128,88 +151,7 @@ export function actions(d: Doc, section = "Prochaines actions"): ListItem[] {
   return out;
 }
 
-const isPlaceholder = (t: string) => t.trim() === "TODO: fill in";
-
-function ensureSection(d: Doc, name: string): Section {
-  if (!findSection(d, name)) setSectionText(d, name, "");
-  return findSection(d, name)!;
-}
-
-export function addAction(d: Doc, text: string) {
-  // La première vraie action remplace le marqueur « TODO: fill in ».
-  for (const a of actions(d).reverse()) if (isPlaceholder(a.text)) d.lines.splice(a.line, 1);
-  const list = actions(d);
-  if (list.length) {
-    d.lines.splice(list[list.length - 1].line + 1, 0, `- [ ] ${text}`);
-    return;
-  }
-  // Liste vide : l'action se place en tête de section, le reste (commentaires…) est conservé.
-  const s = ensureSection(d, "Prochaines actions");
-  const rest = trimBlank(d.lines.slice(s.start, s.end));
-  d.lines.splice(s.start, s.end - s.start, "", `- [ ] ${text}`, ...(rest.length ? ["", ...rest] : []), "");
-}
-
-function trimBlank(lines: string[]): string[] {
-  const out = [...lines];
-  while (out.length && !out[0].trim()) out.shift();
-  while (out.length && !out[out.length - 1].trim()) out.pop();
-  return out;
-}
-
-function itemAt(d: Doc, index: number, expected: string): ListItem {
-  const item = actions(d)[index];
-  if (!item || item.text !== expected) throw new Error("Cette action a changé entre-temps. Recharge la page.");
-  return item;
-}
-
-export function editAction(d: Doc, index: number, expected: string, text: string) {
-  const item = itemAt(d, index, expected);
-  d.lines[item.line] = d.lines[item.line].replace(CHECK, (_m, pre, box) => `${pre}[${box}] ${text}`);
-}
-
-export function moveAction(d: Doc, index: number, expected: string, dir: -1 | 1) {
-  const list = actions(d);
-  const item = itemAt(d, index, expected);
-  const other = list[index + dir];
-  if (!other) return;
-  [d.lines[item.line], d.lines[other.line]] = [d.lines[other.line], d.lines[item.line]];
-}
-
-/** Ajoute « - YYYY-MM-DD — texte » en HAUT du journal (ordre antichronologique). */
-export function addJournal(d: Doc, date: string, text: string) {
-  const s = ensureSection(d, "Journal");
-  let firstItem = -1;
-  for (let i = s.start; i < s.end; i++) {
-    if (/^\s*[-*]\s+/.test(d.lines[i])) {
-      firstItem = i;
-      break;
-    }
-  }
-  const entry = `- ${date} — ${text}`;
-  if (firstItem >= 0) {
-    d.lines.splice(firstItem, 0, entry);
-    return;
-  }
-  // Pas encore d'entrée : après les éventuels commentaires / paragraphes de la section.
-  const rest = trimBlank(d.lines.slice(s.start, s.end));
-  d.lines.splice(s.start, s.end - s.start, "", ...(rest.length ? [...rest, ""] : []), entry, "");
-}
-
-/** Coche une action : elle quitte « Prochaines actions » et devient « YYYY-MM-DD — Fait : … » dans le journal. */
-export function checkAction(d: Doc, index: number, expected: string, date: string) {
-  const item = itemAt(d, index, expected);
-  d.lines.splice(item.line, 1);
-  addJournal(d, date, `Fait : ${item.text}`);
-}
-
-/** Retire une prochaine action sans l'inscrire au journal (« Planifier » : elle devient une tâche datée). */
-export function removeAction(d: Doc, index: number, expected: string) {
-  const item = itemAt(d, index, expected);
-  d.lines.splice(item.line, 1);
-  return item.text;
-}
-
-/** Entrées du journal (« - YYYY-MM-DD — texte »). */
+/** Entrées de « ## Journal » (« - YYYY-MM-DD — texte », ancien format). */
 export function journal(d: Doc): { date: string; text: string }[] {
   const s = findSection(d, "Journal");
   if (!s) return [];
@@ -221,21 +163,7 @@ export function journal(d: Doc): { date: string; text: string }[] {
   return out;
 }
 
-/* ------------------------------------------------------------------ */
-/* Sections ajoutées avant le Journal, jalons                           */
-/* ------------------------------------------------------------------ */
-
-/** Crée « ## name » juste avant « ## Journal » (ou en fin de document) si elle n'existe pas. */
-export function ensureSectionBefore(d: Doc, name: string, before = "Journal"): Section {
-  const found = findSection(d, name);
-  if (found) return found;
-  const b = findSection(d, before);
-  if (!b) return ensureSection(d, name);
-  d.lines.splice(b.heading, 0, `## ${name}`, "");
-  return findSection(d, name)!;
-}
-
-/** Jalon : « - [ ] YYYY-MM-DD — Titre » dans « ## Jalons » ([x] = atteint). */
+/** Jalon de « ## Jalons » : « - [ ] YYYY-MM-DD — Titre » ([x] = atteint ; ancien format). */
 export interface Milestone { line: number; index: number; date: string; text: string; done: boolean }
 
 const MILESTONE = /^(\s*[-*]\s+)\[([ xX])\]\s+(\d{4}-\d{2}-\d{2})\s+[—–-]\s+(.*)$/;
@@ -249,43 +177,4 @@ export function milestones(d: Doc): Milestone[] {
     if (m) out.push({ line: i, index: out.length, date: m[3], text: m[4].trim(), done: m[2] !== " " });
   }
   return out;
-}
-
-/** Ajoute un jalon à sa place chronologique (la section est créée avant le Journal si besoin). */
-export function addMilestone(d: Doc, date: string, text: string) {
-  const line = `- [ ] ${date} — ${text}`;
-  const list = milestones(d);
-  const after = list.find((m) => m.date > date);
-  if (after) return void d.lines.splice(after.line, 0, line);
-  if (list.length) return void d.lines.splice(list[list.length - 1].line + 1, 0, line);
-  const s = ensureSectionBefore(d, "Jalons");
-  const rest = trimBlank(d.lines.slice(s.start, s.end));
-  d.lines.splice(s.start, s.end - s.start, "", ...(rest.length ? [...rest, ""] : []), line, "");
-}
-
-function milestoneAt(d: Doc, index: number, expected: string): Milestone {
-  const m = milestones(d)[index];
-  if (!m || m.text !== expected) throw new Error("Ce jalon a changé entre-temps. Recharge la page.");
-  return m;
-}
-
-export function setMilestoneDone(d: Doc, index: number, expected: string, done: boolean): Milestone {
-  const m = milestoneAt(d, index, expected);
-  d.lines[m.line] = d.lines[m.line].replace(MILESTONE, (_x, pre, _b, date, text) => `${pre}[${done ? "x" : " "}] ${date} — ${text}`);
-  return m;
-}
-
-export function editMilestone(d: Doc, index: number, expected: string, date: string, text: string) {
-  const m = milestoneAt(d, index, expected);
-  d.lines.splice(m.line, 1);
-  addMilestone(d, date, text);
-  if (m.done) {
-    const again = milestones(d).find((x) => x.date === date && x.text === text && !x.done);
-    if (again) d.lines[again.line] = d.lines[again.line].replace("[ ]", "[x]");
-  }
-}
-
-export function removeMilestone(d: Doc, index: number, expected: string) {
-  const m = milestoneAt(d, index, expected);
-  d.lines.splice(m.line, 1);
 }

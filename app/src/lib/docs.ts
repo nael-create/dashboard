@@ -1,9 +1,11 @@
 /**
- * Pages de documentation d'un projet : projects/<projet>/docs/<page>.md (frontmatter title, created,
+ * Pages de documentation d'un projet ou d'un domaine : projects/<projet>/docs/<page>.md (ou
+ * areas/<domaine>/docs/<page>.md, même fonctionnement) (frontmatter title, created,
  * updated, order + texte Markdown libre). Images : projects/<projet>/assets/ (5 Mo max, PNG/JPG/WebP/GIF).
  * Supprimer une page = la ranger dans docs/_archive/ (jamais d'effacement). Modèles :
  * projects/_template/docs-templates/*.md. Écritures par content-file.ts (version vérifiée, écriture atomique).
  */
+import { existsSync } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { UserError } from "./api";
@@ -21,7 +23,16 @@ export interface DocMeta { slug: string; title: string; created: string | null; 
 export interface DocPage extends DocMeta { project: string; body: string; version: string }
 export interface DocTemplate { id: string; title: string; description: string }
 
-const docsDir = (project: string) => `projects/${project}/docs`;
+/**
+ * Dossier du projet, ou du domaine du même nom s'il n'y a pas de projet : les adresses
+ * (/projets/<nom>/docs/…, /api/projects/<nom>/docs) servent aux deux.
+ */
+export function ownerDir(slug: string): string {
+  if (!existsSync(/*turbopackIgnore: true*/ contentPath(`projects/${slug}/README.md`)) && existsSync(/*turbopackIgnore: true*/ contentPath(`areas/${slug}/README.md`))) return `areas/${slug}`;
+  return `projects/${slug}`;
+}
+export const ownerKind = (slug: string): "project" | "area" => (ownerDir(slug).startsWith("areas/") ? "area" : "project");
+const docsDir = (project: string) => `${ownerDir(project)}/docs`;
 const docPath = (project: string, doc: string) => `${docsDir(project)}/${doc}.md`;
 
 function assertNames(project: string, doc?: string) {
@@ -71,16 +82,17 @@ export async function listDocs(project: string): Promise<DocMeta[]> {
   return out.sort((a, b) => a.order - b.order || a.title.localeCompare(b.title, "fr"));
 }
 
-/** Toutes les pages de tous les projets en cours (liens [[…]], palette, favoris). */
-export async function listAllDocs(): Promise<(DocMeta & { project: string })[]> {
-  let projects: string[];
-  try {
-    projects = (await fs.readdir(/*turbopackIgnore: true*/ path.join(CONTENT_DIR, "projects"), { withFileTypes: true }))
-      .filter((d) => d.isDirectory() && isValidSlug(d.name)).map((d) => d.name);
-  } catch {
-    return [];
-  }
-  const all = await Promise.all(projects.map(async (p) => (await listDocs(p)).map((d) => ({ ...d, project: p }))));
+/** Toutes les pages des projets en cours et des domaines (liens [[…]], palette, favoris). */
+export async function listAllDocs(): Promise<(DocMeta & { project: string; kind: "project" | "area" })[]> {
+  const dirs = async (root: string) =>
+    fs.readdir(/*turbopackIgnore: true*/ path.join(CONTENT_DIR, root), { withFileTypes: true })
+      .then((l) => l.filter((d) => d.isDirectory() && isValidSlug(d.name)).map((d) => d.name), () => [] as string[]);
+  const projects = await dirs("projects");
+  const areas = (await dirs("areas")).filter((a) => !projects.includes(a));
+  const all = await Promise.all([
+    ...projects.map(async (p) => (await listDocs(p)).map((d) => ({ ...d, project: p, kind: "project" as const }))),
+    ...areas.map(async (p) => (await listDocs(p)).map((d) => ({ ...d, project: p, kind: "area" as const }))),
+  ]);
   return all.flat();
 }
 
@@ -133,7 +145,7 @@ export async function createDoc(project: string, title: string, templateId: stri
   if (clean.length > 120) throw new UserError("Titre trop long (120 caractères au plus).");
   checkText(clean);
   try {
-    await fs.access(/*turbopackIgnore: true*/ contentPath(`projects/${project}/README.md`));
+    await fs.access(/*turbopackIgnore: true*/ contentPath(`${ownerDir(project)}/README.md`));
   } catch {
     throw new UserError("Projet introuvable.", 404);
   }
@@ -255,13 +267,13 @@ export async function saveAsset(project: string, originalName: string, buf: Uint
   const ext = sniffImage(buf);
   if (!ext) throw new UserError("Format refusé : PNG, JPG, WebP ou GIF seulement.", 415);
   try {
-    await fs.access(/*turbopackIgnore: true*/ contentPath(`projects/${project}/README.md`));
+    await fs.access(/*turbopackIgnore: true*/ contentPath(`${ownerDir(project)}/README.md`));
   } catch {
     throw new UserError("Projet introuvable.", 404);
   }
   const stamp = now.toISOString().replace(/[-:]/g, "").replace("T", "-").slice(0, 15);
   const base = slugify(originalName.replace(/\.[a-z0-9]+$/i, "")).slice(0, 40) || "image";
-  const dir = contentPath(`projects/${project}/assets`);
+  const dir = contentPath(`${ownerDir(project)}/assets`);
   await fs.mkdir(/*turbopackIgnore: true*/ dir, { recursive: true });
   let name = `${stamp}-${base}.${ext}`;
   for (let n = 2; await fs.access(/*turbopackIgnore: true*/ path.join(dir, name)).then(() => true, () => false); n++) name = `${stamp}-${base}-${n}.${ext}`;
@@ -278,7 +290,7 @@ export async function readAsset(project: string, name: string): Promise<{ data: 
   const type = ASSET_TYPES[ext];
   if (!type) return null;
   try {
-    return { data: await fs.readFile(/*turbopackIgnore: true*/ contentPath(`projects/${project}/assets/${name}`)), type };
+    return { data: await fs.readFile(/*turbopackIgnore: true*/ contentPath(`${ownerDir(project)}/assets/${name}`)), type };
   } catch {
     return null;
   }

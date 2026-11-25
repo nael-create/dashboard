@@ -18,7 +18,8 @@
  *   - [x] 2026-11-24 Relire le contrat id:t-20261123-4 ✓2026-11-24
  *   - [-] 2026-11-20 Ancienne idée id:t-20261119-1 ✗2026-11-22
  *
- * Une ligne par tâche : case ([ ] à faire, [x] faite, [-] abandonnée), date (obligatoire), heure,
+ * Une ligne par tâche : case ([ ] à faire, [x] faite, [-] abandonnée), date (obligatoire, sauf pour une
+ * tâche liée à un projet ou un domaine : « - [ ] Titre #projet id:… » sans date), heure,
  * titre, puis des marqueurs facultatifs dans n'importe quel ordre : ⏱durée, #projet, ⏰rappel,
  * 🔁récurrence, id:…, ✓date de fin / ✗date d'abandon. Les autres lignes sont gardées telles quelles.
  */
@@ -29,8 +30,8 @@ export type Recurrence = { kind: "daily" } | { kind: "weekly"; weekday: number }
 export interface Task {
   id: string;
   status: TaskStatus;
-  /** YYYY-MM-DD */
-  date: string;
+  /** YYYY-MM-DD, ou null (tâche sans date d'un projet / domaine : jamais dans « aujourd'hui »). */
+  date: string | null;
   /** HH:MM ou null */
   time: string | null;
   /** minutes */
@@ -45,6 +46,10 @@ export interface Task {
   /** index de la ligne dans le fichier */
   line: number;
 }
+
+/** Tâche datée (vue « aujourd'hui », calendrier, rappels : seules les tâches datées y figurent). */
+export type DatedTask = Task & { date: string };
+export const isDated = (t: Task): t is DatedTask => !!t.date;
 
 export interface TaskSettings {
   timezone: string;
@@ -148,6 +153,8 @@ export function nextOccurrence(r: Recurrence, from: string): string {
 /* ------------------------------------------------------------------ */
 
 const LINE = /^- \[( |x|X|-)\] (\d{4}-\d{2}-\d{2})(?: ([01]\d:[0-5]\d|2[0-3]:[0-5]\d))?(?: (.*))?$/;
+/** Tâche sans date : « - [ ] Titre … #projet … » (le #projet est alors obligatoire). */
+const UNDATED = /^- \[( |x|X|-)\] (?!\d{4}-\d{2}-\d{2}(?:\s|$))(.+)$/;
 
 export function parseDuration(tok: string): number | null {
   const m = tok.match(/^(\d{1,2})h(\d{1,2})?$|^(\d{1,3})min$/);
@@ -165,8 +172,13 @@ export function parseReminder(tok: string): number | null {
 export const formatReminder = (min: number) => (min === 0 ? "⏰" : min % 60 === 0 ? `⏰-${min / 60}h` : `⏰-${min}m`);
 
 export function parseTaskLine(text: string, line: number): Task | null {
-  const m = text.match(LINE);
-  if (!m || !isValidDate(m[2])) return null;
+  let m = text.match(LINE);
+  if (m && !isValidDate(m[2])) return null;
+  if (!m) {
+    const u = text.match(UNDATED);
+    if (!u) return null;
+    m = [u[0], u[1], undefined, undefined, u[2]] as unknown as RegExpMatchArray;
+  }
   const status: TaskStatus = m[1] === " " ? "todo" : m[1] === "-" ? "dropped" : "done";
   let id = "";
   let duration: number | null = null;
@@ -185,21 +197,24 @@ export function parseTaskLine(text: string, line: number): Task | null {
     else if ((mm = w.match(/^#([a-z][a-z0-9]*(?:-[a-z0-9]+)*)$/)) && !project) project = mm[1];
     else words.push(w);
   }
+  const date = m[2] ?? null;
+  // Sans date, seule une tâche liée à un projet / domaine est une tâche (pas une case à cocher quelconque).
+  if (!date && !project) return null;
   return {
-    id: id || `t-ligne-${line + 1}`, status, date: m[2], time: m[3] ?? null, duration,
-    title: words.join(" "), project, reminder, recurrence, closedOn, line,
+    id: id || `t-ligne-${line + 1}`, status, date, time: date ? m[3] ?? null : null, duration,
+    title: words.join(" "), project, reminder: date ? reminder : null, recurrence: date ? recurrence : null, closedOn, line,
   };
 }
 
 export function formatTaskLine(t: Omit<Task, "line">): string {
   const box = t.status === "todo" ? " " : t.status === "done" ? "x" : "-";
-  const parts = [`- [${box}] ${t.date}`];
-  if (t.time) parts.push(t.time);
+  const parts = [t.date ? `- [${box}] ${t.date}` : `- [${box}]`];
+  if (t.date && t.time) parts.push(t.time);
   parts.push(t.title.replace(/\s+/g, " ").trim() || "(sans titre)");
   if (t.duration) parts.push(`⏱${formatDuration(t.duration)}`);
   if (t.project) parts.push(`#${t.project}`);
-  if (t.reminder !== null && t.time) parts.push(formatReminder(t.reminder));
-  if (t.recurrence) parts.push(recurrenceToken(t.recurrence));
+  if (t.reminder !== null && t.time && t.date) parts.push(formatReminder(t.reminder));
+  if (t.recurrence && t.date) parts.push(recurrenceToken(t.recurrence));
   parts.push(`id:${t.id}`);
   if (t.closedOn && t.status !== "todo") parts.push(`${t.status === "done" ? "✓" : "✗"}${t.closedOn}`);
   return parts.join(" ");

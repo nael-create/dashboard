@@ -45,16 +45,18 @@ describe("inbox", () => {
 });
 
 describe("revue", () => {
-  it("pré-remplit « Fait » depuis le journal de la semaine, propose le focus, crée puis modifie la revue", async () => {
+  it("pré-remplit « Fait » depuis les tâches faites de la semaine, propose le focus, crée puis modifie la revue", async () => {
     const slug = await E.createEntry("project", "Site");
-    let e = (await E.readEditable("project", slug))!;
+    const e = (await E.readEditable("project", slug))!;
     await E.editEntry("project", slug, e.version, { op: "fields", fields: { status: "active" } });
-    e = (await E.readEditable("project", slug))!;
-    await E.editEntry("project", slug, e.version, { op: "action-add", text: "Écrire la page d'accueil" });
-    e = (await E.readEditable("project", slug))!;
-    await E.editEntry("project", slug, e.version, { op: "journal-add", text: "Fait : Choisir un thème", date: "2026-11-10" });
-    e = (await E.readEditable("project", slug))!;
-    await E.editEntry("project", slug, e.version, { op: "journal-add", text: "Hors semaine", date: "2026-11-02" });
+    fs.writeFileSync(path.join(dir, "TACHES.md"), [
+      "# Tâches", "",
+      "- [ ] Écrire la page d'accueil #site id:t-20261101-1",
+      "- [x] 2026-11-09 Choisir un thème #site id:t-20261101-2 ✓2026-11-10",
+      "- [x] 2026-11-02 Hors semaine #site id:t-20261101-3 ✓2026-11-02",
+      "- [-] 2026-11-11 Abandonnée #site id:t-20261101-4 ✗2026-11-11",
+      "",
+    ].join("\n"));
 
     const week = R.isoWeek("2026-11-13");
     expect(await R.prefillDone(week)).toEqual(["Site : Choisir un thème"]);

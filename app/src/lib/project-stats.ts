@@ -1,14 +1,15 @@
 /**
- * Indicateurs d'un projet (fonctions pures) : avancement = part des jalons atteints, dernière activité
- * (mise à jour du README, journal, tâche liée faite), prochaine tâche, « à l'arrêt » (aucune alerte).
+ * Indicateurs d'un projet / domaine (fonctions pures) : avancement = tâches faites / tâches (hors
+ * abandonnées), dernière activité (mise à jour du README, note du jour, tâche liée faite), prochaine tâche
+ * (la « prochaine action », déduite des tâches et plus stockée).
  */
 import type { Task } from "./tasks-core";
+import { entryTasks } from "./tasks-view";
 
 export interface ProjectStats {
   progress: { done: number; total: number; pct: number | null };
   lastActivity: string | null;
-  nextTask: { title: string; date: string; time: string | null } | null;
-  stalled: boolean;
+  nextTask: { id: string; title: string; date: string | null; time: string | null } | null;
 }
 
 const maxDate = (...ds: (string | null | undefined)[]) =>
@@ -18,21 +19,13 @@ export function daysBetween(a: string, b: string): number {
   return Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86_400_000);
 }
 
-export function projectStats(
-  p: { slug: string; status: string | null; updated: string | null; journalTop?: string | null },
-  milestones: { done: boolean }[],
-  tasks: Task[],
-  today: string,
-  stalledDays: number,
-): ProjectStats {
-  const done = milestones.filter((m) => m.done).length;
+export function projectStats(p: { slug: string; updated: string | null; lastNote?: string | null }, tasks: Task[], today: string): ProjectStats {
+  const { open, progress } = entryTasks(tasks, p.slug, today);
   const mine = tasks.filter((t) => t.project === p.slug);
-  const lastActivity = maxDate(p.updated, p.journalTop, ...mine.map((t) => t.closedOn));
-  const next = mine.filter((t) => t.status === "todo").sort((a, b) => a.date.localeCompare(b.date) || (a.time ?? "99").localeCompare(b.time ?? "99"))[0];
+  const next = open[0];
   return {
-    progress: { done, total: milestones.length, pct: milestones.length ? Math.round((done / milestones.length) * 100) : null },
-    lastActivity,
-    nextTask: next ? { title: next.title, date: next.date, time: next.time } : null,
-    stalled: p.status === "active" && (!lastActivity || daysBetween(lastActivity, today) >= stalledDays),
+    progress: { ...progress, pct: progress.total ? Math.round((progress.done / progress.total) * 100) : null },
+    lastActivity: maxDate(p.updated, p.lastNote, ...mine.map((t) => t.closedOn)),
+    nextTask: next ? { id: next.id, title: next.title, date: next.date, time: next.time } : null,
   };
 }

@@ -7,8 +7,9 @@
  * Aucune dépendance : rien n'est installé dans le workflow.
  */
 import fs from "node:fs";
+import path from "node:path";
 import { parseTasksFile } from "../src/lib/tasks-core.ts";
-import { markSent, parseState, selectReminders, testEmail, type Email } from "../src/lib/reminders-core.ts";
+import { markSent, parseState, projectDeadline, selectReminders, testEmail, type Email, type ProjectDeadline } from "../src/lib/reminders-core.ts";
 
 const [tasksPath, statePath] = process.argv.slice(2).filter((a) => !a.startsWith("--"));
 const test = process.argv.includes("--test");
@@ -52,7 +53,28 @@ async function send(email: Email): Promise<boolean> {
   return false;
 }
 
-const emails = test ? [testEmail(file, now)] : selectReminders(file, state, now);
+/** Deadlines des projets en cours : projects/<nom>/README.md à côté de TACHES.md (récapitulatif du soir). */
+function readDeadlines(): ProjectDeadline[] {
+  const dir = path.join(path.dirname(tasksPath), "projects");
+  let names: string[] = [];
+  try {
+    names = fs.readdirSync(dir, { withFileTypes: true }).filter((d) => d.isDirectory() && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(d.name)).map((d) => d.name);
+  } catch {
+    return [];
+  }
+  const out: ProjectDeadline[] = [];
+  for (const n of names) {
+    try {
+      const d = projectDeadline(n, fs.readFileSync(path.join(dir, n, "README.md"), "utf8"));
+      if (d) out.push(d);
+    } catch {
+      /* README illisible : ignoré */
+    }
+  }
+  return out;
+}
+
+const emails = test ? [testEmail(file, now)] : selectReminders(file, state, now, readDeadlines());
 if (!file.settings.reminders && !test) console.log("Rappels désactivés dans TACHES.md (reminders: no).");
 if (!emails.length) console.log("Rien à envoyer.");
 let failed = false;

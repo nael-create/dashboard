@@ -12,7 +12,8 @@ import { regenerateDashboard } from "./dashboard-md";
 import { todayISO } from "./dates";
 import { readTasks } from "./tasks";
 import type { Task } from "./tasks-core";
-import { actions, findSection, journal, parseDoc, sectionText, serializeDoc, setSectionText } from "./markdown-doc";
+import { entryTasks } from "./tasks-view";
+import { findSection, fmField, parseDoc, sectionText, serializeDoc, setSectionText } from "./markdown-doc";
 import { detectSensitive } from "./secrets";
 import { addDays } from "./tz";
 
@@ -51,7 +52,7 @@ export async function shouldShowReviewLink(today = todayISO()): Promise<boolean>
 /* Données de départ                                                    */
 /* ------------------------------------------------------------------ */
 
-async function readmes(dir: "projects" | "archive") {
+async function readmes(dir: "projects" | "archive" | "areas") {
   const base = path.join(/*turbopackIgnore: true*/ CONTENT_DIR, dir);
   let names: string[] = [];
   try {
@@ -68,50 +69,33 @@ async function readmes(dir: "projects" | "archive") {
 }
 
 const titleOf = (text: string, slug: string) => {
-  const m = text.match(/^title:\s*(.*?)\s*(?:\s#.*)?$/m);
-  const t = (m?.[1] ?? "").replace(/^"(.*)"$/, "$1").replace(/\\"/g, '"');
+  const t = fmField(text, "title") ?? "";
   return t && t !== "TODO: fill in" ? t : slug;
 };
 
 /**
- * « Fait cette semaine » : entrées de journal (dont « Fait : … ») datées de la semaine, projets actifs ou
- * archivés, puis tâches faites cette semaine (TACHES.md) qui ne sont pas déjà dans un journal.
+ * « Fait cette semaine » : tâches faites cette semaine (TACHES.md), précédées du nom de leur projet ou
+ * domaine (actif ou archivé). Les notes du jour restent dans les projets (elles ne sont pas recopiées).
  */
 export async function prefillDone(week: IsoWeek): Promise<string[]> {
-  const out: string[] = [];
-  const seen = new Set<string>();
   const titles = new Map<string, string>();
-  for (const dir of ["projects", "archive"] as const) {
-    for (const { slug, text } of await readmes(dir)) {
-      const title = titleOf(text, slug);
-      titles.set(slug, title);
-      for (const j of journal(parseDoc(text))) {
-        if (j.date >= week.monday && j.date <= week.sunday && !/^Création du projet\.?$/.test(j.text)) {
-          out.push(`${title} : ${j.text.replace(/^Fait : /, "")}`);
-          seen.add(`${slug}|${j.text}`);
-        }
-      }
-    }
+  for (const dir of ["projects", "archive", "areas"] as const) {
+    for (const { slug, text } of await readmes(dir)) if (!titles.has(slug)) titles.set(slug, titleOf(text, slug));
   }
   const { tasks } = await readTasks().catch(() => ({ tasks: [] as Task[] }));
-  for (const t of tasks) {
-    if (t.status !== "done" || !t.closedOn || t.closedOn < week.monday || t.closedOn > week.sunday) continue;
-    if (t.project && seen.has(`${t.project}|Fait : ${t.title}`)) continue;
-    out.push(t.project ? `${titles.get(t.project) ?? t.project} : ${t.title}` : t.title);
-  }
-  return out;
+  return tasks
+    .filter((t) => t.status === "done" && t.closedOn && t.closedOn >= week.monday && t.closedOn <= week.sunday)
+    .sort((a, b) => a.closedOn!.localeCompare(b.closedOn!) || a.line - b.line)
+    .map((t) => (t.project ? `${titles.get(t.project) ?? t.project} : ${t.title}` : t.title));
 }
 
-/** Prochaines actions des projets actifs (choix du focus). */
+/** Choix du focus : tâches ouvertes des projets actifs (dans l'ordre du projet : en retard, datées, sans date). */
 export async function focusOptions(): Promise<{ slug: string; project: string; text: string }[]> {
   const active = (await listProjects()).filter((p) => p.status === "active");
+  const { tasks } = await readTasks().catch(() => ({ tasks: [] as Task[] }));
+  const today = todayISO();
   const out: { slug: string; project: string; text: string }[] = [];
-  for (const p of active) {
-    const { text } = await readVersioned(`projects/${p.slug}/README.md`);
-    const items = actions(parseDoc(text)).filter((a) => !a.done && a.text !== "TODO: fill in").map((a) => a.text);
-    if (p.nextAction && p.nextAction !== "TODO: fill in" && !items.includes(p.nextAction)) items.unshift(p.nextAction);
-    for (const t of items) out.push({ slug: p.slug, project: p.title, text: t });
-  }
+  for (const p of active) for (const t of entryTasks(tasks, p.slug, today).open) out.push({ slug: p.slug, project: p.title, text: t.title });
   return out;
 }
 

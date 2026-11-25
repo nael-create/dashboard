@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { errorResponse, fail, isSameOrigin, UserError } from "@/lib/api";
 import { todayISO } from "@/lib/dates";
-import { editEntry, readEditable } from "@/lib/entries-edit";
+import { readEditable } from "@/lib/entries-edit";
 import { markInboxDone, readInbox, removeInboxItem } from "@/lib/inbox";
 import { addTask } from "@/lib/tasks";
 import { scheduleTaskSync } from "@/lib/task-sync";
@@ -40,8 +40,10 @@ export async function POST(req: Request) {
         if (!project) throw new UserError("Choisis un projet.");
         const e = await readEditable("project", project);
         if (!e) throw new UserError("Projet introuvable.", 404);
-        await editEntry("project", project, e.version, { op: "action-add", text });
-        label = `${text} → action du projet « ${e.fields.title || project} »`;
+        // Devient une tâche sans date du projet (les « prochaines actions » sont désormais des tâches).
+        await addTask({ title: text.slice(0, 300), date: null, project }, todayISO());
+        scheduleTaskSync();
+        label = `${text} → tâche du projet « ${e.fields.title || project} »`;
         break;
       }
       case "notion":

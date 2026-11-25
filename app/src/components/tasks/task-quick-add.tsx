@@ -126,7 +126,7 @@ export function TaskQuickAdd({
         <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[12px]" aria-live="polite">
           <span className="label text-muted">aperçu</span>
           <span className="max-w-full truncate font-medium">{parsed.title}</span>
-          <Chip>{relativeDay(parsed.date, today)}</Chip>
+          {parsed.date && <Chip>{relativeDay(parsed.date, today)}</Chip>}
           {parsed.chips.filter((c) => !parsed.dateChips.includes(c)).map((c) => <Chip key={c}>{c}</Chip>)}
           {!parsed.project && defaultProject && <Chip>#{defaultProject}</Chip>}
           {parsed.ambiguous && <span className="text-amber-700 dark:text-amber-400">date incertaine : gardée dans le titre, à corriger</span>}

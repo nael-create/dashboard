@@ -5,12 +5,11 @@ import { usePathname } from "next/navigation";
 
 export const PROJECT_TABS = [
   { href: "/projets/aujourdhui", label: "aujourd'hui" },
-  { href: "/projets/pipeline", label: "pipeline" },
-  { href: "/projets/liste", label: "liste" },
+  { href: "/projets/liste", label: "projets" },
   { href: "/projets/domaines", label: "domaines" },
 ];
 
-/** Onglets de la section « projets » (liens : chaque onglet a son adresse). */
+/** Onglets de la section « projets » : aujourd'hui, projets (/projets/liste), domaines. */
 export function ProjectTabs() {
   const pathname = usePathname();
   return (

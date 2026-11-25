@@ -7,19 +7,9 @@ export const dynamic = "force-dynamic";
 const KINDS = { project: "project", area: "area" } as const;
 type Ctx = { params: Promise<{ kind: string; slug: string }> };
 
-const line = z.string().max(500, "Texte trop long.");
 const opSchema = z.discriminatedUnion("op", [
   z.object({ op: z.literal("fields"), fields: z.record(z.string(), z.string().max(300)) }),
-  z.object({ op: z.literal("section"), name: z.string(), text: z.string().max(20_000, "Texte trop long.") }),
-  z.object({ op: z.literal("action-add"), text: line }),
-  z.object({ op: z.literal("action-check"), index: z.number().int().min(0), text: z.string() }),
-  z.object({ op: z.literal("action-edit"), index: z.number().int().min(0), text: z.string(), newText: line }),
-  z.object({ op: z.literal("action-move"), index: z.number().int().min(0), text: z.string(), dir: z.union([z.literal(-1), z.literal(1)]) }),
-  z.object({ op: z.literal("journal-add"), text: line, date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional() }),
-  z.object({ op: z.literal("milestone-add"), date: z.string(), text: line }),
-  z.object({ op: z.literal("milestone-check"), index: z.number().int().min(0), text: z.string(), done: z.boolean() }),
-  z.object({ op: z.literal("milestone-edit"), index: z.number().int().min(0), text: z.string(), date: z.string(), newText: line }),
-  z.object({ op: z.literal("milestone-remove"), index: z.number().int().min(0), text: z.string() }),
+  z.object({ op: z.literal("note"), date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), text: z.string().max(20_000, "Note trop longue.") }),
 ]);
 const schema = z.object({ version: z.string(), confirmArchive: z.boolean().default(false), change: opSchema });
 

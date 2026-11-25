@@ -3,8 +3,8 @@ import { fail } from "@/lib/api";
 import { publicCalendar, readStore } from "@/lib/calendar-store";
 import { loadEvents } from "@/lib/ics";
 import { expandAgenda, PERSO_ID, readAgenda } from "@/lib/agenda";
-import { DEFAULT_LAYERS, MILESTONES_LAYER, milestonesToEvents, TASKS_LAYER, tasksToEvents } from "@/lib/calendar-layers";
-import { listMilestones } from "@/lib/milestones";
+import { DEADLINES_LAYER, deadlinesToEvents, DEFAULT_LAYERS, TASKS_LAYER, tasksToEvents } from "@/lib/calendar-layers";
+import { listProjects } from "@/lib/content";
 import { readTasks } from "@/lib/tasks";
 
 export const dynamic = "force-dynamic";
@@ -21,21 +21,21 @@ export async function GET(req: Request) {
 
   try {
     const { calendars, options } = await readStore();
-    const [{ events, errors, zones, displayTz }, agenda, tasks, milestones] = await Promise.all([
+    const [{ events, errors, zones, displayTz }, agenda, tasks, projects] = await Promise.all([
       loadEvents(calendars, start, end, sp.get("refresh") === "1"),
       readAgenda(),
       readTasks().catch(() => null),
-      listMilestones().catch(() => []),
+      listProjects().catch(() => []),
     ]);
-    // Calques intégrés « Tâches » et « Jalons » (masquables, couleur réglable dans « Gérer les calendriers »).
-    const layer = (id: typeof TASKS_LAYER | typeof MILESTONES_LAYER) => options.layers?.[id] ?? DEFAULT_LAYERS[id];
+    // Calques intégrés « Tâches » et « Deadlines » (masquables, couleur réglable dans « Gérer les calendriers »).
+    const layer = (id: typeof TASKS_LAYER | typeof DEADLINES_LAYER) => options.layers?.[id] ?? DEFAULT_LAYERS[id];
     const layers = [
       { id: TASKS_LAYER, name: "Tâches", color: layer(TASKS_LAYER).color, host: "TACHES.md", timeZone: null, layer: true, hidden: !layer(TASKS_LAYER).visible },
-      { id: MILESTONES_LAYER, name: "Jalons", color: layer(MILESTONES_LAYER).color, host: "projects/*/README.md", timeZone: null, layer: true, hidden: !layer(MILESTONES_LAYER).visible },
+      { id: DEADLINES_LAYER, name: "Deadlines", color: layer(DEADLINES_LAYER).color, host: "projects/*/README.md", timeZone: null, layer: true, hidden: !layer(DEADLINES_LAYER).visible },
     ];
     const layerEvents = [
       ...(layer(TASKS_LAYER).visible && tasks ? tasksToEvents(tasks.tasks, tasks.settings.timezone, displayTz, start, end) : []),
-      ...(layer(MILESTONES_LAYER).visible ? milestonesToEvents(milestones, start, end) : []),
+      ...(layer(DEADLINES_LAYER).visible ? deadlinesToEvents(projects.filter((p) => p.status !== "done" && p.status !== "dropped"), start, end) : []),
     ];
     // Calendrier « Perso » intégré (AGENDA.md) : toujours présent, modifiable.
     const perso = { id: PERSO_ID, name: agenda.settings.name, color: agenda.settings.color, host: "AGENDA.md", timeZone: null, editable: true };

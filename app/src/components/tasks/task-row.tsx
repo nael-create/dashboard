@@ -6,6 +6,9 @@ import { useEffect, useRef, useState } from "react";
 import { addDays, formatDuration, type Task } from "@/lib/tasks-core";
 import { relativeDay } from "@/lib/task-format";
 import { btnDanger, btnGhost, btnPrimary, field } from "@/components/ui/forms";
+import { DateField, TimeField } from "@/components/ui/date-field";
+import { MiniCalendar } from "@/components/ui/mini-calendar";
+import { taskPresets } from "@/lib/fr-dates";
 import type { ProjectRef } from "./task-quick-add";
 import type { TasksApi } from "./use-tasks";
 
@@ -22,6 +25,7 @@ export function TaskRow({
   showDate?: boolean; overdue?: boolean; draggable?: boolean; hideProject?: boolean;
 }) {
   const [menu, setMenu] = useState(false);
+  const [pickDate, setPickDate] = useState(false);
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [dropHint, setDropHint] = useState(false);
@@ -64,7 +68,7 @@ export function TaskRow({
     }
   };
 
-  if (editing) return <TaskEditor task={task} api={api} projects={projects} onClose={() => setEditing(false)} />;
+  if (editing) return <TaskEditor task={task} api={api} projects={projects} today={today} onClose={() => setEditing(false)} />;
 
   return (
     <li
@@ -124,7 +128,7 @@ export function TaskRow({
           <span className={done ? "line-through" : ""}>{task.title}</span>
         </p>
         <p className="mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[12px] text-muted empty:hidden">
-          {showDate && <span className={overdue ? "text-rose-700 dark:text-rose-400" : ""}>{relativeDay(task.date, today)}</span>}
+          {showDate && task.date && <span className={overdue ? "text-rose-700 dark:text-rose-400" : ""}>{relativeDay(task.date, today)}</span>}
           {task.duration && <span>{formatDuration(task.duration)}</span>}
           {task.reminder !== null && (
             <span className="inline-flex items-center gap-1" title="Rappel par e-mail (au passage horaire suivant)">
@@ -173,16 +177,8 @@ export function TaskRow({
               <>
                 <MenuItem onClick={() => reschedule(today)}>Aujourd&apos;hui</MenuItem>
                 <MenuItem onClick={() => reschedule(addDays(today, 1))}>Demain</MenuItem>
-                <label className="flex items-center justify-between gap-2 px-3 py-1.5 text-muted">
-                  <span>Choisir une date</span>
-                  <input
-                    type="date"
-                    defaultValue={task.date}
-                    onChange={(e) => e.target.value && reschedule(e.target.value)}
-                    className="w-[8.5rem] border border-border bg-surface px-1 py-0.5 text-[12px] text-text"
-                    aria-label="Nouvelle date"
-                  />
-                </label>
+                <MenuItem onClick={() => setPickDate((p) => !p)}>Choisir une date…</MenuItem>
+                {pickDate && <div className="border-y border-border px-3 py-3"><MiniCalendar value={task.date} today={today} onPick={(d) => { setPickDate(false); reschedule(d); }} autoFocus /></div>}
                 <hr className="my-1 border-border" />
               </>
             )}
@@ -213,9 +209,9 @@ const REMINDERS: { value: string; label: string }[] = [
 ];
 
 /** Modification d'une tâche : titre, date, heure, durée, projet, rappel. */
-function TaskEditor({ task, api, projects, onClose }: { task: Task; api: TasksApi; projects: ProjectRef[]; onClose: () => void }) {
+function TaskEditor({ task, api, projects, today, onClose }: { task: Task; api: TasksApi; projects: ProjectRef[]; today: string; onClose: () => void }) {
   const [title, setTitle] = useState(task.title);
-  const [date, setDate] = useState(task.date);
+  const [date, setDate] = useState(task.date ?? "");
   const [time, setTime] = useState(task.time ?? "");
   const [duration, setDuration] = useState(task.duration ? String(task.duration) : "");
   const [project, setProject] = useState(task.project ?? "");
@@ -225,7 +221,7 @@ function TaskEditor({ task, api, projects, onClose }: { task: Task; api: TasksAp
     const ok = await api.run({
       action: "update", id: task.id,
       patch: {
-        title, date, time: time || null, duration: duration ? Number(duration) : null, project: project || null,
+        title, date: date || null, time: date && time ? time : null, duration: duration ? Number(duration) : null, project: project || null,
         reminder: time && reminder !== "" ? Number(reminder) : null,
       },
     });
@@ -235,8 +231,8 @@ function TaskEditor({ task, api, projects, onClose }: { task: Task; api: TasksAp
     <li className="border-b border-border py-3">
       <form onSubmit={save} onKeyDown={(e) => e.key === "Escape" && onClose()} className="grid gap-2 sm:grid-cols-6">
         <input value={title} onChange={(e) => setTitle(e.target.value)} className={`${field} sm:col-span-6`} aria-label="Titre" required maxLength={300} autoFocus />
-        <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={`${field} sm:col-span-2`} aria-label="Date" required />
-        <input type="time" value={time} onChange={(e) => setTime(e.target.value)} className={`${field} sm:col-span-1`} aria-label="Heure" />
+        <DateField value={date} onChange={setDate} today={today} presets={taskPresets(today)} label="Date" required={!task.project} className="sm:col-span-2" />
+        <TimeField value={time} onChange={setTime} label="Heure (24 h)" className="sm:col-span-1" />
         <input type="number" min={1} max={1440} value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="Durée (min)" className={`${field} sm:col-span-1`} aria-label="Durée en minutes" />
         <select value={project} onChange={(e) => setProject(e.target.value)} className={`${field} sm:col-span-2`} aria-label="Projet">
           <option value="">Aucun projet</option>

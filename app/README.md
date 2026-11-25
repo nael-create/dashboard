@@ -156,10 +156,10 @@ Le thème clair/sombre suit le réglage du système ; le bouton en haut à droit
 |---|---|---|
 | `/` | Accueil : 01. agenda, 02. à la une (grille d'images), puis projets actifs, à retenir aujourd'hui, aujourd'hui (tâches), newsletters | ✅ |
 | `/projets/aujourdhui` | Tâches du jour (`TACHES.md`) : saisie rapide, en retard / aujourd'hui / demain / cette semaine, historique, rappels par e-mail ; focus de la semaine en haut | ✅ |
-| `/projets/pipeline`, `/projets/liste`, `/projets/domaines` | Projets par étape, liste filtrable, domaines | ✅ |
-| `/projets/<nom>` | Projet : étapes, avancement, onglets vue d'ensemble, tâches, jalons, docs, journal | ✅ |
-| `/projets/<nom>/docs/<page>` | Page de docs (sommaire, liens [[…]], images) | ✅ |
-| `/domaines/<nom>` | Modifier le domaine | ✅ |
+| `/projets/liste`, `/projets/domaines` | Onglets « projets » (cartes, filtres statut et priorité, tri) et « domaines » | ✅ |
+| `/projets/<nom>` | Projet sur une seule page : tâches à gauche, notes du jour à droite, documents en bas | ✅ |
+| `/projets/<nom>/docs/<page>` | Document (sommaire, liens [[…]], images) | ✅ |
+| `/domaines/<nom>` | Domaine : même page qu'un projet, sans deadline ni statut | ✅ |
 | `/news` | Actus : widgets par source ou catégorie, glisser-déposer, masquer, sources gérées depuis l'app | ✅ |
 | `/notions` | Notions : glossaire (« Tout consulter »), gestion, import en masse, impression | ✅ |
 | `/revue` | Revue de la semaine guidée (4 étapes) | ✅ |
@@ -177,6 +177,7 @@ Le calendrier de l'accueil affiche tes agendas Outlook, Google ou iCloud **en le
 - **Erreurs** : si un agenda ne répond pas, un message indique lequel et pourquoi ; les autres s'affichent normalement.
 - **Fuseau d'affichage** : celui de ton ordinateur (indiqué en bas du calendrier), sauf si `dashboard.config.ts` en force un.
 - **Fuseau d'un calendrier** : certains agendas (souvent scolaires) donnent des heures sans fuseau. L'app le devine automatiquement (réglage du calendrier, puis fuseau déclaré dans le fichier) et affiche sa déduction dans « Gérer les calendriers ». Si c'est faux, tape le bon fuseau dans « Fuseau horaire » (ex. `Europe/Paris`) ; « Automatique » revient à la détection.
+- **Tâches et Deadlines** : deux calques intégrés, listés dans « Gérer les calendriers » (couleur, « Afficher ») : tes tâches datées (case à cocher) et les deadlines de tes projets en cours (journée entière).
 - **Regrouper les événements consécutifs** (activé par défaut) : trois cours identiques de 08:00 à 11:00 s'affichent en un seul bloc. Affichage seulement ; désactivable dans « Gérer les calendriers ».
 
 Les liens d'abonnement sont **secrets** (quiconque les possède peut lire ton agenda). Ils sont enregistrés uniquement dans `app/data/calendars.local.json`, ignoré par git, et ne sont jamais renvoyés au navigateur.
@@ -225,10 +226,10 @@ Les calendriers abonnés (Outlook, Google, iCloud) restent en lecture seule. Pou
 
 - **Quand ?** Le jour choisi (`reviewDay` dans `dashboard.config.ts` : 0 = dimanche, 1 = lundi… 6 = samedi), une ligne discrète « Revue de la semaine — 5 min » apparaît en haut de l'accueil, jusqu'à ce que la revue soit faite. Tu peux aussi la lancer à tout moment : page Projets → « Faire la revue », ou la palette (⌘K).
 - **4 étapes**, toutes facultatives :
-  1. **Fait cette semaine** : pré-rempli avec les actions cochées et les entrées de journal de la semaine ; modifie, retire, ajoute ;
+  1. **Fait cette semaine** : pré-rempli avec les tâches faites de la semaine (avec leur projet) ; modifie, retire, ajoute ;
   2. **Bloqué** : texte libre ;
-  3. **Inbox** : chaque élément, un par un → action d'un projet, notion, mémo, supprimer ou garder ;
-  4. **Focus** : jusqu'à 3 éléments (prochaines actions des projets actifs ou texte libre).
+  3. **Inbox** : chaque élément, un par un → tâche d'un projet, notion, tâche datée, supprimer ou garder ;
+  4. **Focus** : jusqu'à 3 éléments (tâches à faire des projets actifs ou texte libre).
 - **Terminer** crée `reviews/2026-W46.md` (par exemple) et met à jour le « Focus de la semaine ». Si la revue de la semaine existe déjà, l'app propose de la **modifier** au lieu de l'écraser.
 - Si tu recharges la page en cours de route, tu reprends où tu en étais.
 
@@ -241,16 +242,26 @@ Les calendriers abonnés (Outlook, Google, iCloud) restent en lecture seule. Pou
 
 ## Modifier un projet ou un domaine
 
-- Sur la page d'un projet : sous le titre, la **frise des étapes** (idée → suivi) se change d'un clic ; puis **statut**, **priorité**, **deadline**, **avancement** (part des jalons atteints) et **dernière activité**. Clique sur le titre pour le renommer.
-- Onglets : **vue d'ensemble** (Objectif, Pourquoi, Critères de réussite, Ressources, Risques, Notes, Liens, prochaine action, prochaines actions avec **Planifier**, début, tags), **tâches** (celles du projet, ajout rapide), **jalons** (datés, à cocher : « Jalon atteint » s'inscrit au journal), **docs**, **journal**.
-- **Docs** : « Créer » une page vide ou depuis un modèle (Brief, Recherche / benchmark, Journal de décisions, Specs, Retour d'expérience). Dans une page : « Modifier », tape `[[` pour lier une autre page ou un projet, colle ou dépose une image (PNG, JPG, WebP, GIF, 5 Mo max), ⌘S enregistre. Sommaire automatique dès 3 titres. Renommer = cliquer sur le titre. Supprimer = la page est rangée dans `docs/_archive/` du projet (jamais effacée).
-- Onglets de **projets** : **pipeline** (une colonne par étape, glisser une carte ou choisir son étape au clavier ; « chronologie » montre les jalons des 3 prochains mois ; « à l'arrêt » = actif sans activité depuis 14 jours), **liste** (filtres statut, priorité, étape, tags ; tri), **domaines**.
-- **Prochaines actions** : ajoute-les en bas, réordonne-les avec ↑ ↓, modifie-les avec le crayon. **Coche une action** : elle disparaît de la liste et s'inscrit dans le **Journal** (« 2026-11-13 — Fait : … »).
-- **Objectif, Notes, Liens** : crayon → éditeur avec onglets « Écrire » et « Aperçu ».
-- **Journal** : choisis la date et ajoute une entrée ; elle se place en haut.
-- **Terminé / Abandonné** : une confirmation s'affiche, puis le dossier est déplacé dans `archive/` (récupérable).
-- **Supprimer le projet…** (en bas de la page du projet) : après confirmation, le dossier du projet est effacé définitivement (README, docs, images). Les tâches liées restent. Clique ensuite sur « Sauvegarder » pour envoyer la suppression sur GitHub.
+Chaque projet tient sur **une seule page** (plus d'onglets, d'étapes ni de jalons) :
+
+- **En-tête** : clique sur le titre pour le renommer (Entrée enregistre). La **deadline** s'affiche en clair (« dans 12 jours · 7 déc. », « demain », « en retard de 2 jours » en couleur) ; clique dessus pour choisir « Dans 1 semaine », « Dans 2 semaines », « Fin du mois », une date dans le petit calendrier, ou « Retirer ». Le **statut** se change d'un clic (idée / en cours / en pause / terminé), la **priorité** aussi (P1 / P2 / P3). « 3 / 7 tâches » montre l'avancement.
+- **Tâches** (à gauche) : écris dans « Ajouter une tâche… » puis Entrée. Une date dans le texte devient l'échéance (« vendredi », « demain », « 15/12 », « dans 3 jours ») ; sinon la tâche reste **sans date** (elle n'encombre pas l'onglet « aujourd'hui »). Clique sur le titre d'une tâche pour le modifier, sur sa date pour la changer (« + date » au survol). Les tâches en retard passent en premier, puis par date, puis les tâches sans date, que tu ranges en les glissant (ou **Alt+↑ / Alt+↓**). Les tâches faites se replient dans « terminées ». La corbeille (au survol) supprime aussitôt, avec **Annuler** pendant 5 secondes.
+- **Notes** (à droite) : écris la note du jour (Markdown accepté) ; elle s'enregistre toute seule (« enregistré »). Les jours précédents sont dessous, avec les tâches faites ce jour-là (« ✓ … ») ; clique sur une ancienne note pour la modifier.
+- **Documents** (en bas, repliés) : « Nouveau document », vide ou depuis un modèle (Brief, Recherche / benchmark, Journal de décisions, Specs, Retour d'expérience). Dans un document : « Modifier », tape `[[` pour lier un autre document ou un projet, colle ou dépose une image (PNG, JPG, WebP, GIF, 5 Mo max), ⌘S enregistre. Supprimer = le document est rangé dans `docs/_archive/` (jamais effacé).
+- **…** (en haut à droite) : **Abandonner** (confirmation, dossier rangé dans `archive/`) ou **Supprimer le projet** (effacé définitivement après confirmation ; les tâches liées restent ; clique ensuite sur « Sauvegarder »). « Terminé » range aussi le projet dans `archive/` après confirmation.
+- **Onglet « projets »** : une carte par projet (deadline, avancement, prochaine tâche, priorité), filtres statut et priorité, tri par deadline, priorité ou dernière activité. **Nouveau projet** : un titre et, si tu veux, une deadline ; la page s'ouvre prête pour la première tâche.
+- **Domaines** : même page, sans deadline ni statut.
 - Chaque modification met à jour la date `updated` et le fichier `DASHBOARD.md`, et apparaît dans le compteur du bouton **Sauvegarder**.
+
+### Migration vers ce format (déjà faite pour tes projets)
+
+Les anciens README (sections Objectif, Prochaines actions, Jalons, Journal…) sont convertis par un script, sans rien perdre : prochaines actions → tâches sans date, jalons → tâches datées, journal → notes du jour, sections remplies → note datée « Ancien contenu : … ». Il ne change rien s'il est relancé. Pour un projet ajouté à la main dans l'ancien format :
+
+```bash
+cd app && node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/migrate-entries.ts .. --dry-run
+```
+
+(sans `--dry-run` pour l'appliquer).
 
 ## Tâches du jour (`TACHES.md`)
 
@@ -265,13 +276,13 @@ Sous le champ, un **aperçu** montre ce qui a été compris (date, heure, projet
 
 Sur chaque tâche : la case coche, « ⋯ » (ou un appui long sur téléphone) ouvre Aujourd'hui / Demain / Choisir une date / Modifier / Abandonner / Supprimer. Au clavier : **Espace** coche, **⌥↑ / ⌥↓** déplace, **Entrée** modifie ; à la souris, glisse-dépose. Les tâches en retard proposent « Reporter à aujourd'hui », « Reporter à demain » ou « Abandonner ». Le lien **historique** montre les tâches faites et abandonnées, semaine par semaine.
 
-Cocher une tâche liée à un projet ajoute « Fait : … » au journal du projet. Sur la page d'un projet, l'icône calendrier d'une prochaine action (**Planifier**) la transforme en tâche datée. Depuis n'importe où : **⌘K** puis « Nouvelle tâche », ou tape le texte puis **Maj+Entrée**.
+Cocher une tâche liée à un projet ajoute « ✓ … » à la note du jour du projet. Les tâches **sans date** d'un projet restent sur sa page (jamais dans « aujourd'hui », le calendrier ni les rappels). Depuis n'importe où : **⌘K** puis « Nouvelle tâche », ou tape le texte puis **Maj+Entrée**.
 
 ## Rappels par e-mail
 
 Les seules notifications du dashboard. GitHub vérifie `TACHES.md` **toutes les heures** (à la minute 7) et t'envoie :
 
-- le **récapitulatif du soir** (18:00 par défaut) : ce qui reste aujourd'hui et ce qui est en retard ;
+- le **récapitulatif du soir** (18:00 par défaut) : ce qui reste aujourd'hui, ce qui est en retard, et les projets dont la deadline tombe dans les 3 jours (ou est dépassée) ;
 - le **récapitulatif du matin** (08:00, désactivé par défaut) : les tâches du jour ;
 - le **rappel d'une tâche** marquée « ⏰ » ou « ⏰-30m », au premier passage horaire après l'heure prévue (donc jusqu'à une heure plus tard).
 
