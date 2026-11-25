@@ -1,6 +1,10 @@
 /**
  * Flux RSS / Atom : téléchargement côté serveur, cache mémoire, analyse et dédoublonnage.
- * - Chaque flux est téléchargé AU PLUS une fois toutes les 5 minutes (un échec peut être retenté).
+ * - Chaque flux est téléchargé AU PLUS une fois toutes les 5 minutes (15 pour Google News), un échec
+ *   peut être retenté au bout d'une minute (« Rafraîchir ») ;
+ * - un même site n'est jamais interrogé en parallèle (demandes espacées) ;
+ * - « trop de demandes » (HTTP 429, ou 503) : pause respectant « Retry-After », sinon 15 min puis
+ *   30, 60, 120 min si cela se répète ; les articles du dernier chargement réussi restent affichés.
  * - On n'affiche que ce que fournit le flux (titre, lien, date, image) : aucun article n'est
  *   récupéré en entier, aucun contenu n'est écrit dans le dépôt.
  */
@@ -10,7 +14,15 @@ import { hashText } from "./content-file";
 import type { NewsSource } from "./news-config";
 
 const TTL_MS = 5 * 60 * 1000;
+/** Google News sert plusieurs sources (Reuters…) et limite vite les demandes : rafraîchi moins souvent. */
+const SLOW_HOSTS_TTL_MS = 15 * 60 * 1000;
+const SLOW_HOSTS = new Set(["news.google.com"]);
 const RETRY_FAILED_MS = 60 * 1000;
+/** Pause après « trop de demandes » : 15 min, puis 30, 60, 120 au plus (ou ce que demande Retry-After). */
+const RATE_LIMIT_BASE_MS = 15 * 60 * 1000;
+const RATE_LIMIT_MAX_MS = 2 * 60 * 60 * 1000;
+/** Écart minimal entre deux demandes au même site. */
+const SAME_HOST_GAP_MS = 1500;
 const MAX_BYTES = 5 * 1024 * 1024;
 const MAX_ITEMS_PER_FEED = 40;
 
@@ -25,9 +37,53 @@ export interface Article {
   thumbnail: string | null;
 }
 
-interface FeedCache { url: string; at: number; ok: boolean; items: Article[]; error?: string; siteDomain: string }
-const g = globalThis as unknown as { __rss?: Map<string, FeedCache> };
+interface FeedCache {
+  url: string; at: number; ok: boolean; items: Article[]; error?: string; siteDomain: string;
+  /** « Trop de demandes » : pas de nouvel essai avant cet instant (ms), ni nombre de refus d'affilée. */
+  retryAt?: number;
+  strikes?: number;
+}
+const g = globalThis as unknown as { __rss?: Map<string, FeedCache>; __rssHosts?: Map<string, Promise<unknown>> };
 const cache = (g.__rss ??= new Map());
+const hostQueue = (g.__rssHosts ??= new Map());
+
+const hostOf = (url: string) => {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return "";
+  }
+};
+export const ttlFor = (url: string) => (SLOW_HOSTS.has(hostOf(url)) ? SLOW_HOSTS_TTL_MS : TTL_MS);
+
+/** Erreur HTTP « trop de demandes » (429 / 503), avec la pause demandée par le site (Retry-After). */
+class RateLimited extends Error {
+  constructor(public status: number, public retryAfterMs: number | null) {
+    super(`HTTP ${status}`);
+  }
+}
+
+/** Retry-After : nombre de secondes ou date HTTP ; null si absent ou illisible. */
+export function parseRetryAfter(v: string | null, now: number): number | null {
+  if (!v) return null;
+  if (/^\d+$/.test(v.trim())) return Number(v.trim()) * 1000;
+  const t = Date.parse(v);
+  return Number.isNaN(t) ? null : Math.max(0, t - now);
+}
+
+/** Pause après le n-ième refus d'affilée (1 = premier) : au moins ce que demande le site, 2 h au plus. */
+export function rateLimitDelay(strikes: number, retryAfterMs: number | null): number {
+  const backoff = Math.min(RATE_LIMIT_BASE_MS * 2 ** Math.max(0, strikes - 1), RATE_LIMIT_MAX_MS);
+  return Math.min(Math.max(backoff, retryAfterMs ?? 0), RATE_LIMIT_MAX_MS);
+}
+
+/** Exécute `fn` après les demandes en cours au même site, avec un petit écart. */
+function onHost<T>(host: string, fn: () => Promise<T>): Promise<T> {
+  const prev = hostQueue.get(host) ?? Promise.resolve();
+  const run = prev.then(fn, fn);
+  hostQueue.set(host, run.then(() => new Promise((r) => setTimeout(r, SAME_HOST_GAP_MS)), () => new Promise((r) => setTimeout(r, SAME_HOST_GAP_MS))));
+  return run;
+}
 
 // Pas d'option « stopNodes » : la faille connue de fast-xml-parser 5.11.2 ne s'applique pas.
 const parser = new XMLParser({
@@ -146,6 +202,7 @@ async function download(url: string): Promise<string> {
     if (e instanceof Error && (e.name === "TimeoutError" || e.name === "AbortError")) throw new Error(`délai dépassé : ${host} ne répond pas`);
     throw new Error(`impossible de joindre ${host}`);
   }
+  if (res.status === 429 || res.status === 503) throw new RateLimited(res.status, parseRetryAfter(res.headers.get("retry-after"), Date.now()));
   if (!res.ok) throw new Error(`HTTP ${res.status}${res.status === 404 ? " (flux introuvable)" : res.status === 403 ? " (accès refusé)" : ""}`);
   const buf = await res.arrayBuffer();
   if (buf.byteLength > MAX_BYTES) throw new Error("flux trop volumineux");
@@ -155,22 +212,30 @@ async function download(url: string): Promise<string> {
 /** Articles d'une source, depuis le cache si possible. */
 export async function loadFeed(source: NewsSource, retryFailed = false): Promise<FeedCache> {
   const hit = cache.get(source.id);
+  const ttl = ttlFor(source.url);
   if (hit && hit.url === source.url) {
     const age = Date.now() - hit.at;
-    if (hit.ok && age < TTL_MS) return hit;
-    if (!hit.ok && age < (retryFailed ? RETRY_FAILED_MS : TTL_MS)) return hit;
+    // Site qui a demandé une pause : on la respecte, même avec « Rafraîchir ».
+    if (hit.retryAt && Date.now() < hit.retryAt) return hit;
+    if (hit.ok && age < ttl) return hit;
+    if (!hit.ok && !hit.retryAt && age < (retryFailed ? RETRY_FAILED_MS : ttl)) return hit;
   }
   try {
-    const { items, siteDomain: domain } = parseFeed(await download(source.url), source);
+    const { items, siteDomain: domain } = parseFeed(await onHost(hostOf(source.url), () => download(source.url)), source);
     const entry: FeedCache = { url: source.url, at: Date.now(), ok: true, items, siteDomain: domain };
     cache.set(source.id, entry);
     return entry;
   } catch (e) {
+    const same = hit?.url === source.url;
+    const limited = e instanceof RateLimited;
+    const strikes = limited ? (same && hit?.strikes ? hit.strikes : 0) + 1 : 0;
     const entry: FeedCache = {
       url: source.url, at: Date.now(), ok: false,
-      items: hit?.url === source.url ? hit.items : [],
-      error: e instanceof Error ? e.message : String(e),
+      // Les articles du dernier chargement réussi restent affichés.
+      items: same ? hit!.items : [],
+      error: limited ? `trop de demandes (HTTP ${e.status}) : ${hostOf(source.url)} demande de patienter` : e instanceof Error ? e.message : String(e),
       siteDomain: hit?.siteDomain ?? siteDomain(source.url),
+      ...(limited ? { retryAt: Date.now() + rateLimitDelay(strikes, e.retryAfterMs), strikes } : {}),
     };
     cache.set(source.id, entry);
     return entry;
