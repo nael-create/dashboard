@@ -44,7 +44,8 @@ export async function buildNews(retryFailed = false): Promise<NewsPayload> {
     const f = feeds.get(s.id)!;
     if (!f.ok) {
       errors.push({
-        sourceId: s.id, name: s.name, message: f.error ?? "erreur inconnue",
+        sourceId: s.id, name: s.name,
+        message: (f.error ?? "erreur inconnue") + (f.retryAt ? `, nouvel essai automatique vers ${localStamp(f.retryAt, displayTimeZone()).slice(11)}` : ""),
         staleSince: f.items.length ? localStamp(f.at, displayTimeZone()).slice(11) : undefined,
       });
     }
