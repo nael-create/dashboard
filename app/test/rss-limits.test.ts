@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { loadFeed, parseRetryAfter, rateLimitDelay, ttlFor } from "@/lib/rss";
+import type { NewsSource } from "@/lib/news-config";
 
 const MIN = 60_000;
 const RSS = `<?xml version="1.0"?><rss><channel><title>T</title><link>https://ex.test</link><item><title>Un titre</title><link>https://ex.test/a</link></item></channel></rss>`;
@@ -24,7 +25,7 @@ describe("flux : demandes limitées (HTTP 429)", () => {
   it("après un 429, pas de nouvelle demande pendant la pause, même avec « Rafraîchir » ; message clair", async () => {
     const fetchMock = vi.fn(async () => new Response("", { status: 429, headers: { "Retry-After": "120" } }));
     vi.stubGlobal("fetch", fetchMock);
-    const src = { id: "limite-test", name: "Test", url: "https://limite.test/rss", category: "x", color: "#000000", enabled: true };
+    const src = { id: "limite-test", name: "Test", url: "https://limite.test/rss", category: "x", color: "#000000", enabled: true } as NewsSource;
     const first = await loadFeed(src, true);
     expect(first.ok).toBe(false);
     expect(first.error).toBe("trop de demandes (HTTP 429) : limite.test demande de patienter");
@@ -35,7 +36,7 @@ describe("flux : demandes limitées (HTTP 429)", () => {
 
   it("un flux en échec garde les articles du dernier chargement réussi", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response(RSS, { status: 200 })));
-    const src = { id: "garde-test", name: "Test", url: "https://garde.test/rss", category: "x", color: "#000000", enabled: true };
+    const src = { id: "garde-test", name: "Test", url: "https://garde.test/rss", category: "x", color: "#000000", enabled: true } as NewsSource;
     expect((await loadFeed(src)).items).toHaveLength(1);
   });
 });
