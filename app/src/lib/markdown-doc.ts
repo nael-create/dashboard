@@ -29,6 +29,27 @@ export const serializeDoc = (d: Doc) => {
 /* Frontmatter                                                          */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Valeur d'une ligne de frontmatter « clé: valeur   # commentaire » (lecture simple, sans YAML complet) :
+ * guillemets retirés, commentaire « # » (précédé d'un espace, ou seul) ignoré. « deadline:   # optionnel » → "".
+ */
+export function fmValue(rest: string): string {
+  const t = rest.trim();
+  const q = t.match(/^"((?:[^"\\]|\\.)*)"/);
+  if (q) return q[1].replace(/\\"/g, '"').replace(/\\\\/g, "\\");
+  const sq = t.match(/^'((?:[^']|'')*)'/);
+  if (sq) return sq[1].replace(/''/g, "'");
+  return t.replace(/(?:^|\s)#.*$/, "").trim();
+}
+
+/** Champ du frontmatter (null s'il est absent). */
+export function fmField(text: string, key: string): string | null {
+  const fm = text.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+  if (!fm) return null;
+  const m = fm[1].match(new RegExp(`^${key}[ \\t]*:(.*)$`, "m"));
+  return m ? fmValue(m[1]) : null;
+}
+
 /** Met une valeur YAML entre guillemets quand c'est nécessaire (ex. « TODO: fill in » contient « : »). */
 export function yamlValue(v: string): string {
   if (v === "") return "";

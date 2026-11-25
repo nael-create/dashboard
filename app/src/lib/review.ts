@@ -13,7 +13,7 @@ import { todayISO } from "./dates";
 import { readTasks } from "./tasks";
 import type { Task } from "./tasks-core";
 import { entryTasks } from "./tasks-view";
-import { findSection, parseDoc, sectionText, serializeDoc, setSectionText } from "./markdown-doc";
+import { findSection, fmField, parseDoc, sectionText, serializeDoc, setSectionText } from "./markdown-doc";
 import { detectSensitive } from "./secrets";
 import { addDays } from "./tz";
 
@@ -69,8 +69,7 @@ async function readmes(dir: "projects" | "archive" | "areas") {
 }
 
 const titleOf = (text: string, slug: string) => {
-  const m = text.match(/^title:\s*(.*?)\s*(?:\s#.*)?$/m);
-  const t = (m?.[1] ?? "").replace(/^"(.*)"$/, "$1").replace(/\\"/g, '"');
+  const t = fmField(text, "title") ?? "";
   return t && t !== "TODO: fill in" ? t : slug;
 };
 

@@ -11,7 +11,7 @@ import { readVersioned, updateFile } from "./content-file";
 import { regenerateDashboard } from "./dashboard-md";
 import { todayISO } from "./dates";
 import { addDone, dayNotes, NOTES_SECTION, removeDone, setDayText } from "./daily-notes";
-import { findSection, parseDoc, sectionText, serializeDoc, setField, type Doc } from "./markdown-doc";
+import { findSection, fmValue, parseDoc, sectionText, serializeDoc, setField, type Doc } from "./markdown-doc";
 import { detectSensitive } from "./secrets";
 import { slugify } from "./slug";
 
@@ -56,12 +56,8 @@ export async function readEditable(kind: Kind, slug: string): Promise<EditableEn
   const fields: Record<string, string> = {};
   if (d.fm) {
     for (let i = d.fm.start + 1; i < d.fm.end; i++) {
-      const m = d.lines[i].match(/^([a-z_]+)\s*:\s*(.*?)\s*(?:\s#.*)?$/i);
-      if (!m) continue;
-      let v = m[2].trim();
-      if (/^".*"$/.test(v)) v = v.slice(1, -1).replace(/\\"/g, '"').replace(/\\\\/g, "\\");
-      else if (/^'.*'$/.test(v)) v = v.slice(1, -1).replace(/''/g, "'");
-      fields[m[1]] = v;
+      const m = d.lines[i].match(/^([a-z_]+)[ \t]*:(.*)$/i);
+      if (m) fields[m[1]] = fmValue(m[2]);
     }
   }
   const extra: [string, string][] = [];

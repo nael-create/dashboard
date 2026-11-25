@@ -12,7 +12,7 @@
  * Imports relatifs en .ts : utilisé par app/scripts/migrate-entries.ts (node --experimental-strip-types).
  */
 import { appendDayText, addDone, dayNotes, demoteHeadings, NOTES_SECTION } from "./daily-notes.ts";
-import { actions, findSection, journal, milestones, parseDoc, serializeDoc, type Doc } from "./markdown-doc.ts";
+import { actions, findSection, fmValue, journal, milestones, parseDoc, serializeDoc, type Doc } from "./markdown-doc.ts";
 import type { Task } from "./tasks-core.ts";
 
 export type EntryKind = "project" | "area";
@@ -37,8 +37,8 @@ export function isTrivial(text: string | null | undefined): boolean {
 function field(d: Doc, key: string): string | null {
   if (!d.fm) return null;
   for (let i = d.fm.start + 1; i < d.fm.end; i++) {
-    const m = d.lines[i].match(new RegExp(`^${key}\\s*:\\s*(.*?)\\s*(?:\\s#.*)?$`));
-    if (m) return m[1].replace(/^"(.*)"$/, "$1").replace(/^'(.*)'$/, "$1").trim();
+    const m = d.lines[i].match(new RegExp(`^${key}[ \\t]*:(.*)$`));
+    if (m) return fmValue(m[1]);
   }
   return null;
 }

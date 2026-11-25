@@ -102,3 +102,15 @@ describe("migration des projets", () => {
     expect(isTrivial("Un vrai texte")).toBe(false);
   });
 });
+
+describe("frontmatter : champ vide suivi d'un commentaire", async () => {
+  const { fmValue, fmField } = await import("@/lib/markdown-doc");
+  it("« deadline:   # optionnel » est vide ; guillemets et commentaires gérés", () => {
+    expect(fmValue("              # optionnel, YYYY-MM-DD")).toBe("");
+    expect(fmValue(' "TODO: fill in"  # x')).toBe("TODO: fill in");
+    expect(fmValue(" 2026-12-01 # c")).toBe("2026-12-01");
+    expect(fmValue(" C# app")).toBe("C# app");
+    expect(fmField("---\ntitle: A\ndeadline:   # optionnel\n---\n", "deadline")).toBe("");
+    expect(fmField("---\ntitle: A\n---\n", "deadline")).toBeNull();
+  });
+});
