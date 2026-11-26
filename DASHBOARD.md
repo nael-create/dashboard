@@ -1,7 +1,7 @@
 # Dashboard
 
 <!-- Fichier généré à partir du frontmatter des projets/domaines, des revues et de INBOX.md. Ne pas éditer à la main. -->
-Dernière mise à jour : 2026-11-25
+Dernière mise à jour : 2026-11-26
 
 ## Focus de la semaine
 
